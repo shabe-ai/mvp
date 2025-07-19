@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       messages: [
         {
           role: "system",
-          content: "You are a data visualization expert. Generate a Recharts chart specification based on the provided data. Return a JSON object with chartType, data, and chartConfig properties. Chart types can be: LineChart, BarChart, PieChart, AreaChart, ScatterChart."
+          content: "You are a data visualization expert. Generate a Recharts chart specification based on the provided data. Return a JSON object with chartType, data, and chartConfig properties. Chart types can be: LineChart, BarChart, PieChart, AreaChart, ScatterChart. Return ONLY the JSON object, no markdown formatting."
         },
         {
           role: "user",
@@ -45,7 +45,28 @@ export async function POST(request: NextRequest) {
       stream: false,
     });
 
-    const chartSpec = JSON.parse(chartResponse.choices[0]?.message?.content || "{}");
+    let chartSpec;
+    try {
+      const chartContent = chartResponse.choices[0]?.message?.content || "{}";
+      // Try to extract JSON from markdown code blocks if present
+      const jsonMatch = chartContent.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+      const jsonString = jsonMatch ? jsonMatch[1] : chartContent;
+      chartSpec = JSON.parse(jsonString);
+    } catch (parseError) {
+      console.error("Error parsing chart spec:", parseError);
+      // Fallback to default chart spec
+      chartSpec = {
+        chartType: "LineChart",
+        data: mockData,
+        chartConfig: {
+          width: 600,
+          height: 400,
+          margin: { top: 5, right: 30, left: 20, bottom: 5 },
+          xAxis: { dataKey: "date" },
+          yAxis: { dataKey: "sales" }
+        }
+      };
+    }
 
     // Generate narrative using OpenAI
     const narrativeResponse = await openai.chat.completions.create({
