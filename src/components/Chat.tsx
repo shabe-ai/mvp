@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import PreviewCard from "./PreviewCard";
+import ChartDisplay from "./ChartDisplay";
 
 type Message = {
   role: "user" | "assistant";
@@ -51,6 +52,10 @@ function useSimpleChat() {
   const [isLoading, setIsLoading] = useState(false);
   const [previewData, setPreviewData] = useState<PreviewData | null>(null);
   const [lastEmailRequest, setLastEmailRequest] = useState<string>("");
+  const [chartData, setChartData] = useState<{
+    chartSpec?: PreviewData['chartSpec'];
+    narrative?: string;
+  } | null>(null);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +64,7 @@ function useSimpleChat() {
     const userMessage: Message = { role: "user", content: input };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
+    setChartData(null);
     try {
       console.log("Sending request to /api/chat with messages:", [...messages, userMessage]);
       const response = await fetch("/api/chat", {
@@ -227,15 +233,20 @@ Narrative: ${parsedReply.narrative || "No narrative available"}`;
           throw new Error("Failed to create event");
         }
       } else if (previewData?.action === "generate_report") {
-        // Handle report generation
-        console.log("Generating report with data:", previewData);
+        // Handle report generation - show the chart
+        console.log("Showing chart for report:", previewData);
         
-        // The report is already generated, just show confirmation
         setPreviewData(null);
+        if (previewData.chartSpec) {
+          setChartData({
+            chartSpec: previewData.chartSpec,
+            narrative: previewData.narrative,
+          });
+        }
         // Add a confirmation message to chat
         setMessages((prev) => [
           ...prev,
-          { role: "assistant", content: `✅ Report generated successfully! Chart type: ${previewData.chartSpec?.chartType || "Unknown"}, Data points: ${previewData.data?.length || 0}` }
+          { role: "assistant", content: `✅ Report generated successfully! Here's your chart visualization.` }
         ]);
       }
     } catch (error) {
@@ -273,6 +284,7 @@ Narrative: ${parsedReply.narrative || "No narrative available"}`;
     sendMessage, 
     isLoading,
     previewData,
+    chartData,
     handlePreviewSend,
     handlePreviewEdit,
     handlePreviewCancel,
@@ -287,6 +299,7 @@ export default function Chat() {
     sendMessage, 
     isLoading,
     previewData,
+    chartData,
     handlePreviewSend,
     handlePreviewEdit,
     handlePreviewCancel,
@@ -306,8 +319,18 @@ export default function Chat() {
         ))}
       </div>
 
+      {/* Chart Display */}
+      {chartData && (
+        <div className="mb-4">
+          <ChartDisplay 
+            chartSpec={chartData.chartSpec}
+            narrative={chartData.narrative}
+          />
+        </div>
+      )}
+
       {/* Preview Card */}
-      {previewData && (
+      {previewData && !chartData && (
         <div className="mb-4">
           <PreviewCard
             initialData={{
