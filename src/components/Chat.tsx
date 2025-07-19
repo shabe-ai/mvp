@@ -80,9 +80,25 @@ function useSimpleChat() {
         // If it's a structured action, show preview card
         if (parsedReply.action) {
           console.log("Setting preview data:", parsedReply);
+          
+          // Format the content based on the action type
+          let formattedContent = parsedReply.content || assistantReply;
+          let formattedTitle = parsedReply.title || "Action Preview";
+          
+          if (parsedReply.action === "create_event" && parsedReply.event) {
+            // Format event data for user-friendly display
+            const event = parsedReply.event;
+            formattedTitle = event.title || "Create Event";
+            formattedContent = `Event: ${event.title || "Untitled Event"}
+Description: ${event.description || "No description"}
+Start Time: ${new Date(event.startTime).toLocaleString()}
+End Time: ${new Date(event.endTime).toLocaleString()}
+Attendees: ${event.attendees?.length ? event.attendees.join(", ") : "None"}`;
+          }
+          
           setPreviewData({
-            title: parsedReply.title || "Action Preview",
-            content: parsedReply.content || assistantReply,
+            title: formattedTitle,
+            content: formattedContent,
             subject: parsedReply.subject,
             action: parsedReply.action,
             event: parsedReply.event,

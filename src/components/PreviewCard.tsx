@@ -84,28 +84,15 @@ export default function PreviewCard({
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
           {title}
-          {/* Debug info */}
-          <div className="text-xs text-gray-500">
-            isEditable: {isEditable.toString()}, isEditing: {isEditing.toString()}
-          </div>
           {isEditable && !isEditing && (
-            <>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={handleEdit}
-                className="bg-blue-500 text-white hover:bg-blue-600"
-              >
-                Edit
-              </Button>
-              {/* Fallback button in case shadcn Button doesn't work */}
-              <button 
-                onClick={handleEdit}
-                className="ml-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
-              >
-                Edit (Fallback)
-              </button>
-            </>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleEdit}
+              className="bg-blue-500 text-white hover:bg-blue-600"
+            >
+              Edit
+            </Button>
           )}
         </CardTitle>
       </CardHeader>
@@ -143,7 +130,7 @@ export default function PreviewCard({
               <Textarea
                 {...register("content")}
                 disabled={!isEditing}
-                rows={4}
+                rows={6}
                 className={!isEditing ? "bg-gray-50" : ""}
               />
               {errors.content && (
@@ -169,22 +156,6 @@ export default function PreviewCard({
             )}
           </div>
         </form>
-
-        {/* Preview of current values */}
-        {!isEditing && (watchedValues.title || watchedValues.content) && (
-          <div className="mt-4 p-3 bg-gray-50 rounded-md">
-            <h4 className="font-medium text-sm mb-2">Preview:</h4>
-            {watchedValues.title && (
-              <p className="text-sm font-medium">{watchedValues.title}</p>
-            )}
-            {watchedValues.subject && (
-              <p className="text-sm font-medium mt-1">Subject: {watchedValues.subject}</p>
-            )}
-            {watchedValues.content && (
-              <p className="text-sm text-gray-600 mt-1">{watchedValues.content}</p>
-            )}
-          </div>
-        )}
       </CardContent>
     </Card>
   );
