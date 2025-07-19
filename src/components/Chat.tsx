@@ -58,6 +58,24 @@ function useSimpleChat() {
     chartSpec?: PreviewData['chartSpec'];
     narrative?: string;
   } | null>(null);
+  const [isConnectingGmail, setIsConnectingGmail] = useState(false);
+
+  const connectGmail = async () => {
+    setIsConnectingGmail(true);
+    try {
+      const response = await fetch('/api/auth/google');
+      if (response.ok) {
+        const { authUrl } = await response.json();
+        window.location.href = authUrl;
+      } else {
+        console.error('Failed to get Google OAuth URL');
+      }
+    } catch (error) {
+      console.error('Error connecting Gmail:', error);
+    } finally {
+      setIsConnectingGmail(false);
+    }
+  };
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,6 +211,16 @@ Narrative: ${parsedReply.narrative || "No narrative available"}`;
           const result = await response.json();
           console.log("Email sent successfully:", result);
           
+          if (result.requiresOAuth) {
+            // Show message about connecting Gmail
+            setMessages((prev) => [
+              ...prev,
+              { role: "assistant", content: "To send emails, you need to connect your Gmail account first. Click the 'Connect Gmail' button below." }
+            ]);
+            setPreviewData(null);
+            return;
+          }
+          
           setPreviewData(null);
           // Add a confirmation message to chat
           setMessages((prev) => [
@@ -261,22 +289,22 @@ Narrative: ${parsedReply.narrative || "No narrative available"}`;
   };
 
   const handlePreviewEdit = (data: PreviewCardData) => {
-    console.log("Editing preview data:", data);
-    // Update the preview data with edited content
-    if (previewData) {
-      setPreviewData({
-        ...previewData,
-        title: data.title,
-        content: data.content,
-        subject: data.subject,
-      });
-    }
+    setPreviewData({
+      title: data.title,
+      content: data.content,
+      subject: data.subject,
+      action: previewData?.action,
+      event: previewData?.event,
+      chartSpec: previewData?.chartSpec,
+      narrative: previewData?.narrative,
+      data: previewData?.data,
+      dataType: previewData?.dataType,
+      timeRange: previewData?.timeRange,
+    });
   };
 
   const handlePreviewCancel = () => {
-    console.log("Cancelling preview");
     setPreviewData(null);
-    setChartData(null);
   };
 
   return {
@@ -290,6 +318,8 @@ Narrative: ${parsedReply.narrative || "No narrative available"}`;
     handlePreviewSend,
     handlePreviewEdit,
     handlePreviewCancel,
+    connectGmail,
+    isConnectingGmail,
   };
 }
 
@@ -305,6 +335,8 @@ export default function Chat() {
     handlePreviewSend,
     handlePreviewEdit,
     handlePreviewCancel,
+    connectGmail,
+    isConnectingGmail,
   } = useSimpleChat();
 
   return (
@@ -321,6 +353,30 @@ export default function Chat() {
           <p className="text-slate-600 text-lg mb-6 max-w-2xl mx-auto leading-relaxed">
             Your AI-powered conversational workspace. Send emails, create events, generate reports, and more - all through natural language.
           </p>
+          
+          {/* Connect Gmail Button */}
+          <div className="mb-6">
+            <button
+              onClick={connectGmail}
+              disabled={isConnectingGmail}
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
+            >
+              {isConnectingGmail ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Connecting...</span>
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
+                  </svg>
+                  <span>Connect Gmail</span>
+                </>
+              )}
+            </button>
+          </div>
+          
           <div className="flex flex-wrap justify-center gap-3 text-sm text-slate-500">
             <span className="bg-white px-3 py-1 rounded-full border border-slate-200 font-medium">
               &quot;Send an email to john@example.com&quot;
@@ -336,50 +392,33 @@ export default function Chat() {
       )}
 
       {/* Chat Container */}
-      <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+      <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-6 space-y-4">
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`flex items-start space-x-3 ${
-                message.role === "user" ? "justify-end" : "justify-start"
-              }`}
+              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
             >
-              {message.role === "assistant" && (
-                <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
-                  <Bot className="w-4 h-4 text-white" />
-                </div>
-              )}
-              
               <div
-                className={`max-w-[80%] px-4 py-3 rounded-2xl ${
+                className={`max-w-[80%] px-4 py-2 rounded-lg ${
                   message.role === "user"
                     ? "bg-gradient-to-r from-amber-500 to-yellow-600 text-white"
-                    : "bg-slate-100 text-slate-900"
+                    : "bg-slate-100 text-slate-800"
                 }`}
               >
-                <p className="text-sm leading-relaxed font-medium">{message.content}</p>
+                {message.content}
               </div>
-              
-              {message.role === "user" && (
-                <div className="flex-shrink-0 w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center">
-                  <User className="w-4 h-4 text-slate-600" />
-                </div>
-              )}
             </div>
           ))}
           
           {isLoading && (
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
-                <Bot className="w-4 h-4 text-white" />
-              </div>
-              <div className="bg-slate-100 px-4 py-3 rounded-2xl">
-                <div className="flex space-x-1">
+            <div className="flex justify-start">
+              <div className="bg-slate-100 text-slate-800 px-4 py-2 rounded-lg">
+                <div className="flex items-center space-x-2">
                   <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
                   <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-4 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                 </div>
               </div>
             </div>
