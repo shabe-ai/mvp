@@ -13,7 +13,7 @@ type DataPoint = {
   events?: number;
   attendees?: number;
   value?: number;
-  [key: string]: any;
+  [key: string]: unknown;
 };
 
 export async function POST(request: NextRequest) {
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
 
     // Simulate querying Convex data
     // In a real implementation, this would query your Convex database
-    const mockData = generateMockData(dataType, timeRange);
+    const mockData = generateMockData(dataType);
     
     console.log("Mock data generated:", mockData);
 
@@ -89,7 +89,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-function generateMockData(dataType: string, timeRange: string): DataPoint[] {
+function generateMockData(dataType: string): DataPoint[] {
   const now = new Date();
   const data: DataPoint[] = [];
   

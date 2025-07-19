@@ -13,6 +13,7 @@ export async function POST(req: Request) {
   console.log("Last message:", lastMessage);
   console.log("Contains email:", lastMessage.toLowerCase().includes("email"));
   console.log("Contains event:", lastMessage.toLowerCase().includes("event") || lastMessage.toLowerCase().includes("meeting") || lastMessage.toLowerCase().includes("schedule"));
+  console.log("Contains report:", lastMessage.toLowerCase().includes("report") || lastMessage.toLowerCase().includes("chart") || lastMessage.toLowerCase().includes("data") || lastMessage.toLowerCase().includes("analytics") || lastMessage.toLowerCase().includes("insights"));
   
   if (lastMessage.toLowerCase().includes("email")) {
     console.log("Email request detected, generating email content");
@@ -66,6 +67,102 @@ export async function POST(req: Request) {
     };
     console.log("Returning generated email response:", testResponse);
     return Response.json(testResponse);
+  }
+  
+  // Check for report generation requests
+  if (lastMessage.toLowerCase().includes("report") || lastMessage.toLowerCase().includes("chart") || lastMessage.toLowerCase().includes("data") || lastMessage.toLowerCase().includes("analytics") || lastMessage.toLowerCase().includes("insights")) {
+    console.log("Report request detected, generating report");
+    
+    // Determine data type and time range from user message
+    let dataType = "sales";
+    let timeRange = "30d";
+    
+    if (lastMessage.toLowerCase().includes("user") || lastMessage.toLowerCase().includes("users")) {
+      dataType = "users";
+    } else if (lastMessage.toLowerCase().includes("event") || lastMessage.toLowerCase().includes("events")) {
+      dataType = "events";
+    }
+    
+    if (lastMessage.toLowerCase().includes("week") || lastMessage.toLowerCase().includes("7")) {
+      timeRange = "7d";
+    } else if (lastMessage.toLowerCase().includes("month") || lastMessage.toLowerCase().includes("30")) {
+      timeRange = "30d";
+    } else if (lastMessage.toLowerCase().includes("year") || lastMessage.toLowerCase().includes("12")) {
+      timeRange = "365d";
+    }
+    
+    // Call the report API
+    try {
+      const reportResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/report`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: lastMessage,
+          dataType: dataType,
+          timeRange: timeRange
+        }),
+      });
+      
+      if (reportResponse.ok) {
+        const reportData = await reportResponse.json();
+        console.log("Report data received:", reportData);
+        
+        const testResponse = {
+          id: "test-response",
+          object: "chat.completion",
+          created: Date.now(),
+          model: "gpt-3.5-turbo-1106",
+          choices: [{
+            index: 0,
+            message: {
+              role: "assistant",
+              content: JSON.stringify({
+                action: "generate_report",
+                title: "Generate Report",
+                chartSpec: reportData.chartSpec,
+                narrative: reportData.narrative,
+                data: reportData.data,
+                dataType: dataType,
+                timeRange: timeRange
+              })
+            }
+          }]
+        };
+        console.log("Returning generated report response:", testResponse);
+        return Response.json(testResponse);
+      } else {
+        throw new Error("Failed to generate report");
+      }
+    } catch (error) {
+      console.error("Error generating report:", error);
+      // Fallback response
+      const testResponse = {
+        id: "test-response",
+        object: "chat.completion",
+        created: Date.now(),
+        model: "gpt-3.5-turbo-1106",
+        choices: [{
+          index: 0,
+          message: {
+            role: "assistant",
+            content: JSON.stringify({
+              action: "generate_report",
+              title: "Generate Report",
+              chartSpec: {
+                chartType: "LineChart",
+                data: [],
+                chartConfig: { width: 600, height: 400 }
+              },
+              narrative: "Unable to generate report at this time. Please try again.",
+              data: [],
+              dataType: dataType,
+              timeRange: timeRange
+            })
+          }
+        }]
+      };
+      return Response.json(testResponse);
+    }
   }
   
   // Check for event creation requests
@@ -142,7 +239,7 @@ export async function POST(req: Request) {
     }
   }
   
-  console.log("No email or event detected, proceeding with OpenAI call");
+  console.log("No email, event, or report detected, proceeding with OpenAI call");
   
   const response = await openai.chat.completions.create({
     model: "gpt-3.5-turbo-1106",

@@ -12,7 +12,7 @@ type PreviewData = {
   title: string;
   content: string;
   subject?: string;
-  action?: "send_email" | "create_event" | "ask_report";
+  action?: "send_email" | "create_event" | "generate_report";
   event?: {
     title: string;
     description: string;
@@ -20,6 +20,21 @@ type PreviewData = {
     endTime: string;
     attendees: string[];
   };
+  chartSpec?: {
+    chartType: string;
+    data: Record<string, unknown>[];
+    chartConfig: {
+      width: number;
+      height: number;
+      margin?: Record<string, number>;
+      xAxis?: Record<string, unknown>;
+      yAxis?: Record<string, unknown>;
+    };
+  };
+  narrative?: string;
+  data?: Record<string, unknown>[];
+  dataType?: string;
+  timeRange?: string;
 };
 
 // Import the type from PreviewCard
@@ -94,6 +109,12 @@ Description: ${event.description || "No description"}
 Start Time: ${new Date(event.startTime).toLocaleString()}
 End Time: ${new Date(event.endTime).toLocaleString()}
 Attendees: ${event.attendees?.length ? event.attendees.join(", ") : "None"}`;
+          } else if (parsedReply.action === "generate_report") {
+            // Format report data for user-friendly display
+            formattedTitle = `Report: ${parsedReply.dataType || "Data"} (${parsedReply.timeRange || "30d"})`;
+            formattedContent = `Chart Type: ${parsedReply.chartSpec?.chartType || "Unknown"}
+Data Points: ${parsedReply.data?.length || 0}
+Narrative: ${parsedReply.narrative || "No narrative available"}`;
           }
           
           setPreviewData({
@@ -102,6 +123,11 @@ Attendees: ${event.attendees?.length ? event.attendees.join(", ") : "None"}`;
             subject: parsedReply.subject,
             action: parsedReply.action,
             event: parsedReply.event,
+            chartSpec: parsedReply.chartSpec,
+            narrative: parsedReply.narrative,
+            data: parsedReply.data,
+            dataType: parsedReply.dataType,
+            timeRange: parsedReply.timeRange,
           });
           // Store the original user message for extraction
           if (parsedReply.action === "send_email") {
@@ -130,7 +156,7 @@ Attendees: ${event.attendees?.length ? event.attendees.join(", ") : "None"}`;
   };
 
   const handlePreviewSend = async (data: PreviewCardData) => {
-    // Handle the preview action (send email, create event, etc.)
+    // Handle the preview action (send email, create event, generate report, etc.)
     console.log("Sending action:", data);
     
     try {
@@ -200,6 +226,17 @@ Attendees: ${event.attendees?.length ? event.attendees.join(", ") : "None"}`;
         } else {
           throw new Error("Failed to create event");
         }
+      } else if (previewData?.action === "generate_report") {
+        // Handle report generation
+        console.log("Generating report with data:", previewData);
+        
+        // The report is already generated, just show confirmation
+        setPreviewData(null);
+        // Add a confirmation message to chat
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: `✅ Report generated successfully! Chart type: ${previewData.chartSpec?.chartType || "Unknown"}, Data points: ${previewData.data?.length || 0}` }
+        ]);
       }
     } catch (error) {
       console.error("Error processing action:", error);
@@ -217,6 +254,11 @@ Attendees: ${event.attendees?.length ? event.attendees.join(", ") : "None"}`;
       subject: data.subject,
       action: previewData?.action,
       event: previewData?.event,
+      chartSpec: previewData?.chartSpec,
+      narrative: previewData?.narrative,
+      data: previewData?.data,
+      dataType: previewData?.dataType,
+      timeRange: previewData?.timeRange,
     });
   };
 
