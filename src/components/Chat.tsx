@@ -13,6 +13,13 @@ type PreviewData = {
   content: string;
   subject?: string;
   action?: "send_email" | "create_event" | "ask_report";
+  event?: {
+    title: string;
+    description: string;
+    startTime: string;
+    endTime: string;
+    attendees: string[];
+  };
 };
 
 // Import the type from PreviewCard
@@ -78,8 +85,9 @@ function useSimpleChat() {
             content: parsedReply.content || assistantReply,
             subject: parsedReply.subject,
             action: parsedReply.action,
+            event: parsedReply.event,
           });
-          // Store the original user message for email extraction
+          // Store the original user message for extraction
           if (parsedReply.action === "send_email") {
             setLastEmailRequest(userMessage.content);
           }
@@ -110,44 +118,78 @@ function useSimpleChat() {
     console.log("Sending action:", data);
     
     try {
-      // Extract email address from the stored original user message
-      console.log("Extracting email from original request:", lastEmailRequest);
-      
-      // Improved regex to capture email address after "to"
-      const emailMatch = lastEmailRequest.match(/to\s+([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
-      const toEmail = emailMatch ? emailMatch[1] : "recipient@example.com";
-      
-      console.log("Extracted email:", toEmail);
-      
-      // Send the email via API
-      const response = await fetch("/api/send-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          to: toEmail,
-          subject: data.subject || "Email",
-          content: data.content
-        }),
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        console.log("Email sent successfully:", result);
+      if (previewData?.action === "send_email") {
+        // Handle email sending
+        console.log("Extracting email from original request:", lastEmailRequest);
         
-        setPreviewData(null);
-        // Add a confirmation message to chat
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: `✅ Email sent successfully to ${toEmail}!` }
-        ]);
-      } else {
-        throw new Error("Failed to send email");
+        // Improved regex to capture email address after "to"
+        const emailMatch = lastEmailRequest.match(/to\s+([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+        const toEmail = emailMatch ? emailMatch[1] : "recipient@example.com";
+        
+        console.log("Extracted email:", toEmail);
+        
+        // Send the email via API
+        const response = await fetch("/api/send-email", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: toEmail,
+            subject: data.subject || "Email",
+            content: data.content
+          }),
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log("Email sent successfully:", result);
+          
+          setPreviewData(null);
+          // Add a confirmation message to chat
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: `✅ Email sent successfully to ${toEmail}!` }
+          ]);
+        } else {
+          throw new Error("Failed to send email");
+        }
+      } else if (previewData?.action === "create_event") {
+        // Handle event creation
+        console.log("Creating event with data:", previewData.event);
+        
+        const eventData = previewData.event || {
+          title: data.title,
+          description: data.content,
+          startTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          endTime: new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString(),
+          attendees: []
+        };
+        
+        // Send the event creation request via API
+        const response = await fetch("/api/create-event", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(eventData),
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log("Event created successfully:", result);
+          
+          setPreviewData(null);
+          // Add a confirmation message to chat
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: `✅ Event "${eventData.title}" created successfully!` }
+          ]);
+        } else {
+          throw new Error("Failed to create event");
+        }
       }
     } catch (error) {
-      console.error("Error sending email:", error);
+      console.error("Error processing action:", error);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "❌ Failed to send email. Please try again." }
+        { role: "assistant", content: "❌ Failed to process request. Please try again." }
       ]);
     }
   };
@@ -158,6 +200,7 @@ function useSimpleChat() {
       content: data.content,
       subject: data.subject,
       action: previewData?.action,
+      event: previewData?.event,
     });
   };
 
