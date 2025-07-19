@@ -19,6 +19,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { BarChart3, TrendingUp, PieChart as PieChartIcon } from "lucide-react";
 
 type ChartDisplayProps = {
   chartSpec?: {
@@ -38,15 +39,36 @@ type ChartDisplayProps = {
 export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps) {
   if (!chartSpec) {
     return (
-      <div className="bg-white rounded-lg shadow-lg p-6">
-        <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
-          <p className="text-gray-500">No chart data available</p>
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-amber-50 to-yellow-100 px-6 py-4 border-b border-slate-200">
+          <h3 className="text-lg font-semibold text-slate-900">Chart Visualization</h3>
+        </div>
+        <div className="p-6">
+          <div className="flex items-center justify-center h-64 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+            <div className="text-center">
+              <BarChart3 className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+              <p className="text-slate-500 font-medium">No chart data available</p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   const { chartType, data, chartConfig } = chartSpec;
+
+  const getChartIcon = (type: string) => {
+    switch (type) {
+      case "LineChart":
+        return <TrendingUp className="w-5 h-5" />;
+      case "BarChart":
+        return <BarChart3 className="w-5 h-5" />;
+      case "PieChart":
+        return <PieChartIcon className="w-5 h-5" />;
+      default:
+        return <BarChart3 className="w-5 h-5" />;
+    }
+  };
 
   const renderChart = () => {
     const commonProps = {
@@ -63,16 +85,32 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
       case "LineChart":
         return (
           <LineChart {...commonProps}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey={xAxisDataKey} />
-            <YAxis />
-            <Tooltip />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis 
+              dataKey={xAxisDataKey} 
+              tick={{ fontSize: 12, fill: '#64748b' }}
+              axisLine={{ stroke: '#e2e8f0' }}
+            />
+            <YAxis 
+              tick={{ fontSize: 12, fill: '#64748b' }}
+              axisLine={{ stroke: '#e2e8f0' }}
+            />
+            <Tooltip 
+              contentStyle={{
+                backgroundColor: 'white',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              }}
+            />
             <Legend />
             <Line
               type="monotone"
               dataKey={yAxisDataKey}
-              stroke="#8884d8"
-              activeDot={{ r: 8 }}
+              stroke="#f59e0b"
+              strokeWidth={3}
+              activeDot={{ r: 8, fill: '#f59e0b' }}
+              dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
             />
           </LineChart>
         );
@@ -80,28 +118,61 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
       case "BarChart":
         return (
           <BarChart {...commonProps}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey={xAxisDataKey} />
-            <YAxis />
-            <Tooltip />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis 
+              dataKey={xAxisDataKey} 
+              tick={{ fontSize: 12, fill: '#64748b' }}
+              axisLine={{ stroke: '#e2e8f0' }}
+            />
+            <YAxis 
+              tick={{ fontSize: 12, fill: '#64748b' }}
+              axisLine={{ stroke: '#e2e8f0' }}
+            />
+            <Tooltip 
+              contentStyle={{
+                backgroundColor: 'white',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              }}
+            />
             <Legend />
-            <Bar dataKey={yAxisDataKey} fill="#8884d8" />
+            <Bar 
+              dataKey={yAxisDataKey} 
+              fill="#f59e0b"
+              radius={[4, 4, 0, 0]}
+            />
           </BarChart>
         );
 
       case "AreaChart":
         return (
           <AreaChart {...commonProps}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey={xAxisDataKey} />
-            <YAxis />
-            <Tooltip />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis 
+              dataKey={xAxisDataKey} 
+              tick={{ fontSize: 12, fill: '#64748b' }}
+              axisLine={{ stroke: '#e2e8f0' }}
+            />
+            <YAxis 
+              tick={{ fontSize: 12, fill: '#64748b' }}
+              axisLine={{ stroke: '#e2e8f0' }}
+            />
+            <Tooltip 
+              contentStyle={{
+                backgroundColor: 'white',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              }}
+            />
             <Legend />
             <Area
               type="monotone"
               dataKey={yAxisDataKey}
-              stroke="#8884d8"
-              fill="#8884d8"
+              stroke="#f59e0b"
+              fill="#f59e0b"
+              fillOpacity={0.3}
             />
           </AreaChart>
         );
@@ -116,54 +187,101 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
               labelLine={false}
               label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
               outerRadius={80}
-              fill="#8884d8"
+              fill="#f59e0b"
               dataKey={yAxisDataKey}
             />
-            <Tooltip />
+            <Tooltip 
+              contentStyle={{
+                backgroundColor: 'white',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              }}
+            />
           </PieChart>
         );
 
       case "ScatterChart":
         return (
           <ScatterChart {...commonProps}>
-            <CartesianGrid />
-            <XAxis dataKey={xAxisDataKey} />
-            <YAxis dataKey={yAxisDataKey} />
-            <Tooltip cursor={{ strokeDasharray: "3 3" }} />
+            <CartesianGrid stroke="#e2e8f0" />
+            <XAxis 
+              dataKey={xAxisDataKey} 
+              tick={{ fontSize: 12, fill: '#64748b' }}
+              axisLine={{ stroke: '#e2e8f0' }}
+            />
+            <YAxis 
+              dataKey={yAxisDataKey} 
+              tick={{ fontSize: 12, fill: '#64748b' }}
+              axisLine={{ stroke: '#e2e8f0' }}
+            />
+            <Tooltip 
+              cursor={{ strokeDasharray: "3 3" }}
+              contentStyle={{
+                backgroundColor: 'white',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              }}
+            />
             <Legend />
-            <Scatter name="Data" data={data} fill="#8884d8" />
+            <Scatter name="Data" data={data} fill="#f59e0b" />
           </ScatterChart>
         );
 
       default:
         return (
-          <div className="flex items-center justify-center h-64 bg-gray-100 rounded-lg">
-            <p className="text-gray-500">Chart type &quot;{chartType}&quot; not supported</p>
+          <div className="flex items-center justify-center h-64 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+            <div className="text-center">
+              <BarChart3 className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+              <p className="text-slate-500 font-medium">Chart type &quot;{chartType}&quot; not supported</p>
+            </div>
           </div>
         );
     }
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6">
-      <div className="mb-4">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Chart Visualization</h3>
-        <p className="text-sm text-gray-600">Chart Type: {chartType}</p>
-        <p className="text-sm text-gray-600">Data Points: {data.length}</p>
+    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-amber-50 to-yellow-100 px-6 py-4 border-b border-slate-200">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-lg">
+              {getChartIcon(chartType)}
+            </div>
+            <h3 className="text-lg font-semibold text-slate-900">Chart Visualization</h3>
+          </div>
+          <div className="flex items-center space-x-4 text-sm text-slate-600">
+            <span className="bg-white px-3 py-1 rounded-full border border-slate-200">
+              {chartType}
+            </span>
+            <span className="bg-white px-3 py-1 rounded-full border border-slate-200">
+              {data.length} data points
+            </span>
+          </div>
+        </div>
       </div>
       
-      <div className="mb-4">
-        <ResponsiveContainer width="100%" height={400}>
-          {renderChart()}
-        </ResponsiveContainer>
-      </div>
-
-      {narrative && (
-        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-          <h4 className="font-medium text-blue-900 mb-2">Insights</h4>
-          <p className="text-blue-800 text-sm">{narrative}</p>
+      {/* Chart */}
+      <div className="p-6">
+        <div className="mb-6">
+          <ResponsiveContainer width="100%" height={400}>
+            {renderChart()}
+          </ResponsiveContainer>
         </div>
-      )}
+
+        {/* Insights */}
+        {narrative && (
+          <div className="bg-gradient-to-r from-amber-50 to-yellow-100 border border-amber-200 rounded-xl p-4">
+            <h4 className="font-semibold text-amber-900 mb-2 flex items-center">
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Insights
+            </h4>
+            <p className="text-amber-800 text-sm leading-relaxed">{narrative}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 } 

@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import PreviewCard from "./PreviewCard";
 import ChartDisplay from "./ChartDisplay";
+import Logo from "./Logo";
+import { Send, Bot, User, Sparkles } from "lucide-react";
 
 type Message = {
   role: "user" | "assistant";
@@ -250,39 +252,39 @@ Narrative: ${parsedReply.narrative || "No narrative available"}`;
         ]);
       }
     } catch (error) {
-      console.error("Error processing action:", error);
+      console.error("Error handling preview action:", error);
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: "❌ Failed to process request. Please try again." }
+        { role: "assistant", content: "❌ Sorry, there was an error processing your request. Please try again." }
       ]);
     }
   };
 
   const handlePreviewEdit = (data: PreviewCardData) => {
-    setPreviewData({
-      title: data.title,
-      content: data.content,
-      subject: data.subject,
-      action: previewData?.action,
-      event: previewData?.event,
-      chartSpec: previewData?.chartSpec,
-      narrative: previewData?.narrative,
-      data: previewData?.data,
-      dataType: previewData?.dataType,
-      timeRange: previewData?.timeRange,
-    });
+    console.log("Editing preview data:", data);
+    // Update the preview data with edited content
+    if (previewData) {
+      setPreviewData({
+        ...previewData,
+        title: data.title,
+        content: data.content,
+        subject: data.subject,
+      });
+    }
   };
 
   const handlePreviewCancel = () => {
+    console.log("Cancelling preview");
     setPreviewData(null);
+    setChartData(null);
   };
 
-  return { 
-    messages, 
-    input, 
-    setInput, 
-    sendMessage, 
+  return {
+    messages,
+    input,
+    setInput,
     isLoading,
+    sendMessage,
     previewData,
     chartData,
     handlePreviewSend,
@@ -292,12 +294,12 @@ Narrative: ${parsedReply.narrative || "No narrative available"}`;
 }
 
 export default function Chat() {
-  const { 
-    messages, 
-    input, 
-    setInput, 
-    sendMessage, 
+  const {
+    messages,
+    input,
+    setInput,
     isLoading,
+    sendMessage,
     previewData,
     chartData,
     handlePreviewSend,
@@ -306,60 +308,139 @@ export default function Chat() {
   } = useSimpleChat();
 
   return (
-    <div className="flex flex-col h-[80vh] max-w-4xl mx-auto">
-      {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto space-y-2 mb-4 p-4 border rounded-lg bg-white shadow">
-        {messages.map((m, i) => (
-          <div
-            key={i}
-            className={`p-2 rounded-lg max-w-xs ${m.role === "user" ? "bg-blue-100 self-end ml-auto" : "bg-gray-100 self-start mr-auto"}`}
-          >
-            {m.content}
+    <div className="flex flex-col h-[calc(100vh-8rem)] max-w-4xl mx-auto">
+      {/* Welcome Header */}
+      {messages.length === 0 && (
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center mb-4">
+            <Logo size="lg" />
           </div>
-        ))}
+          <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">
+            Welcome to Shabe
+          </h1>
+          <p className="text-slate-600 text-lg mb-6 max-w-2xl mx-auto leading-relaxed">
+            Your AI-powered conversational workspace. Send emails, create events, generate reports, and more - all through natural language.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3 text-sm text-slate-500">
+            <span className="bg-white px-3 py-1 rounded-full border border-slate-200 font-medium">
+              &quot;Send an email to john@example.com&quot;
+            </span>
+            <span className="bg-white px-3 py-1 rounded-full border border-slate-200 font-medium">
+              &quot;Create a meeting tomorrow at 2pm&quot;
+            </span>
+            <span className="bg-white px-3 py-1 rounded-full border border-slate-200 font-medium">
+              &quot;Generate a sales report&quot;
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Container */}
+      <div className="flex-1 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col">
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex items-start space-x-3 ${
+                message.role === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              {message.role === "assistant" && (
+                <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+              )}
+              
+              <div
+                className={`max-w-[80%] px-4 py-3 rounded-2xl ${
+                  message.role === "user"
+                    ? "bg-gradient-to-r from-amber-500 to-yellow-600 text-white"
+                    : "bg-slate-100 text-slate-900"
+                }`}
+              >
+                <p className="text-sm leading-relaxed font-medium">{message.content}</p>
+              </div>
+              
+              {message.role === "user" && (
+                <div className="flex-shrink-0 w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center">
+                  <User className="w-4 h-4 text-slate-600" />
+                </div>
+              )}
+            </div>
+          ))}
+          
+          {isLoading && (
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0 w-8 h-8 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center">
+                <Bot className="w-4 h-4 text-white" />
+              </div>
+              <div className="bg-slate-100 px-4 py-3 rounded-2xl">
+                <div className="flex space-x-1">
+                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-4 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Preview Card */}
+        {previewData && (
+          <div className="border-t border-slate-200 p-6">
+            <PreviewCard
+              initialData={{
+                title: previewData.title,
+                content: previewData.content,
+                subject: previewData.subject,
+              }}
+              onSend={handlePreviewSend}
+              onEdit={handlePreviewEdit}
+              onCancel={handlePreviewCancel}
+              title={`Preview: ${previewData.action?.replace('_', ' ').toUpperCase()}`}
+              isEditable={true}
+            />
+          </div>
+        )}
+
+        {/* Chart Display */}
+        {chartData && (
+          <div className="border-t border-slate-200 p-6">
+            <ChartDisplay
+              chartSpec={chartData.chartSpec}
+              narrative={chartData.narrative}
+            />
+          </div>
+        )}
+
+        {/* Input Form */}
+        <div className="border-t border-slate-200 p-6">
+          <form onSubmit={sendMessage} className="flex space-x-3">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask me anything... Send emails, create events, generate reports..."
+                className="w-full px-4 py-3 pr-12 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200 font-medium"
+                disabled={isLoading}
+              />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <Sparkles className="w-5 h-5 text-slate-400" />
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+            >
+              <Send className="w-4 h-4" />
+              <span>Send</span>
+            </button>
+          </form>
+        </div>
       </div>
-
-      {/* Chart Display */}
-      {chartData && (
-        <div className="mb-4">
-          <ChartDisplay 
-            chartSpec={chartData.chartSpec}
-            narrative={chartData.narrative}
-          />
-        </div>
-      )}
-
-      {/* Preview Card */}
-      {previewData && !chartData && (
-        <div className="mb-4">
-          <PreviewCard
-            initialData={{
-              title: previewData.title,
-              content: previewData.content,
-              subject: previewData.subject,
-            }}
-            onSend={handlePreviewSend}
-            onEdit={handlePreviewEdit}
-            onCancel={handlePreviewCancel}
-            title={`Preview: ${previewData.action?.replace('_', ' ').toUpperCase()}`}
-            isEditable={true}
-          />
-        </div>
-      )}
-
-      {/* Chat Input */}
-      <form onSubmit={sendMessage} className="flex gap-2 p-4 border rounded-lg bg-white shadow">
-        <input
-          className="flex-1 border rounded px-3 py-2"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message..."
-          disabled={isLoading}
-        />
-        <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded" disabled={isLoading || !input.trim()}>
-          Send
-        </button>
-      </form>
     </div>
   );
 } 
