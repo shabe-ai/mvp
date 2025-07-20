@@ -212,6 +212,7 @@ What would you like to do today?`,
 
       if (response.ok) {
         const data = await response.json();
+        console.log("Chat API response:", JSON.stringify(data, null, 2));
         
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
@@ -284,6 +285,9 @@ What would you like to do today?`,
           
           {message.action === "read" && message.data && (
             <div className="mt-3">
+              <div className="text-xs text-gray-500 mb-2">
+                Debug: Data type: {typeof message.data}, Is array: {Array.isArray(message.data)}, Length: {Array.isArray(message.data) ? message.data.length : 'N/A'}
+              </div>
               <DataTable data={message.data} />
             </div>
           )}
@@ -533,31 +537,42 @@ What would you like to do today?`,
 
 // Data Table Component for displaying CRM data
 function DataTable({ data }: { data: any[] }) {
+  // Ensure data is an array
+  if (!Array.isArray(data)) {
+    return <div className="text-gray-500 text-sm">Invalid data format</div>;
+  }
+
   if (!data || data.length === 0) {
     return <div className="text-gray-500 text-sm">No data to display</div>;
   }
 
-  const columns = Object.keys(data[0]).filter(key => 
+  // Ensure we have valid data
+  const validData = data.filter(item => item && typeof item === 'object');
+  if (validData.length === 0) {
+    return <div className="text-gray-500 text-sm">No valid data to display</div>;
+  }
+
+  const columns = Object.keys(validData[0]).filter(key => 
     !['_id', '_creationTime', 'teamId', 'createdBy', 'sharedWith'].includes(key)
   );
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto border rounded-lg">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b">
+          <tr className="bg-gray-50 dark:bg-gray-800 border-b">
             {columns.map(column => (
-              <th key={column} className="text-left p-2 font-medium">
-                {column.charAt(0).toUpperCase() + column.slice(1)}
+              <th key={column} className="text-left p-3 font-medium text-gray-700 dark:text-gray-300">
+                {column.charAt(0).toUpperCase() + column.slice(1).replace(/([A-Z])/g, ' $1')}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {data.map((row, index) => (
+          {validData.map((row, index) => (
             <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
               {columns.map(column => (
-                <td key={column} className="p-2">
+                <td key={column} className="p-3 text-gray-600 dark:text-gray-400">
                   {formatCellValue(row[column])}
                 </td>
               ))}
@@ -571,8 +586,15 @@ function DataTable({ data }: { data: any[] }) {
 
 function formatCellValue(value: any): string {
   if (value === null || value === undefined) return "-";
-  if (typeof value === "object") return JSON.stringify(value);
+  
+  // Handle empty objects
+  if (typeof value === "object") {
+    if (Object.keys(value).length === 0) return "-";
+    return JSON.stringify(value);
+  }
+  
   if (typeof value === "boolean") return value ? "Yes" : "No";
+  
   if (typeof value === "number") {
     // Check if it's a timestamp
     if (value > 1000000000000) {
@@ -580,5 +602,6 @@ function formatCellValue(value: any): string {
     }
     return value.toString();
   }
+  
   return String(value);
 } 

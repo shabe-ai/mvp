@@ -165,6 +165,8 @@ export async function POST(req: NextRequest) {
     let responseMessage = "";
     let needsClarification = false;
     let clarificationQuestion = "";
+    let responseData = null;
+    let responseAction = null;
 
     switch (parsedResponse.action) {
       case "message":
@@ -174,7 +176,10 @@ export async function POST(req: NextRequest) {
         responseMessage = await handleCreate(parsedResponse, userId, teamId);
         break;
       case "read":
-        responseMessage = await handleRead(parsedResponse, teamId);
+        const readResult = await handleRead(parsedResponse, teamId);
+        responseMessage = readResult.message;
+        responseData = readResult.data;
+        responseAction = "read";
         break;
       case "update":
         responseMessage = await handleUpdate(parsedResponse, userId);
@@ -217,8 +222,8 @@ export async function POST(req: NextRequest) {
       message: responseMessage,
       needsClarification,
       clarificationQuestion,
-      action: parsedResponse.action,
-      data: parsedResponse.data,
+      action: responseAction || parsedResponse.action,
+      data: responseData || parsedResponse.data,
     });
 
   } catch (error) {
@@ -237,11 +242,15 @@ async function handleCreate(response: any, userId: string, teamId: string) {
   try {
     switch (objectType) {
       case "contacts":
-        const contactId = await convex.mutation(api.crm.createContact, {
+        // Ensure required fields are present with defaults
+        const contactData = {
           teamId,
           createdBy: userId,
+          contactType: data.contactType || "contact",
+          leadStatus: data.leadStatus || "new",
           ...data,
-        });
+        };
+        const contactId = await convex.mutation(api.crm.createContact, contactData);
         return `✅ Contact created successfully! ID: ${contactId}`;
       
       case "accounts":
@@ -253,19 +262,26 @@ async function handleCreate(response: any, userId: string, teamId: string) {
         return `✅ Account created successfully! ID: ${accountId}`;
       
       case "activities":
-        const activityId = await convex.mutation(api.crm.createActivity, {
+        // Ensure required fields are present with defaults
+        const activityData = {
           teamId,
           createdBy: userId,
+          type: data.type || "meeting",
+          status: data.status || "scheduled",
           ...data,
-        });
+        };
+        const activityId = await convex.mutation(api.crm.createActivity, activityData);
         return `✅ Activity created successfully! ID: ${activityId}`;
       
       case "deals":
-        const dealId = await convex.mutation(api.crm.createDeal, {
+        // Ensure required fields are present with defaults
+        const dealData = {
           teamId,
           createdBy: userId,
+          stage: data.stage || "prospecting",
           ...data,
-        });
+        };
+        const dealId = await convex.mutation(api.crm.createDeal, dealData);
         return `✅ Deal created successfully! ID: ${dealId}`;
       
       default:
@@ -296,19 +312,20 @@ async function handleRead(response: any, teamId: string) {
         data = await convex.query(api.crm.getDealsByTeam, { teamId });
         break;
       default:
-        return `❌ Unknown object type: ${objectType}`;
+        return { message: `❌ Unknown object type: ${objectType}` };
     }
 
     if (data.length === 0) {
-      return `📭 No ${objectType} found.`;
+      return { message: `📭 No ${objectType} found.` };
     }
 
-    // Format as table
-    const tableData = formatAsTable(data, objectType);
-    return `📊 Found ${data.length} ${objectType}:\n\n${tableData}`;
+    return {
+      message: `📊 Found ${data.length} ${objectType}:`,
+      data: data
+    };
   } catch (error) {
     console.error("Read error:", error);
-    return `❌ Error reading ${objectType}: ${error}`;
+    return { message: `❌ Error reading ${objectType}: ${error}` };
   }
 }
 
