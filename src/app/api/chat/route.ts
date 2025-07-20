@@ -1,250 +1,421 @@
+import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../../../../convex/_generated/api";
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
-export async function POST(req: Request) {
-  const { messages } = await req.json();
-  
-  console.log("Chat API called with messages:", messages);
-  console.log("OpenAI API Key exists:", !!process.env.OPENAI_API_KEY);
-  
-  // Check if the last message contains "email" to trigger JSON response
-  const lastMessage = messages[messages.length - 1]?.content || "";
-  console.log("Last message:", lastMessage);
-  console.log("Contains email:", lastMessage.toLowerCase().includes("email"));
-  console.log("Contains event:", lastMessage.toLowerCase().includes("event") || lastMessage.toLowerCase().includes("meeting") || lastMessage.toLowerCase().includes("schedule"));
-  console.log("Contains report:", lastMessage.toLowerCase().includes("report") || lastMessage.toLowerCase().includes("chart") || lastMessage.toLowerCase().includes("data") || lastMessage.toLowerCase().includes("analytics") || lastMessage.toLowerCase().includes("insights"));
-  
-  if (lastMessage.toLowerCase().includes("email")) {
-    console.log("Email request detected, generating email content");
-    
-    // Generate actual email content based on the user's request
-    const emailContent = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo-1106",
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+// CRM object types for the AI to understand
+const CRM_OBJECTS = {
+  contacts: {
+    description: "People/leads in your CRM",
+    fields: {
+      firstName: "string",
+      lastName: "string", 
+      email: "string",
+      phone: "string (optional)",
+      title: "string (optional)",
+      company: "string (optional)",
+      accountId: "string (optional - links to account)",
+      leadStatus: "new|contacted|qualified|unqualified",
+      contactType: "lead|contact",
+      source: "string (optional)",
+      notes: "string (optional)",
+      customFields: "object (optional)"
+    }
+  },
+  accounts: {
+    description: "Companies/organizations",
+    fields: {
+      name: "string",
+      industry: "string (optional)",
+      website: "string (optional)", 
+      phone: "string (optional)",
+      address: "object (optional)",
+      annualRevenue: "number (optional)",
+      employeeCount: "number (optional)",
+      notes: "string (optional)",
+      customFields: "object (optional)"
+    }
+  },
+  activities: {
+    description: "Emails, calls, meetings, events",
+    fields: {
+      type: "email|event|call|meeting",
+      subject: "string",
+      description: "string (optional)",
+      contactId: "string (optional)",
+      accountId: "string (optional)", 
+      dealId: "string (optional)",
+      status: "scheduled|completed|cancelled",
+      startTime: "number (optional)",
+      endTime: "number (optional)",
+      attendees: "array (optional)",
+      customFields: "object (optional)"
+    }
+  },
+  deals: {
+    description: "Sales opportunities",
+    fields: {
+      name: "string",
+      contactId: "string (optional)",
+      accountId: "string (optional)",
+      stage: "prospecting|qualification|proposal|negotiation|closed_won|closed_lost",
+      amount: "number (optional)",
+      currency: "string (optional)",
+      closeDate: "number (optional)",
+      probability: "number (optional)",
+      description: "string (optional)",
+      customFields: "object (optional)"
+    }
+  }
+};
+
+// System prompt for CRM operations
+const CRM_SYSTEM_PROMPT = `You are a CRM assistant that helps users manage their customer relationships through natural language. You can:
+
+1. CREATE new records (contacts, accounts, activities, deals)
+2. READ/VIEW existing records with filtering and search
+3. UPDATE existing records
+4. DELETE records
+5. ADD custom fields to any object type
+6. Handle ambiguous queries by asking follow-up questions
+
+Available object types:
+${Object.entries(CRM_OBJECTS).map(([key, obj]) => 
+  `- ${key}: ${obj.description}\n  Fields: ${Object.entries(obj.fields).map(([field, type]) => `${field} (${type})`).join(', ')}`
+).join('\n')}
+
+When responding:
+- Always return JSON with an "action" field and relevant data
+- For ambiguous queries, ask follow-up questions
+- For data display, format as tables when appropriate
+- Support custom field operations
+- Handle relationships between objects properly
+
+Response format:
+{
+  "action": "create|read|update|delete|add_field|ask_clarification",
+  "objectType": "contacts|accounts|activities|deals",
+  "data": {...},
+  "message": "Human readable message",
+  "needsClarification": boolean,
+  "clarificationQuestion": "string (if needed)"
+}`;
+
+export async function POST(req: NextRequest) {
+  try {
+    const { messages, userId, teamId } = await req.json();
+
+    if (!userId || !teamId) {
+      return NextResponse.json(
+        { error: "User ID and Team ID are required" },
+        { status: 400 }
+      );
+    }
+
+    // Get the last user message
+    const lastUserMessage = messages[messages.length - 1]?.content || "";
+
+    // Call OpenAI to understand the intent
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4",
       messages: [
-        {
-          role: "system",
-          content: "You are a helpful assistant. Generate a professional email based on the user's request. Return only the email content, not a JSON object. Start with 'Subject: [subject line]' followed by the email body."
-        },
-        {
-          role: "user", 
-          content: `Generate an email based on this request: ${lastMessage}`
-        }
+        { role: "system", content: CRM_SYSTEM_PROMPT },
+        ...messages.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content,
+        })),
       ],
-      stream: false,
+      temperature: 0.1,
+    });
+
+    const aiResponse = completion.choices[0]?.message?.content || "";
+    
+    // Try to parse JSON from the response
+    let parsedResponse;
+    try {
+      // Extract JSON from markdown if present
+      const jsonMatch = aiResponse.match(/```json\n([\s\S]*?)\n```/);
+      const jsonString = jsonMatch ? jsonMatch[1] : aiResponse;
+      parsedResponse = JSON.parse(jsonString);
+    } catch (error) {
+      // If JSON parsing fails, create a simple response
+      parsedResponse = {
+        action: "message",
+        message: aiResponse,
+        needsClarification: false,
+      };
+    }
+
+    // Handle the parsed response
+    let responseMessage = "";
+    let needsClarification = false;
+    let clarificationQuestion = "";
+
+    switch (parsedResponse.action) {
+      case "create":
+        responseMessage = await handleCreate(parsedResponse, userId, teamId);
+        break;
+      case "read":
+        responseMessage = await handleRead(parsedResponse, teamId);
+        break;
+      case "update":
+        responseMessage = await handleUpdate(parsedResponse, userId);
+        break;
+      case "delete":
+        responseMessage = await handleDelete(parsedResponse);
+        break;
+      case "add_field":
+        responseMessage = await handleAddField(parsedResponse, teamId);
+        break;
+      case "ask_clarification":
+        needsClarification = true;
+        clarificationQuestion = parsedResponse.clarificationQuestion;
+        responseMessage = parsedResponse.message;
+        break;
+      default:
+        responseMessage = aiResponse;
+    }
+
+    // Log the interaction
+    await convex.mutation(api.crm.createLog, {
+      teamId,
+      createdBy: userId,
+      message: lastUserMessage,
+      role: "user",
+    });
+
+    await convex.mutation(api.crm.createLog, {
+      teamId,
+      createdBy: userId,
+      message: responseMessage,
+      role: "assistant",
+      metadata: {
+        action: parsedResponse.action,
+        objectType: parsedResponse.objectType,
+      },
+    });
+
+    return NextResponse.json({
+      message: responseMessage,
+      needsClarification,
+      clarificationQuestion,
+      action: parsedResponse.action,
+      data: parsedResponse.data,
+    });
+
+  } catch (error) {
+    console.error("Chat API error:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+// Handler functions for different actions
+async function handleCreate(response: any, userId: string, teamId: string) {
+  const { objectType, data } = response;
+  
+  try {
+    switch (objectType) {
+      case "contacts":
+        const contactId = await convex.mutation(api.crm.createContact, {
+          teamId,
+          createdBy: userId,
+          ...data,
+        });
+        return `✅ Contact created successfully! ID: ${contactId}`;
+      
+      case "accounts":
+        const accountId = await convex.mutation(api.crm.createAccount, {
+          teamId,
+          createdBy: userId,
+          ...data,
+        });
+        return `✅ Account created successfully! ID: ${accountId}`;
+      
+      case "activities":
+        const activityId = await convex.mutation(api.crm.createActivity, {
+          teamId,
+          createdBy: userId,
+          ...data,
+        });
+        return `✅ Activity created successfully! ID: ${activityId}`;
+      
+      case "deals":
+        const dealId = await convex.mutation(api.crm.createDeal, {
+          teamId,
+          createdBy: userId,
+          ...data,
+        });
+        return `✅ Deal created successfully! ID: ${dealId}`;
+      
+      default:
+        return `❌ Unknown object type: ${objectType}`;
+    }
+  } catch (error) {
+    console.error("Create error:", error);
+    return `❌ Error creating ${objectType}: ${error}`;
+  }
+}
+
+async function handleRead(response: any, teamId: string) {
+  const { objectType, filters } = response;
+  
+  try {
+    let data;
+    switch (objectType) {
+      case "contacts":
+        data = await convex.query(api.crm.getContactsByTeam, { teamId });
+        break;
+      case "accounts":
+        data = await convex.query(api.crm.getAccountsByTeam, { teamId });
+        break;
+      case "activities":
+        data = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+        break;
+      case "deals":
+        data = await convex.query(api.crm.getDealsByTeam, { teamId });
+        break;
+      default:
+        return `❌ Unknown object type: ${objectType}`;
+    }
+
+    if (data.length === 0) {
+      return `📭 No ${objectType} found.`;
+    }
+
+    // Format as table
+    const tableData = formatAsTable(data, objectType);
+    return `📊 Found ${data.length} ${objectType}:\n\n${tableData}`;
+  } catch (error) {
+    console.error("Read error:", error);
+    return `❌ Error reading ${objectType}: ${error}`;
+  }
+}
+
+async function handleUpdate(response: any, userId: string) {
+  const { objectType, id, updates } = response;
+  
+  try {
+    switch (objectType) {
+      case "contacts":
+        await convex.mutation(api.crm.updateContact, {
+          contactId: id,
+          updates,
+        });
+        break;
+      case "accounts":
+        await convex.mutation(api.crm.updateAccount, {
+          accountId: id,
+          updates,
+        });
+        break;
+      case "activities":
+        await convex.mutation(api.crm.updateActivity, {
+          activityId: id,
+          updates,
+        });
+        break;
+      case "deals":
+        await convex.mutation(api.crm.updateDeal, {
+          dealId: id,
+          updates,
+        });
+        break;
+      default:
+        return `❌ Unknown object type: ${objectType}`;
+    }
+    
+    return `✅ ${objectType} updated successfully!`;
+  } catch (error) {
+    console.error("Update error:", error);
+    return `❌ Error updating ${objectType}: ${error}`;
+  }
+}
+
+async function handleDelete(response: any) {
+  const { objectType, id } = response;
+  
+  try {
+    switch (objectType) {
+      case "contacts":
+        await convex.mutation(api.crm.deleteContact, { contactId: id });
+        break;
+      case "accounts":
+        await convex.mutation(api.crm.deleteAccount, { accountId: id });
+        break;
+      case "activities":
+        await convex.mutation(api.crm.deleteActivity, { activityId: id });
+        break;
+      case "deals":
+        await convex.mutation(api.crm.deleteDeal, { dealId: id });
+        break;
+      default:
+        return `❌ Unknown object type: ${objectType}`;
+    }
+    
+    return `✅ ${objectType} deleted successfully!`;
+  } catch (error) {
+    console.error("Delete error:", error);
+    return `❌ Error deleting ${objectType}: ${error}`;
+  }
+}
+
+async function handleAddField(response: any, teamId: string) {
+  const { objectType, fieldName, fieldType, fieldOptions } = response;
+  
+  try {
+    await convex.mutation(api.crm.addCustomField, {
+      teamId,
+      objectType,
+      fieldName,
+      fieldType,
+      fieldOptions,
     });
     
-    const generatedEmail = emailContent.choices[0]?.message?.content || "Email content could not be generated";
-    
-    // Parse the subject from the generated email
-    let subject = "Email";
-    let body = generatedEmail;
-    
-    if (generatedEmail.startsWith("Subject:")) {
-      const lines = generatedEmail.split('\n');
-      const subjectLine = lines[0];
-      subject = subjectLine.replace("Subject:", "").trim();
-      body = lines.slice(2).join('\n').trim(); // Skip the subject line and empty line
-    }
-    
-    const testResponse = {
-      id: "test-response",
-      object: "chat.completion",
-      created: Date.now(),
-      model: "gpt-3.5-turbo-1106",
-      choices: [{
-        index: 0,
-        message: {
-          role: "assistant",
-          content: JSON.stringify({
-            action: "send_email",
-            title: "Send Email",
-            subject: subject,
-            content: body
-          })
-        }
-      }]
-    };
-    console.log("Returning generated email response:", testResponse);
-    return Response.json(testResponse);
+    return `✅ Custom field "${fieldName}" added to ${objectType}!`;
+  } catch (error) {
+    console.error("Add field error:", error);
+    return `❌ Error adding custom field: ${error}`;
   }
+}
+
+function formatAsTable(data: any[], objectType: string): string {
+  if (data.length === 0) return "No data to display";
   
-  // Check for report generation requests
-  if (lastMessage.toLowerCase().includes("report") || lastMessage.toLowerCase().includes("chart") || lastMessage.toLowerCase().includes("data") || lastMessage.toLowerCase().includes("analytics") || lastMessage.toLowerCase().includes("insights")) {
-    console.log("Report request detected, generating report");
-    
-    // Determine data type and time range from user message
-    let dataType = "sales";
-    let timeRange = "30d";
-    
-    if (lastMessage.toLowerCase().includes("user") || lastMessage.toLowerCase().includes("users")) {
-      dataType = "users";
-    } else if (lastMessage.toLowerCase().includes("event") || lastMessage.toLowerCase().includes("events")) {
-      dataType = "events";
-    }
-    
-    if (lastMessage.toLowerCase().includes("week") || lastMessage.toLowerCase().includes("7")) {
-      timeRange = "7d";
-    } else if (lastMessage.toLowerCase().includes("month") || lastMessage.toLowerCase().includes("30")) {
-      timeRange = "30d";
-    } else if (lastMessage.toLowerCase().includes("year") || lastMessage.toLowerCase().includes("12")) {
-      timeRange = "365d";
-    }
-    
-    // Call the report API
-    try {
-      const reportResponse = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/report`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          query: lastMessage,
-          dataType: dataType,
-          timeRange: timeRange
-        }),
-      });
-      
-      if (reportResponse.ok) {
-        const reportData = await reportResponse.json();
-        console.log("Report data received:", reportData);
-        
-        const testResponse = {
-          id: "test-response",
-          object: "chat.completion",
-          created: Date.now(),
-          model: "gpt-3.5-turbo-1106",
-          choices: [{
-            index: 0,
-            message: {
-              role: "assistant",
-              content: JSON.stringify({
-                action: "generate_report",
-                title: "Generate Report",
-                chartSpec: reportData.chartSpec,
-                narrative: reportData.narrative,
-                data: reportData.data,
-                dataType: dataType,
-                timeRange: timeRange
-              })
-            }
-          }]
-        };
-        console.log("Returning generated report response:", testResponse);
-        return Response.json(testResponse);
-      } else {
-        throw new Error("Failed to generate report");
+  // Get all unique keys from all objects
+  const allKeys = new Set<string>();
+  data.forEach(item => {
+    Object.keys(item).forEach(key => {
+      if (key !== '_id' && key !== '_creationTime' && key !== 'teamId' && key !== 'createdBy' && key !== 'sharedWith') {
+        allKeys.add(key);
       }
-    } catch (error) {
-      console.error("Error generating report:", error);
-      // Fallback response
-      const testResponse = {
-        id: "test-response",
-        object: "chat.completion",
-        created: Date.now(),
-        model: "gpt-3.5-turbo-1106",
-        choices: [{
-          index: 0,
-          message: {
-            role: "assistant",
-            content: JSON.stringify({
-              action: "generate_report",
-              title: "Generate Report",
-              chartSpec: {
-                chartType: "LineChart",
-                data: [],
-                chartConfig: { width: 600, height: 400 }
-              },
-              narrative: "Unable to generate report at this time. Please try again.",
-              data: [],
-              dataType: dataType,
-              timeRange: timeRange
-            })
-          }
-        }]
-      };
-      return Response.json(testResponse);
-    }
-  }
-  
-  // Check for event creation requests
-  if (lastMessage.toLowerCase().includes("event") || lastMessage.toLowerCase().includes("meeting") || lastMessage.toLowerCase().includes("schedule")) {
-    console.log("Event creation request detected, generating event details");
-    
-    // Generate event details based on the user's request
-    const eventContent = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo-1106",
-      messages: [
-        {
-          role: "system",
-          content: "You are a helpful assistant. Generate event details based on the user's request. Return a JSON object with the following structure: { title: 'Event Title', description: 'Event description', startTime: 'ISO date string', endTime: 'ISO date string', attendees: ['email1@example.com', 'email2@example.com'] }"
-        },
-        {
-          role: "user", 
-          content: `Generate event details based on this request: ${lastMessage}`
-        }
-      ],
-      stream: false,
     });
-    
-    const generatedEvent = eventContent.choices[0]?.message?.content || "{}";
-    
-    try {
-      const eventData = JSON.parse(generatedEvent);
-      
-      const testResponse = {
-        id: "test-response",
-        object: "chat.completion",
-        created: Date.now(),
-        model: "gpt-3.5-turbo-1106",
-        choices: [{
-          index: 0,
-          message: {
-            role: "assistant",
-            content: JSON.stringify({
-              action: "create_event",
-              title: "Create Event",
-              event: eventData
-            })
-          }
-        }]
-      };
-      console.log("Returning generated event response:", testResponse);
-      return Response.json(testResponse);
-    } catch (error) {
-      console.error("Error parsing event data:", error);
-      // Fallback to default event structure
-      const testResponse = {
-        id: "test-response",
-        object: "chat.completion",
-        created: Date.now(),
-        model: "gpt-3.5-turbo-1106",
-        choices: [{
-          index: 0,
-          message: {
-            role: "assistant",
-            content: JSON.stringify({
-              action: "create_event",
-              title: "Create Event",
-              event: {
-                title: "New Event",
-                description: "Event description",
-                startTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Tomorrow
-                endTime: new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString(), // Tomorrow + 1 hour
-                attendees: []
-              }
-            })
-          }
-        }]
-      };
-      return Response.json(testResponse);
-    }
-  }
-  
-  console.log("No email, event, or report detected, proceeding with OpenAI call");
-  
-  const response = await openai.chat.completions.create({
-    model: "gpt-3.5-turbo-1106",
-    messages,
-    stream: false,
   });
-  return Response.json(response);
+  
+  const keys = Array.from(allKeys);
+  
+  // Create header
+  let table = keys.join(' | ') + '\n';
+  table += keys.map(() => '---').join(' | ') + '\n';
+  
+  // Add rows
+  data.forEach(item => {
+    const row = keys.map(key => {
+      const value = item[key];
+      if (value === null || value === undefined) return '';
+      if (typeof value === 'object') return JSON.stringify(value);
+      return String(value);
+    });
+    table += row.join(' | ') + '\n';
+  });
+  
+  return table;
 } 

@@ -1,485 +1,503 @@
 "use client";
 
-import React, { useState } from "react";
-import PreviewCard from "./PreviewCard";
-import ChartDisplay from "./ChartDisplay";
-import Logo from "./Logo";
-import { Send, Bot, User, Sparkles } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
+import { 
+  Send, 
+  Plus, 
+  Mail, 
+  Phone, 
+  Building, 
+  Users, 
+  Calendar,
+  TrendingUp,
+  MessageSquare,
+  Loader2
+} from "lucide-react";
 
-type Message = {
+interface Message {
+  id: string;
   role: "user" | "assistant";
   content: string;
-};
+  timestamp: Date;
+  action?: string;
+  data?: any;
+  needsClarification?: boolean;
+  clarificationQuestion?: string;
+}
 
-type PreviewData = {
-  title: string;
-  content: string;
-  subject?: string;
-  action?: "send_email" | "create_event" | "generate_report";
-  event?: {
-    title: string;
-    description: string;
-    startTime: string;
-    endTime: string;
-    attendees: string[];
-  };
-  chartSpec?: {
-    chartType: string;
-    data: Record<string, unknown>[];
-    chartConfig: {
-      width: number;
-      height: number;
-      margin?: Record<string, number>;
-      xAxis?: Record<string, unknown>;
-      yAxis?: Record<string, unknown>;
-    };
-  };
-  narrative?: string;
-  data?: Record<string, unknown>[];
-  dataType?: string;
-  timeRange?: string;
-};
+interface Team {
+  id: string;
+  name: string;
+  ownerId: string;
+  members: string[];
+}
 
-// Import the type from PreviewCard
-type PreviewCardData = {
-  title: string;
-  content: string;
-  subject?: string;
-  action?: "send" | "edit" | "cancel";
-};
-
-function useSimpleChat() {
+export default function Chat() {
+  const { user } = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [previewData, setPreviewData] = useState<PreviewData | null>(null);
-  const [lastEmailRequest, setLastEmailRequest] = useState<string>("");
-  const [chartData, setChartData] = useState<{
-    chartSpec?: PreviewData['chartSpec'];
-    narrative?: string;
-  } | null>(null);
-  const [isConnectingGmail, setIsConnectingGmail] = useState(false);
+  const [currentTeam, setCurrentTeam] = useState<Team | null>(null);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [showTeamSelector, setShowTeamSelector] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const connectGmail = async () => {
-    setIsConnectingGmail(true);
+  // Initialize with welcome message
+  useEffect(() => {
+    if (user && !messages.length) {
+      setMessages([{
+        id: "welcome",
+        role: "assistant",
+        content: `Welcome to your CRM! 👋 I'm here to help you manage your customer relationships. You can:
+
+• Create contacts, accounts, activities, and deals
+• View and search your data
+• Update records
+• Add custom fields
+• Get insights and reports
+
+What would you like to do today?`,
+        timestamp: new Date(),
+      }]);
+    }
+  }, [user, messages.length]);
+
+  // Auto-scroll to bottom
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  // Load user's teams
+  useEffect(() => {
+    if (user) {
+      loadUserTeams();
+    }
+  }, [user]);
+
+  const loadUserTeams = async () => {
     try {
-      const response = await fetch('/api/auth/google');
+      const response = await fetch('/api/teams', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
       if (response.ok) {
-        const { authUrl } = await response.json();
-        window.location.href = authUrl;
-      } else {
-        console.error('Failed to get Google OAuth URL');
+        const userTeams = await response.json();
+        setTeams(userTeams);
+        
+        // Set first team as current, or create default team
+        if (userTeams.length > 0) {
+          setCurrentTeam(userTeams[0]);
+        } else {
+          // Create default team for user
+          await createDefaultTeam();
+        }
       }
     } catch (error) {
-      console.error('Error connecting Gmail:', error);
-    } finally {
-      setIsConnectingGmail(false);
+      console.error('Error loading teams:', error);
     }
   };
 
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim()) return;
-    setIsLoading(true);
-    const userMessage: Message = { role: "user", content: input };
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setChartData(null);
+  const createDefaultTeam = async () => {
+    if (!user) return;
+    
     try {
-      console.log("Sending request to /api/chat with messages:", [...messages, userMessage]);
+      const response = await fetch('/api/teams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `${user.firstName || user.username || 'My'}'s Team`,
+          ownerId: user.id,
+        }),
+      });
+      
+      if (response.ok) {
+        const newTeam = await response.json();
+        setCurrentTeam(newTeam);
+        setTeams([newTeam]);
+      }
+    } catch (error) {
+      console.error('Error creating default team:', error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || !currentTeam || !user) return;
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: input,
+      timestamp: new Date(),
+    };
+
+    setMessages(prev => [...prev, userMessage]);
+    setInput("");
+    setIsLoading(true);
+
+    try {
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, userMessage] }),
+        body: JSON.stringify({
+          messages: [...messages, userMessage].map(msg => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+          userId: user.id,
+          teamId: currentTeam.id,
+        }),
       });
-      console.log("Response status:", response.status);
-      console.log("Response headers:", response.headers);
-      
+
       if (response.ok) {
         const data = await response.json();
-        console.log("Response data:", data);
-        const assistantReply = data.choices?.[0]?.message?.content || "No response";
         
-        console.log("Raw AI response:", assistantReply);
-        
-        // Try to parse the response as JSON
-        let parsedReply;
-        try {
-          parsedReply = JSON.parse(assistantReply);
-          console.log("Successfully parsed JSON:", parsedReply);
-        } catch (parseError) {
-          console.log("Failed to parse JSON:", parseError);
-          // Not JSON, treat as regular message
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: assistantReply }
-          ]);
-          setPreviewData(null);
-          return;
-        }
-        
-        // If it's a structured action, show preview card
-        if (parsedReply.action) {
-          console.log("Setting preview data:", parsedReply);
-          
-          // Format the content based on the action type
-          let formattedContent = parsedReply.content || assistantReply;
-          let formattedTitle = parsedReply.title || "Action Preview";
-          
-          if (parsedReply.action === "create_event" && parsedReply.event) {
-            // Format event data for user-friendly display
-            const event = parsedReply.event;
-            formattedTitle = event.title || "Create Event";
-            formattedContent = `Event: ${event.title || "Untitled Event"}
-Description: ${event.description || "No description"}
-Start Time: ${new Date(event.startTime).toLocaleString()}
-End Time: ${new Date(event.endTime).toLocaleString()}
-Attendees: ${event.attendees?.length ? event.attendees.join(", ") : "None"}`;
-          } else if (parsedReply.action === "generate_report") {
-            // Format report data for user-friendly display
-            formattedTitle = `Report: ${parsedReply.dataType || "Data"} (${parsedReply.timeRange || "30d"})`;
-            formattedContent = `Chart Type: ${parsedReply.chartSpec?.chartType || "Unknown"}
-Data Points: ${parsedReply.data?.length || 0}
-Narrative: ${parsedReply.narrative || "No narrative available"}`;
-          }
-          
-          setPreviewData({
-            title: formattedTitle,
-            content: formattedContent,
-            subject: parsedReply.subject,
-            action: parsedReply.action,
-            event: parsedReply.event,
-            chartSpec: parsedReply.chartSpec,
-            narrative: parsedReply.narrative,
-            data: parsedReply.data,
-            dataType: parsedReply.dataType,
-            timeRange: parsedReply.timeRange,
-          });
-          // Store the original user message for extraction
-          if (parsedReply.action === "send_email") {
-            setLastEmailRequest(userMessage.content);
-          }
-          // Also show a user-friendly message in chat
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: `I'll help you ${parsedReply.action.replace('_', ' ')}. Please review the details below.` }
-          ]);
-        } else {
-          console.log("No action found in parsed reply, showing as regular message");
-          // Regular JSON response, show as normal message
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: assistantReply }
-          ]);
-          setPreviewData(null);
-        }
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: data.message,
+          timestamp: new Date(),
+          action: data.action,
+          data: data.data,
+          needsClarification: data.needsClarification,
+          clarificationQuestion: data.clarificationQuestion,
+        };
+
+        setMessages(prev => [...prev, assistantMessage]);
+      } else {
+        throw new Error("Failed to get response");
       }
     } catch (error) {
-      console.error("Error:", error);
+      console.error("Error sending message:", error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Sorry, I encountered an error. Please try again.",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handlePreviewSend = async (data: PreviewCardData) => {
-    // Handle the preview action (send email, create event, generate report, etc.)
-    console.log("Sending action:", data);
+  const handleQuickAction = (action: string) => {
+    const actionMessages = {
+      "create_contact": "Create a new contact",
+      "create_account": "Create a new account/company",
+      "create_deal": "Create a new sales deal",
+      "create_activity": "Schedule an activity (call, meeting, email)",
+      "view_contacts": "Show me all contacts",
+      "view_accounts": "Show me all accounts",
+      "view_deals": "Show me all deals",
+      "view_activities": "Show me all activities",
+    };
+
+    setInput(actionMessages[action as keyof typeof actionMessages] || action);
+  };
+
+  const renderMessage = (message: Message) => {
+    const isUser = message.role === "user";
     
-    try {
-      if (previewData?.action === "send_email") {
-        // Handle email sending
-        console.log("Extracting email from original request:", lastEmailRequest);
-        
-        // Improved regex to capture email address after "to"
-        const emailMatch = lastEmailRequest.match(/to\s+([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
-        const toEmail = emailMatch ? emailMatch[1] : "recipient@example.com";
-        
-        console.log("Extracted email:", toEmail);
-        
-        // Send the email via API
-        const response = await fetch("/api/send-email", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            to: toEmail,
-            subject: data.subject || "Email",
-            content: data.content
-          }),
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          console.log("Email sent successfully:", result);
+    return (
+      <div
+        key={message.id}
+        className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
+      >
+        <div
+          className={`max-w-[80%] rounded-lg px-4 py-2 ${
+            isUser
+              ? "bg-blue-500 text-white"
+              : "bg-gray-100 dark:bg-gray-800"
+          }`}
+        >
+          <div className="whitespace-pre-wrap">{message.content}</div>
           
-          if (result.requiresOAuth) {
-            // Show message about connecting Gmail
-            setMessages((prev) => [
-              ...prev,
-              { role: "assistant", content: "To send emails, you need to connect your Gmail account first. Click the 'Connect Gmail' button below." }
-            ]);
-            setPreviewData(null);
-            return;
-          }
-          
-          setPreviewData(null);
-          // Add a confirmation message to chat
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: `✅ Email sent successfully to ${toEmail}!` }
-          ]);
-        } else {
-          throw new Error("Failed to send email");
-        }
-      } else if (previewData?.action === "create_event") {
-        // Handle event creation
-        console.log("Creating event with data:", previewData.event);
-        
-        const eventData = previewData.event || {
-          title: data.title,
-          description: data.content,
-          startTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          endTime: new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString(),
-          attendees: []
-        };
-        
-        // Send the event creation request via API
-        const response = await fetch("/api/create-event", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(eventData),
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          console.log("Event created successfully:", result);
-          
-          setPreviewData(null);
-          // Add a confirmation message to chat
-          setMessages((prev) => [
-            ...prev,
-            { role: "assistant", content: `✅ Event "${eventData.title}" created successfully!` }
-          ]);
-        } else {
-          throw new Error("Failed to create event");
-        }
-      } else if (previewData?.action === "generate_report") {
-        // Handle report generation - show the chart
-        console.log("Showing chart for report:", previewData);
-        
-        setPreviewData(null);
-        if (previewData.chartSpec) {
-          setChartData({
-            chartSpec: previewData.chartSpec,
-            narrative: previewData.narrative,
-          });
-        }
-        // Add a confirmation message to chat
-        setMessages((prev) => [
-          ...prev,
-          { role: "assistant", content: `✅ Report generated successfully! Here's your chart visualization.` }
-        ]);
-      }
-    } catch (error) {
-      console.error("Error handling preview action:", error);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: "❌ Sorry, there was an error processing your request. Please try again." }
-      ]);
-    }
-  };
-
-  const handlePreviewEdit = (data: PreviewCardData) => {
-    setPreviewData({
-      title: data.title,
-      content: data.content,
-      subject: data.subject,
-      action: previewData?.action,
-      event: previewData?.event,
-      chartSpec: previewData?.chartSpec,
-      narrative: previewData?.narrative,
-      data: previewData?.data,
-      dataType: previewData?.dataType,
-      timeRange: previewData?.timeRange,
-    });
-  };
-
-  const handlePreviewCancel = () => {
-    setPreviewData(null);
-  };
-
-  return {
-    messages,
-    input,
-    setInput,
-    isLoading,
-    sendMessage,
-    previewData,
-    chartData,
-    handlePreviewSend,
-    handlePreviewEdit,
-    handlePreviewCancel,
-    connectGmail,
-    isConnectingGmail,
-  };
-}
-
-export default function Chat() {
-  const {
-    messages,
-    input,
-    setInput,
-    isLoading,
-    sendMessage,
-    previewData,
-    chartData,
-    handlePreviewSend,
-    handlePreviewEdit,
-    handlePreviewCancel,
-    connectGmail,
-    isConnectingGmail,
-  } = useSimpleChat();
-
-  return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] max-w-4xl mx-auto">
-      {/* Welcome Header */}
-      {messages.length === 0 && (
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center mb-4">
-            <Logo size="lg" />
-          </div>
-          <h1 className="text-3xl font-bold text-slate-900 mb-2 tracking-tight">
-            Welcome to Shabe
-          </h1>
-          <p className="text-slate-600 text-lg mb-6 max-w-2xl mx-auto leading-relaxed">
-            Your AI-powered conversational workspace. Send emails, create events, generate reports, and more - all through natural language.
-          </p>
-          
-          {/* Connect Gmail Button */}
-          <div className="mb-6">
-            <button
-              onClick={connectGmail}
-              disabled={isConnectingGmail}
-              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 mx-auto"
-            >
-              {isConnectingGmail ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Connecting...</span>
-                </>
-              ) : (
-                <>
-                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/>
-                  </svg>
-                  <span>Connect Gmail</span>
-                </>
-              )}
-            </button>
-          </div>
-          
-          <div className="flex flex-wrap justify-center gap-3 text-sm text-slate-500">
-            <span className="bg-white px-3 py-1 rounded-full border border-slate-200 font-medium">
-              &quot;Send an email to john@example.com&quot;
-            </span>
-            <span className="bg-white px-3 py-1 rounded-full border border-slate-200 font-medium">
-              &quot;Create a meeting tomorrow at 2pm&quot;
-            </span>
-            <span className="bg-white px-3 py-1 rounded-full border border-slate-200 font-medium">
-              &quot;Generate a sales report&quot;
-            </span>
-          </div>
-        </div>
-      )}
-
-      {/* Chat Container */}
-      <div className="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[80%] px-4 py-2 rounded-lg ${
-                  message.role === "user"
-                    ? "bg-gradient-to-r from-amber-500 to-yellow-600 text-white"
-                    : "bg-slate-100 text-slate-800"
-                }`}
-              >
-                {message.content}
-              </div>
+          {message.needsClarification && message.clarificationQuestion && (
+            <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-400">
+              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                🤔 {message.clarificationQuestion}
+              </p>
             </div>
-          ))}
+          )}
           
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-slate-100 text-slate-800 px-4 py-2 rounded-lg">
-                <div className="flex items-center space-x-2">
-                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
-                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                  <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                </div>
-              </div>
+          {message.action === "read" && message.data && (
+            <div className="mt-3">
+              <DataTable data={message.data} />
             </div>
           )}
         </div>
-
-        {/* Preview Card */}
-        {previewData && (
-          <div className="border-t border-slate-200 p-6">
-            <PreviewCard
-              initialData={{
-                title: previewData.title,
-                content: previewData.content,
-                subject: previewData.subject,
-              }}
-              onSend={handlePreviewSend}
-              onEdit={handlePreviewEdit}
-              onCancel={handlePreviewCancel}
-              title={`Preview: ${previewData.action?.replace('_', ' ').toUpperCase()}`}
-              isEditable={true}
-            />
-          </div>
-        )}
-
-        {/* Chart Display */}
-        {chartData && (
-          <div className="border-t border-slate-200 p-6">
-            <ChartDisplay
-              chartSpec={chartData.chartSpec}
-              narrative={chartData.narrative}
-            />
-          </div>
-        )}
-
-        {/* Input Form */}
-        <div className="border-t border-slate-200 p-6">
-          <form onSubmit={sendMessage} className="flex space-x-3">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Ask me anything... Send emails, create events, generate reports..."
-                className="w-full px-4 py-3 pr-12 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-all duration-200 font-medium"
-                disabled={isLoading}
-              />
-              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
-                <Sparkles className="w-5 h-5 text-slate-400" />
-              </div>
-            </div>
-            <button
-              type="submit"
-              disabled={isLoading || !input.trim()}
-              className="px-6 py-3 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-            >
-              <Send className="w-4 h-4" />
-              <span>Send</span>
-            </button>
-          </form>
-        </div>
       </div>
+    );
+  };
+
+  if (!user) {
+    return (
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            CRM Assistant
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-center text-gray-500">
+            Please sign in to access your CRM.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-6xl mx-auto">
+      {/* Team Selector */}
+      <Card className="mb-4">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <Building className="h-5 w-5" />
+              {currentTeam?.name || "Select Team"}
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowTeamSelector(!showTeamSelector)}
+            >
+              {teams.length > 1 ? "Switch Team" : "Create Team"}
+            </Button>
+          </div>
+        </CardHeader>
+        
+        {showTeamSelector && (
+          <CardContent className="pt-0">
+            <div className="space-y-2">
+              {teams.map(team => (
+                <div
+                  key={team.id}
+                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    currentTeam?.id === team.id
+                      ? "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700"
+                      : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
+                  onClick={() => {
+                    setCurrentTeam(team);
+                    setShowTeamSelector(false);
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">{team.name}</span>
+                    {team.ownerId === user.id && (
+                      <Badge variant="secondary" className="text-xs">
+                        Owner
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+              
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full mt-2"
+                onClick={createDefaultTeam}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create New Team
+              </Button>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
+      {/* Quick Actions */}
+      <Card className="mb-4">
+        <CardHeader>
+          <CardTitle className="text-lg">Quick Actions</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleQuickAction("create_contact")}
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              New Contact
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleQuickAction("create_account")}
+              className="flex items-center gap-2"
+            >
+              <Building className="h-4 w-4" />
+              New Account
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleQuickAction("create_deal")}
+              className="flex items-center gap-2"
+            >
+              <TrendingUp className="h-4 w-4" />
+              New Deal
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handleQuickAction("create_activity")}
+              className="flex items-center gap-2"
+            >
+              <Calendar className="h-4 w-4" />
+              Schedule Activity
+            </Button>
+          </div>
+          
+          <Separator className="my-4" />
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleQuickAction("view_contacts")}
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              View Contacts
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleQuickAction("view_accounts")}
+              className="flex items-center gap-2"
+            >
+              <Building className="h-4 w-4" />
+              View Accounts
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleQuickAction("view_deals")}
+              className="flex items-center gap-2"
+            >
+              <TrendingUp className="h-4 w-4" />
+              View Deals
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleQuickAction("view_activities")}
+              className="flex items-center gap-2"
+            >
+              <Calendar className="h-4 w-4" />
+              View Activities
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Chat Interface */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            CRM Assistant
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ScrollArea className="h-96 mb-4">
+            <div className="space-y-4">
+              {messages.map(renderMessage)}
+              {isLoading && (
+                <div className="flex justify-start">
+                  <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-2">
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-gray-500">Thinking...</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </ScrollArea>
+
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask me anything about your CRM..."
+              disabled={isLoading || !currentTeam}
+              className="flex-1"
+            />
+            <Button type="submit" disabled={isLoading || !currentTeam}>
+              <Send className="h-4 w-4" />
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
+}
+
+// Data Table Component for displaying CRM data
+function DataTable({ data }: { data: any[] }) {
+  if (!data || data.length === 0) {
+    return <div className="text-gray-500 text-sm">No data to display</div>;
+  }
+
+  const columns = Object.keys(data[0]).filter(key => 
+    !['_id', '_creationTime', 'teamId', 'createdBy', 'sharedWith'].includes(key)
+  );
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b">
+            {columns.map(column => (
+              <th key={column} className="text-left p-2 font-medium">
+                {column.charAt(0).toUpperCase() + column.slice(1)}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((row, index) => (
+            <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+              {columns.map(column => (
+                <td key={column} className="p-2">
+                  {formatCellValue(row[column])}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function formatCellValue(value: any): string {
+  if (value === null || value === undefined) return "-";
+  if (typeof value === "object") return JSON.stringify(value);
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (typeof value === "number") {
+    // Check if it's a timestamp
+    if (value > 1000000000000) {
+      return new Date(value).toLocaleDateString();
+    }
+    return value.toString();
+  }
+  return String(value);
 } 
