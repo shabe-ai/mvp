@@ -9,6 +9,8 @@ const openai = new OpenAI({
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
+console.log("Convex URL:", process.env.NEXT_PUBLIC_CONVEX_URL);
+
 // CRM object types for the AI to understand
 const CRM_OBJECTS = {
   contacts: {
@@ -83,7 +85,8 @@ const CRM_SYSTEM_PROMPT = `You are a CRM assistant that helps users manage their
 3. UPDATE existing records
 4. DELETE records
 5. ADD custom fields to any object type
-6. Handle ambiguous queries by asking follow-up questions
+6. Handle general conversation and greetings
+7. Handle ambiguous queries by asking follow-up questions
 
 Available object types:
 ${Object.entries(CRM_OBJECTS).map(([key, obj]) => 
@@ -91,6 +94,8 @@ ${Object.entries(CRM_OBJECTS).map(([key, obj]) =>
 ).join('\n')}
 
 When responding:
+- For general conversation (greetings, questions about capabilities), use action "message"
+- For CRM operations, use appropriate action (create, read, update, delete, add_field)
 - Always return JSON with an "action" field and relevant data
 - For ambiguous queries, ask follow-up questions
 - For data display, format as tables when appropriate
@@ -99,9 +104,9 @@ When responding:
 
 Response format:
 {
-  "action": "create|read|update|delete|add_field|ask_clarification",
-  "objectType": "contacts|accounts|activities|deals",
-  "data": {...},
+  "action": "message|create|read|update|delete|add_field|ask_clarification",
+  "objectType": "contacts|accounts|activities|deals" (only for CRM operations),
+  "data": {...} (only for CRM operations),
   "message": "Human readable message",
   "needsClarification": boolean,
   "clarificationQuestion": "string (if needed)"
@@ -109,9 +114,13 @@ Response format:
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, userId, teamId } = await req.json();
+    const body = await req.json();
+    console.log("Chat API received:", JSON.stringify(body, null, 2));
+    
+    const { messages, userId, teamId } = body;
 
     if (!userId || !teamId) {
+      console.log("Missing userId or teamId:", { userId, teamId });
       return NextResponse.json(
         { error: "User ID and Team ID are required" },
         { status: 400 }
@@ -158,6 +167,9 @@ export async function POST(req: NextRequest) {
     let clarificationQuestion = "";
 
     switch (parsedResponse.action) {
+      case "message":
+        responseMessage = parsedResponse.message;
+        break;
       case "create":
         responseMessage = await handleCreate(parsedResponse, userId, teamId);
         break;
@@ -182,24 +194,24 @@ export async function POST(req: NextRequest) {
         responseMessage = aiResponse;
     }
 
-    // Log the interaction
-    await convex.mutation(api.crm.createLog, {
-      teamId,
-      createdBy: userId,
-      message: lastUserMessage,
-      role: "user",
-    });
+    // Log the interaction (commented out for debugging)
+    // await convex.mutation(api.crm.createLog, {
+    //   teamId,
+    //   createdBy: userId,
+    //   message: lastUserMessage,
+    //   role: "user",
+    // });
 
-    await convex.mutation(api.crm.createLog, {
-      teamId,
-      createdBy: userId,
-      message: responseMessage,
-      role: "assistant",
-      metadata: {
-        action: parsedResponse.action,
-        objectType: parsedResponse.objectType,
-      },
-    });
+    // await convex.mutation(api.crm.createLog, {
+    //   teamId,
+    //   createdBy: userId,
+    //   message: responseMessage,
+    //   role: "assistant",
+    //   metadata: {
+    //     action: parsedResponse.action,
+    //     objectType: parsedResponse.objectType,
+    //   },
+    // });
 
     return NextResponse.json({
       message: responseMessage,

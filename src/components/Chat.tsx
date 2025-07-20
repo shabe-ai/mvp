@@ -33,14 +33,15 @@ interface Message {
 }
 
 interface Team {
-  id: string;
+  _id: string;
+  id?: string;
   name: string;
   ownerId: string;
   members: string[];
 }
 
 export default function Chat() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -77,13 +78,18 @@ What would you like to do today?`,
   // Load user's teams
   useEffect(() => {
     if (user) {
+      console.log('User authenticated:', user.id, user.firstName);
       loadUserTeams();
+    } else {
+      console.log('No user authenticated');
     }
   }, [user]);
 
   const loadUserTeams = async () => {
+    if (!user) return;
+    
     try {
-      const response = await fetch('/api/teams', {
+      const response = await fetch(`/api/teams?userId=${user.id}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -99,9 +105,14 @@ What would you like to do today?`,
           // Create default team for user
           await createDefaultTeam();
         }
+      } else {
+        // If no teams found, create default team
+        await createDefaultTeam();
       }
     } catch (error) {
       console.error('Error loading teams:', error);
+      // If error, try to create default team
+      await createDefaultTeam();
     }
   };
 
@@ -109,6 +120,7 @@ What would you like to do today?`,
     if (!user) return;
     
     try {
+      console.log('Creating default team for user:', user.id);
       const response = await fetch('/api/teams', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -120,8 +132,15 @@ What would you like to do today?`,
       
       if (response.ok) {
         const newTeam = await response.json();
+        console.log('Created team:', newTeam);
+        console.log('Setting current team to:', newTeam.id);
         setCurrentTeam(newTeam);
         setTeams([newTeam]);
+        console.log('Team state updated');
+      } else {
+        console.error('Failed to create team:', response.status, response.statusText);
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
       }
     } catch (error) {
       console.error('Error creating default team:', error);
@@ -130,7 +149,21 @@ What would you like to do today?`,
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !currentTeam || !user) return;
+    if (!input.trim() || !user) return;
+    
+    // If no team is selected, try to create one first
+    if (!currentTeam) {
+      console.log('No team selected, creating default team...');
+      await createDefaultTeam();
+      
+      // Wait a moment for the team to be set, then retry
+      setTimeout(() => {
+        if (currentTeam) {
+          handleSubmit(e);
+        }
+      }, 1000);
+      return; // Don't send message yet, let the team creation complete
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -144,17 +177,37 @@ What would you like to do today?`,
     setIsLoading(true);
 
     try {
+      console.log("Current team state:", currentTeam);
+      console.log("Current team ID:", currentTeam?._id);
+      if (!currentTeam) {
+        console.log("No team available, cannot send message");
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "Please wait while I set up your team...",
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        setIsLoading(false);
+        return;
+      }
+
+      const requestBody = {
+        messages: [...messages, userMessage].map(msg => ({
+          role: msg.role,
+          content: msg.content,
+        })),
+        userId: user.id,
+        teamId: currentTeam._id,
+      };
+      
+      console.log("Team ID being sent:", currentTeam._id);
+      console.log("Sending to chat API:", JSON.stringify(requestBody, null, 2));
+      
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [...messages, userMessage].map(msg => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-          userId: user.id,
-          teamId: currentTeam.id,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (response.ok) {
@@ -239,6 +292,29 @@ What would you like to do today?`,
     );
   };
 
+  // Show loading state while Clerk is determining authentication
+  if (!isLoaded) {
+    return (
+      <Card className="w-full max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageSquare className="h-5 w-5" />
+            CRM Assistant
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-center py-8">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <span className="text-gray-500">Loading...</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Show sign-in prompt if user is not authenticated
   if (!user) {
     return (
       <Card className="w-full max-w-4xl mx-auto">
@@ -436,14 +512,19 @@ What would you like to do today?`,
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask me anything about your CRM..."
-              disabled={isLoading || !currentTeam}
+              placeholder={currentTeam ? "Ask me anything about your CRM..." : "Loading team..."}
+              disabled={isLoading}
               className="flex-1"
             />
-            <Button type="submit" disabled={isLoading || !currentTeam}>
+            <Button type="submit" disabled={isLoading}>
               <Send className="h-4 w-4" />
             </Button>
           </form>
+          
+          {/* Debug info */}
+          <div className="mt-2 text-xs text-gray-500">
+            User: {user?.id || 'None'} | Team: {currentTeam?.name || 'None'} | Teams: {teams.length}
+          </div>
         </CardContent>
       </Card>
     </div>
