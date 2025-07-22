@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
+import { Doc, Id } from "../../../../convex/_generated/dataModel";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -112,6 +113,22 @@ Response format:
   "clarificationQuestion": "string (if needed)"
 }`;
 
+// Define a type for CRM action requests
+interface CRMActionRequest {
+  objectType: string;
+  id?: string;
+  name?: { firstName?: string; lastName?: string };
+  updates?: Record<string, unknown>;
+  data?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+// Add Message interface for typing
+interface Message {
+  role: string;
+  content: string;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -127,15 +144,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Get the last user message
-    const lastUserMessage = messages[messages.length - 1]?.content || "";
-
     // Call OpenAI to understand the intent
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         { role: "system", content: CRM_SYSTEM_PROMPT },
-        ...messages.map((msg: any) => ({
+        ...messages.map((msg: Message) => ({
           role: msg.role,
           content: msg.content,
         })),
@@ -236,54 +250,101 @@ export async function POST(req: NextRequest) {
 }
 
 // Handler functions for different actions
-async function handleCreate(response: any, userId: string, teamId: string) {
+async function handleCreate(response: CRMActionRequest, userId: string, teamId: string) {
   const { objectType, data } = response;
   
+  // Allowed literals for union types
+  const contactTypes = ["lead", "contact"];
+  const leadStatuses = ["new", "contacted", "qualified", "unqualified"];
+  const activityTypes = ["email", "event", "call", "meeting"];
+  const activityStatuses = ["scheduled", "completed", "cancelled"];
+  const dealStages = ["prospecting", "qualification", "proposal", "negotiation", "closed_won", "closed_lost"];
+
+  function isCustomFieldsRecord(obj: unknown): obj is Record<string, string | number | boolean | null> {
+    if (typeof obj !== "object" || obj === null) return false;
+    return Object.values(obj).every(
+      v => ["string", "number", "boolean"].includes(typeof v) || v === null
+    );
+  }
+
   try {
     switch (objectType) {
-      case "contacts":
-        // Ensure required fields are present with defaults
-        const contactData = {
+      case "contacts": {
+        const contactData: Partial<Doc<'contacts'>> = {
           teamId,
           createdBy: userId,
-          contactType: data.contactType || "contact",
-          leadStatus: data.leadStatus || "new",
-          ...data,
+          firstName: typeof data?.firstName === "string" ? data.firstName : "",
+          lastName: typeof data?.lastName === "string" ? data.lastName : "",
+          email: typeof data?.email === "string" ? data.email : "",
+          contactType: (data && contactTypes.includes(String(data.contactType))) ? data.contactType as "lead" | "contact" : "contact",
+          leadStatus: (data && leadStatuses.includes(String(data.leadStatus))) ? data.leadStatus as "new" | "contacted" | "qualified" | "unqualified" : "new",
         };
-        const contactId = await convex.mutation(api.crm.createContact, contactData);
+        if (typeof data?.phone === "string") contactData.phone = data.phone;
+        if (typeof data?.title === "string") contactData.title = data.title;
+        if (typeof data?.company === "string") contactData.company = data.company;
+        if (typeof data?.accountId === "string" && data.accountId !== "" && data.accountId !== undefined) contactData.accountId = data.accountId as Id<'accounts'>;
+        if (typeof data?.source === "string") contactData.source = data.source;
+        if (typeof data?.notes === "string") contactData.notes = data.notes;
+        if (isCustomFieldsRecord(data?.customFields)) contactData.customFields = data.customFields;
+        const contactId = await convex.mutation(api.crm.createContact, contactData as Doc<'contacts'>);
         return `✅ Contact created successfully! ID: ${contactId}`;
-      
-      case "accounts":
-        const accountId = await convex.mutation(api.crm.createAccount, {
+      }
+      case "accounts": {
+        const accountData: Partial<Doc<'accounts'>> = {
           teamId,
           createdBy: userId,
-          ...data,
-        });
+          name: typeof data?.name === "string" ? data.name : "",
+        };
+        if (typeof data?.phone === "string") accountData.phone = data.phone;
+        if (typeof data?.notes === "string") accountData.notes = data.notes;
+        if (isCustomFieldsRecord(data?.customFields)) accountData.customFields = data.customFields;
+        if (typeof data?.industry === "string") accountData.industry = data.industry;
+        if (typeof data?.website === "string") accountData.website = data.website;
+        if (typeof data?.address === "object" && data.address !== null) accountData.address = data.address;
+        if (typeof data?.annualRevenue === "number") accountData.annualRevenue = data.annualRevenue;
+        if (typeof data?.employeeCount === "number") accountData.employeeCount = data.employeeCount;
+        const accountId = await convex.mutation(api.crm.createAccount, accountData as Doc<'accounts'>);
         return `✅ Account created successfully! ID: ${accountId}`;
-      
-      case "activities":
-        // Ensure required fields are present with defaults
-        const activityData = {
+      }
+      case "activities": {
+        const activityData: Partial<Doc<'activities'>> = {
           teamId,
           createdBy: userId,
-          type: data.type || "meeting",
-          status: data.status || "scheduled",
-          ...data,
+          subject: typeof data?.subject === "string" ? data.subject : "",
+          type: (data && activityTypes.includes(String(data.type))) ? data.type as "email" | "event" | "call" | "meeting" : "meeting",
+          status: (data && activityStatuses.includes(String(data.status))) ? data.status as "scheduled" | "completed" | "cancelled" : "scheduled",
         };
-        const activityId = await convex.mutation(api.crm.createActivity, activityData);
+        if (typeof data?.accountId === "string" && data.accountId !== "" && data.accountId !== undefined) activityData.accountId = data.accountId as Id<'accounts'>;
+        if (isCustomFieldsRecord(data?.customFields)) activityData.customFields = data.customFields;
+        if (typeof data?.description === "string") activityData.description = data.description;
+        if (typeof data?.contactId === "string" && data.contactId !== "" && data.contactId !== undefined) activityData.contactId = data.contactId as Id<'contacts'>;
+        if (typeof data?.dealId === "string" && data.dealId !== "" && data.dealId !== undefined) activityData.dealId = data.dealId as Id<'deals'>;
+        if (typeof data?.startTime === "number") activityData.startTime = data.startTime;
+        if (typeof data?.endTime === "number") activityData.endTime = data.endTime;
+        if (Array.isArray(data?.attendees)) activityData.attendees = data.attendees;
+        const activityId = await convex.mutation(api.crm.createActivity, activityData as Doc<'activities'>);
         return `✅ Activity created successfully! ID: ${activityId}`;
-      
-      case "deals":
-        // Ensure required fields are present with defaults
-        const dealData = {
+      }
+      case "deals": {
+        const dealData: Partial<Doc<'deals'>> = {
           teamId,
           createdBy: userId,
-          stage: data.stage || "prospecting",
-          ...data,
+          name: typeof data?.name === "string" ? data.name : "",
+          stage: (data && dealStages.includes(String(data.stage)))
+            ? (data.stage as "prospecting" | "qualification" | "proposal" | "negotiation" | "closed_won" | "closed_lost")
+            : "prospecting",
         };
-        const dealId = await convex.mutation(api.crm.createDeal, dealData);
+        if (typeof data?.accountId === "string" && data.accountId !== "" && data.accountId !== undefined) dealData.accountId = data.accountId as Id<'accounts'>;
+        if (isCustomFieldsRecord(data?.customFields)) dealData.customFields = data.customFields;
+        if (typeof data?.description === "string") dealData.description = data.description;
+        if (typeof data?.contactId === "string" && data.contactId !== "" && data.contactId !== undefined) dealData.contactId = data.contactId as Id<'contacts'>;
+        if (typeof data?.amount === "number") dealData.amount = data.amount;
+        if (typeof data?.currency === "string") dealData.currency = data.currency;
+        if (typeof data?.closeDate === "number") dealData.closeDate = data.closeDate;
+        if (typeof data?.probability === "number") dealData.probability = data.probability;
+        const dealId = await convex.mutation(api.crm.createDeal, dealData as Doc<'deals'>);
         return `✅ Deal created successfully! ID: ${dealId}`;
-      
+      }
       default:
         return `❌ Unknown object type: ${objectType}`;
     }
@@ -293,7 +354,7 @@ async function handleCreate(response: any, userId: string, teamId: string) {
   }
 }
 
-async function handleRead(response: any, teamId: string) {
+async function handleRead(response: CRMActionRequest, teamId: string) {
   const { objectType, filters } = response;
   
   try {
@@ -329,7 +390,7 @@ async function handleRead(response: any, teamId: string) {
   }
 }
 
-async function handleUpdate(response: any, userId: string, teamId: string) {
+async function handleUpdate(response: CRMActionRequest, userId: string, teamId: string) {
   const { objectType, id, name, updates, data } = response;
   
   console.log("Update request:", { objectType, id, name, updates, data });
@@ -342,12 +403,16 @@ async function handleUpdate(response: any, userId: string, teamId: string) {
         let contactUpdates = updates;
         
         // Handle the new data structure with filter and update
-        if (data && data.filter && data.update) {
+        if (data && data.filter && data.update && typeof data.update === 'object' && data.update !== null) {
           contactName = data.filter;
-          contactUpdates = data.update;
+          contactUpdates = data.update as Record<string, unknown>;
         }
         // Handle the case where AI puts everything in data field
-        else if (data && data.firstName && data.lastName) {
+        else if (
+          data &&
+          typeof data.firstName === 'string' &&
+          typeof data.lastName === 'string'
+        ) {
           contactName = {
             firstName: data.firstName,
             lastName: data.lastName
@@ -355,64 +420,89 @@ async function handleUpdate(response: any, userId: string, teamId: string) {
           // Extract updates from data (remove name fields)
           const { firstName, lastName, ...updateFields } = data;
           contactUpdates = updateFields;
+        } else if (data) {
+          return '❌ Invalid contact name for update';
         }
         
         // If no ID provided but name is provided, try to find the contact
-        if (!contactId && contactName) {
+        if (!contactId && contactName && typeof contactName.firstName === 'string' && typeof contactName.lastName === 'string') {
           const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
-          const contact = contacts.find(c => 
-            c.firstName?.toLowerCase() === contactName.firstName?.toLowerCase() && 
-            c.lastName?.toLowerCase() === contactName.lastName?.toLowerCase()
+          const contact = contacts.find(c =>
+            c.firstName?.toLowerCase() === String(contactName.firstName).toLowerCase() &&
+            c.lastName?.toLowerCase() === String(contactName.lastName).toLowerCase()
           );
           if (contact) {
             contactId = contact._id;
           } else {
-            return `❌ Contact not found: ${contactName.firstName} ${contactName.lastName}`;
+            return `❌ Contact not found: ${String(contactName.firstName)} ${String(contactName.lastName)}`;
           }
         }
-        
+
         // Check if we have a valid contactId (either provided or found)
-        if (!contactId || contactId === "1" || contactId === 1) {
-          // If contactId is "1" or 1, it's likely a placeholder, try to find by name
-          if (contactName) {
+        if (!contactId || contactId === "1") {
+          // If contactId is "1", it's likely a placeholder, try to find by name
+          if (contactName && typeof contactName.firstName === 'string' && typeof contactName.lastName === 'string') {
             const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
-            const contact = contacts.find(c => 
-              c.firstName?.toLowerCase() === contactName.firstName?.toLowerCase() && 
-              c.lastName?.toLowerCase() === contactName.lastName?.toLowerCase()
+            const contact = contacts.find(c =>
+              c.firstName?.toLowerCase() === String(contactName.firstName).toLowerCase() &&
+              c.lastName?.toLowerCase() === String(contactName.lastName).toLowerCase()
             );
             if (contact) {
               contactId = contact._id;
             } else {
-              return `❌ Contact not found: ${contactName.firstName} ${contactName.lastName}`;
+              return `❌ Contact not found: ${String(contactName.firstName)} ${String(contactName.lastName)}`;
             }
           } else {
             return `❌ Contact ID or name is required for update`;
           }
         }
-        
-        await convex.mutation(api.crm.updateContact, {
-          contactId,
-          updates: contactUpdates,
-        });
+
+        // Only assign contactId if it is a non-empty string and not undefined
+        if (typeof contactId === 'string' && contactId !== '' && contactId !== undefined) {
+          await convex.mutation(api.crm.updateContact, {
+            contactId: contactId as Id<'contacts'>,
+            updates: contactUpdates,
+          });
+        } else {
+          return `❌ Invalid contact ID`;
+        }
         break;
-      case "accounts":
-        await convex.mutation(api.crm.updateAccount, {
-          accountId: id,
-          updates,
-        });
+      case "accounts": {
+        const accountId = id;
+        if (typeof accountId === 'string' && accountId !== '' && accountId !== undefined) {
+          await convex.mutation(api.crm.updateAccount, {
+            accountId: accountId as Id<'accounts'>,
+            updates,
+          });
+        } else {
+          return `❌ Invalid account ID`;
+        }
         break;
-      case "activities":
-        await convex.mutation(api.crm.updateActivity, {
-          activityId: id,
-          updates,
-        });
+      }
+      case "activities": {
+        const activityId = id;
+        if (typeof activityId === 'string' && activityId !== '' && activityId !== undefined) {
+          await convex.mutation(api.crm.updateActivity, {
+            activityId: activityId as Id<'activities'>,
+            updates,
+          });
+        } else {
+          return `❌ Invalid activity ID`;
+        }
         break;
-      case "deals":
-        await convex.mutation(api.crm.updateDeal, {
-          dealId: id,
-          updates,
-        });
+      }
+      case "deals": {
+        const dealId = id;
+        if (typeof dealId === 'string' && dealId !== '' && dealId !== undefined) {
+          await convex.mutation(api.crm.updateDeal, {
+            dealId: dealId as Id<'deals'>,
+            updates,
+          });
+        } else {
+          return `❌ Invalid deal ID`;
+        }
         break;
+      }
       default:
         return `❌ Unknown object type: ${objectType}`;
     }
@@ -424,23 +514,43 @@ async function handleUpdate(response: any, userId: string, teamId: string) {
   }
 }
 
-async function handleDelete(response: any) {
+async function handleDelete(response: CRMActionRequest) {
   const { objectType, id } = response;
   
   try {
     switch (objectType) {
-      case "contacts":
-        await convex.mutation(api.crm.deleteContact, { contactId: id });
+      case "contacts": {
+        if (typeof id === 'string' && id !== '' && id !== undefined) {
+          await convex.mutation(api.crm.deleteContact, { contactId: id as Id<'contacts'> });
+        } else {
+          return `❌ Invalid contact ID`;
+        }
         break;
-      case "accounts":
-        await convex.mutation(api.crm.deleteAccount, { accountId: id });
+      }
+      case "accounts": {
+        if (typeof id === 'string' && id !== '' && id !== undefined) {
+          await convex.mutation(api.crm.deleteAccount, { accountId: id as Id<'accounts'> });
+        } else {
+          return `❌ Invalid account ID`;
+        }
         break;
-      case "activities":
-        await convex.mutation(api.crm.deleteActivity, { activityId: id });
+      }
+      case "activities": {
+        if (typeof id === 'string' && id !== '' && id !== undefined) {
+          await convex.mutation(api.crm.deleteActivity, { activityId: id as Id<'activities'> });
+        } else {
+          return `❌ Invalid activity ID`;
+        }
         break;
-      case "deals":
-        await convex.mutation(api.crm.deleteDeal, { dealId: id });
+      }
+      case "deals": {
+        if (typeof id === 'string' && id !== '' && id !== undefined) {
+          await convex.mutation(api.crm.deleteDeal, { dealId: id as Id<'deals'> });
+        } else {
+          return `❌ Invalid deal ID`;
+        }
         break;
+      }
       default:
         return `❌ Unknown object type: ${objectType}`;
     }
@@ -452,26 +562,35 @@ async function handleDelete(response: any) {
   }
 }
 
-async function handleAddField(response: any, teamId: string) {
+async function handleAddField(response: CRMActionRequest, teamId: string) {
   const { objectType, fieldName, fieldType, fieldOptions } = response;
   
   try {
-    await convex.mutation(api.crm.addCustomField, {
-      teamId,
-      objectType,
-      fieldName,
-      fieldType,
-      fieldOptions,
-    });
-    
-    return `✅ Custom field "${fieldName}" added to ${objectType}!`;
+    if (
+      typeof objectType === 'string' &&
+      ["contacts", "accounts", "activities", "deals"].includes(objectType) &&
+      typeof fieldName === 'string' &&
+      typeof fieldType === 'string' &&
+      ["number", "boolean", "text", "date", "dropdown"].includes(fieldType)
+    ) {
+      await convex.mutation(api.crm.addCustomField, {
+        teamId,
+        objectType: objectType as "contacts" | "accounts" | "activities" | "deals",
+        fieldName,
+        fieldType: fieldType as "number" | "boolean" | "text" | "date" | "dropdown",
+        fieldOptions: Array.isArray(fieldOptions) ? fieldOptions as string[] : undefined,
+      });
+      return `✅ Custom field "${fieldName}" added to ${objectType}!`;
+    } else {
+      return `❌ Invalid custom field parameters`;
+    }
   } catch (error) {
     console.error("Add field error:", error);
     return `❌ Error adding custom field: ${error}`;
   }
 }
 
-function formatAsTable(data: any[], objectType: string): string {
+function formatAsTable(data: Record<string, unknown>[], objectType: string): string {
   if (data.length === 0) return "No data to display";
   
   // Get all unique keys from all objects

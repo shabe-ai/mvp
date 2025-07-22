@@ -27,7 +27,7 @@ interface Message {
   content: string;
   timestamp: Date;
   action?: string;
-  data?: any;
+  data?: Record<string, unknown>;
   needsClarification?: boolean;
   clarificationQuestion?: string;
 }
@@ -288,7 +288,7 @@ What would you like to do today?`,
               <div className="text-xs text-gray-500 mb-2">
                 Debug: Data type: {typeof message.data}, Is array: {Array.isArray(message.data)}, Length: {Array.isArray(message.data) ? message.data.length : 'N/A'}
               </div>
-              <DataTable data={message.data} />
+              <DataTable data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : []} />
             </div>
           )}
         </div>
@@ -536,7 +536,7 @@ What would you like to do today?`,
 }
 
 // Data Table Component for displaying CRM data
-function DataTable({ data }: { data: any[] }) {
+function DataTable({ data }: { data: Record<string, unknown>[] }) {
   // Ensure data is an array
   if (!Array.isArray(data)) {
     return <div className="text-gray-500 text-sm">Invalid data format</div>;
@@ -584,12 +584,12 @@ function DataTable({ data }: { data: any[] }) {
   );
 }
 
-function formatCellValue(value: any): string {
+function formatCellValue(value: unknown): string {
   if (value === null || value === undefined) return "-";
   
   // Handle empty objects
   if (typeof value === "object") {
-    if (Object.keys(value).length === 0) return "-";
+    if (Object.keys(value as object).length === 0) return "-";
     return JSON.stringify(value);
   }
   
