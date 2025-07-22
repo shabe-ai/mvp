@@ -270,7 +270,7 @@ What would you like to do today?`,
           className={`max-w-[80%] rounded-lg px-4 py-2 shadow-md ${
             isUser
               ? "bg-blue-500 text-white"
-              : "bg-yellow-50"
+              : "bg-white"
           }`}
         >
           <div className="whitespace-pre-wrap">{message.content}</div>
@@ -338,7 +338,7 @@ What would you like to do today?`,
   }
 
   return (
-    <div className="flex flex-col flex-1 w-full h-full justify-end shadow-2xl rounded-2xl bg-yellow-50 max-w-2xl mx-auto my-12 p-10">
+    <div className="flex flex-col flex-1 w-full h-full justify-end shadow-2xl rounded-2xl bg-white max-w-2xl mx-auto my-12 p-10">
       {/* Team Selector */}
       {!hideTeamSelector && (
         <Card className="mb-4">
@@ -416,7 +416,7 @@ What would you like to do today?`,
                       className={`max-w-[80%] rounded-lg px-4 py-2 shadow-md ${
                         isUser
                           ? "bg-blue-500 text-white"
-                          : "bg-yellow-50"
+                          : "bg-white"
                       }`}
                     >
                       <div className="whitespace-pre-wrap">{message.content}</div>
