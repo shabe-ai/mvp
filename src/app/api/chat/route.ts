@@ -182,7 +182,7 @@ export async function POST(req: NextRequest) {
         responseAction = "read";
         break;
       case "update":
-        responseMessage = await handleUpdate(parsedResponse, userId);
+        responseMessage = await handleUpdate(parsedResponse, userId, teamId);
         break;
       case "delete":
         responseMessage = await handleDelete(parsedResponse);
@@ -329,15 +329,70 @@ async function handleRead(response: any, teamId: string) {
   }
 }
 
-async function handleUpdate(response: any, userId: string) {
-  const { objectType, id, updates } = response;
+async function handleUpdate(response: any, userId: string, teamId: string) {
+  const { objectType, id, name, updates, data } = response;
+  
+  console.log("Update request:", { objectType, id, name, updates, data });
   
   try {
     switch (objectType) {
       case "contacts":
+        let contactId = id;
+        let contactName = name;
+        let contactUpdates = updates;
+        
+        // Handle the new data structure with filter and update
+        if (data && data.filter && data.update) {
+          contactName = data.filter;
+          contactUpdates = data.update;
+        }
+        // Handle the case where AI puts everything in data field
+        else if (data && data.firstName && data.lastName) {
+          contactName = {
+            firstName: data.firstName,
+            lastName: data.lastName
+          };
+          // Extract updates from data (remove name fields)
+          const { firstName, lastName, ...updateFields } = data;
+          contactUpdates = updateFields;
+        }
+        
+        // If no ID provided but name is provided, try to find the contact
+        if (!contactId && contactName) {
+          const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+          const contact = contacts.find(c => 
+            c.firstName?.toLowerCase() === contactName.firstName?.toLowerCase() && 
+            c.lastName?.toLowerCase() === contactName.lastName?.toLowerCase()
+          );
+          if (contact) {
+            contactId = contact._id;
+          } else {
+            return `❌ Contact not found: ${contactName.firstName} ${contactName.lastName}`;
+          }
+        }
+        
+        // Check if we have a valid contactId (either provided or found)
+        if (!contactId || contactId === "1" || contactId === 1) {
+          // If contactId is "1" or 1, it's likely a placeholder, try to find by name
+          if (contactName) {
+            const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+            const contact = contacts.find(c => 
+              c.firstName?.toLowerCase() === contactName.firstName?.toLowerCase() && 
+              c.lastName?.toLowerCase() === contactName.lastName?.toLowerCase()
+            );
+            if (contact) {
+              contactId = contact._id;
+            } else {
+              return `❌ Contact not found: ${contactName.firstName} ${contactName.lastName}`;
+            }
+          } else {
+            return `❌ Contact ID or name is required for update`;
+          }
+        }
+        
         await convex.mutation(api.crm.updateContact, {
-          contactId: id,
-          updates,
+          contactId,
+          updates: contactUpdates,
         });
         break;
       case "accounts":
