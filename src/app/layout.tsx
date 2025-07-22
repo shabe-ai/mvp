@@ -25,7 +25,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className="bg-gradient-to-br from-amber-50 to-yellow-100 min-h-screen font-['Inter']">
+        <body className="bg-white min-h-screen font-['Inter']">
           {/* Modern Header */}
           <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -78,7 +78,7 @@ export default function RootLayout({
           </header>
           
           {/* Main Content */}
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white">
             {children}
           </main>
         </body>
