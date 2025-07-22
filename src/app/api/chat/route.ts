@@ -267,7 +267,52 @@ async function handleCreate(response: CRMActionRequest, userId: string, teamId: 
     );
   }
 
+  // --- ID Resolution Logic ---
+  // Helper to check if a string is a valid Convex ID (24 chars, alphanumeric)
+  function isValidId(id: string) {
+    return typeof id === 'string' && /^[a-zA-Z0-9]{24}$/.test(id);
+  }
+
+  // Resolve accountId if it's a name
+  async function resolveAccountId(accountIdOrName: string): Promise<string | undefined> {
+    if (!accountIdOrName || isValidId(accountIdOrName)) return accountIdOrName;
+    const accounts: Array<{ [key: string]: unknown }> = await convex.query(api.crm.getAccountsByTeam, { teamId });
+    const found = accounts.find((a) =>
+      typeof a.name === 'string' && a.name.toLowerCase() === accountIdOrName.toLowerCase()
+    );
+    return found && typeof found._id === 'string' ? found._id : undefined;
+  }
+
+  // Resolve contactId if it's a name ("First Last")
+  async function resolveContactId(contactIdOrName: string): Promise<string | undefined> {
+    if (!contactIdOrName || isValidId(contactIdOrName)) return contactIdOrName;
+    const contacts: Array<{ [key: string]: unknown }> = await convex.query(api.crm.getContactsByTeam, { teamId });
+    // Try to match "First Last" or just email
+    const [firstName, ...rest] = contactIdOrName.split(" ");
+    const lastName = rest.join(" ");
+    let found = contacts.find((c) =>
+      typeof c.firstName === 'string' && typeof c.lastName === 'string' &&
+      c.firstName.toLowerCase() === firstName.toLowerCase() &&
+      c.lastName.toLowerCase() === lastName.toLowerCase()
+    );
+    if (!found) {
+      found = contacts.find((c) =>
+        typeof c.email === 'string' && c.email.toLowerCase() === contactIdOrName.toLowerCase()
+      );
+    }
+    return found && typeof found._id === 'string' ? found._id : undefined;
+  }
+
   try {
+    // --- Preprocess data for all object types ---
+    if (data) {
+      if (typeof data.accountId === 'string') {
+        data.accountId = await resolveAccountId(data.accountId) || data.accountId;
+      }
+      if (typeof data.contactId === 'string') {
+        data.contactId = await resolveContactId(data.contactId) || data.contactId;
+      }
+    }
     switch (objectType) {
       case "contacts": {
         const contactData: Partial<Doc<'contacts'>> = {
