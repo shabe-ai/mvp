@@ -338,7 +338,7 @@ What would you like to do today?`,
   }
 
   return (
-    <div className="w-full max-w-6xl mx-auto">
+    <div className="flex flex-col flex-1 w-full h-full justify-end">
       {/* Team Selector */}
       {!hideTeamSelector && (
         <Card className="mb-4">
@@ -401,20 +401,14 @@ What would you like to do today?`,
       )}
 
       {/* Chat Interface */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            CRM Assistant
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-96 mb-4">
-            <div className="space-y-4">
+      <div className="flex-1 w-full flex flex-col justify-end">
+        <div className="flex-1 w-full flex flex-col justify-end">
+          <ScrollArea className="flex-1 w-full mb-4 px-0">
+            <div className="space-y-4 w-full max-w-2xl mx-auto">
               {messages.map(renderMessage)}
               {isLoading && (
                 <div className="flex justify-start">
-                  <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-2">
+                  <div className="rounded-lg px-4 py-2">
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-5 w-5 animate-spin" />
                       <span className="text-sm text-gray-500">Thinking...</span>
@@ -425,26 +419,24 @@ What would you like to do today?`,
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
-
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={currentTeam ? "Ask me anything about your CRM..." : "Loading team..."}
-              disabled={isLoading}
-              className="flex-1"
-            />
-            <Button type="submit" disabled={isLoading}>
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
-          
-          {/* Debug info */}
-          <div className="mt-2 text-xs text-gray-500">
-            User: {user?.id || 'None'} | Team: {currentTeam?.name || 'None'} | Teams: {teams.length}
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+        <form onSubmit={handleSubmit} className="flex gap-2 w-full max-w-2xl mx-auto pb-6">
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder={currentTeam ? "Ask me anything about your CRM..." : "Loading team..."}
+            disabled={isLoading}
+            className="flex-1 bg-white border border-gray-200 rounded-full px-4 py-3 text-base shadow-sm focus:ring-2 focus:ring-yellow-200"
+          />
+          <Button type="submit" disabled={isLoading} className="rounded-full bg-yellow-400 hover:bg-yellow-500 text-white px-5 py-3 shadow-sm">
+            <Send className="h-5 w-5" />
+          </Button>
+        </form>
+        {/* Debug info (optional, can be removed for production) */}
+        {/* <div className="mt-2 text-xs text-gray-500 text-center">
+          User: {user?.id || 'None'} | Team: {currentTeam?.name || 'None'} | Teams: {teams.length}
+        </div> */}
+      </div>
     </div>
   );
 }
