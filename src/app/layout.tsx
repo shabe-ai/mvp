@@ -42,8 +42,13 @@ export default function RootLayout({
                   </div>
                 </div>
                 
-                {/* Auth Buttons */}
+                {/* Auth Buttons and Admin Tab */}
                 <div className="flex items-center space-x-3">
+                  <SignedIn>
+                    <a href="/admin" className="text-slate-600 hover:text-slate-900 px-4 py-2 text-sm font-medium transition-colors">
+                      Admin
+                    </a>
+                  </SignedIn>
                   <SignedOut>
                     <SignInButton mode="modal">
                       <button className="text-slate-600 hover:text-slate-900 px-4 py-2 text-sm font-medium transition-colors">
