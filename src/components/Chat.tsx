@@ -270,7 +270,7 @@ What would you like to do today?`,
           className={`max-w-[80%] rounded-lg px-4 py-2 ${
             isUser
               ? "bg-blue-500 text-white"
-              : "bg-gray-100 dark:bg-gray-800"
+              : ""
           }`}
         >
           <div className="whitespace-pre-wrap">{message.content}</div>
