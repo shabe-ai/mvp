@@ -20,6 +20,7 @@ import {
   MessageSquare,
   Loader2
 } from "lucide-react";
+import PreviewCard from "@/components/PreviewCard";
 
 interface Message {
   id: string;
@@ -49,6 +50,14 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
   const [teams, setTeams] = useState<Team[]>([]);
   const [showTeamSelector, setShowTeamSelector] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [emailDraft, setEmailDraft] = useState<{
+    to: string;
+    subject: string;
+    content: string;
+    aiMessage: Message;
+    activityData: Record<string, unknown>;
+  } | null>(null);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   // Initialize with welcome message
   useEffect(() => {
@@ -204,16 +213,54 @@ What would you like to do today?`,
       console.log("Team ID being sent:", currentTeam._id);
       console.log("Sending to chat API:", JSON.stringify(requestBody, null, 2));
       
+      // If the user input looks like an email send request, add draftOnly: true
+      let draftOnly = false;
+      if (input.toLowerCase().includes("send email") || input.toLowerCase().includes("email")) {
+        draftOnly = true;
+      }
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({ ...requestBody, draftOnly }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Chat API response:", JSON.stringify(data, null, 2));
-        
+        console.log("Full response from /api/chat", data);
+        if (data) {
+          console.log("DEBUG: data.action", data.action, "data.objectType", data.objectType, "data.data", data.data);
+        }
+        // If the AI wants to create an email activity, show preview and do NOT create the activity yet
+        if (
+          data.action === "create" &&
+          data.data &&
+          (data.data.type === "email" || data.data.type === undefined)
+        ) {
+          // Extract email details from data
+          const to = data.data.to || data.data.email || "";
+          const subject = data.data.subject || "";
+          const content = data.data.content || data.data.body || data.data.description || "";
+          console.log("Setting emailDraft", data.data);
+          setEmailDraft({
+            to,
+            subject,
+            content,
+            aiMessage: {
+              id: (Date.now() + 1).toString(),
+              role: "assistant",
+              content: data.message,
+              timestamp: new Date(),
+              action: data.action,
+              data: data.data,
+              needsClarification: data.needsClarification,
+              clarificationQuestion: data.clarificationQuestion,
+            },
+            activityData: data.data,
+          });
+          setIsLoading(false);
+          return; // Do NOT add the assistant message to the chat
+        }
+
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
@@ -294,6 +341,117 @@ What would you like to do today?`,
         </div>
       </div>
     );
+  };
+
+  // Handle sending email after preview
+  const handleSendEmail = async (draft: { to: string; subject: string; content: string }) => {
+    if (!emailDraft) return;
+    setSendingEmail(true);
+    try {
+      let recipientEmail = draft.to;
+      // If no recipient, look up by contact name
+      if (!recipientEmail && emailDraft.activityData && (emailDraft.activityData as Record<string, unknown>).contactName && currentTeam) {
+        const contactName = (emailDraft.activityData as Record<string, unknown>).contactName as string;
+        const [firstName, ...rest] = contactName.split(" ");
+        const lastName = rest.join(" ");
+        const contactsRes = await fetch(`/api/contacts?teamId=${currentTeam._id}`);
+        const contacts: Record<string, unknown>[] = await contactsRes.json();
+        const found = contacts.find((c) =>
+          typeof c.firstName === 'string' && typeof c.lastName === 'string' &&
+          c.firstName.toLowerCase() === firstName.toLowerCase() &&
+          c.lastName.toLowerCase() === lastName.toLowerCase()
+        );
+        if (found && typeof found.email === 'string') {
+          recipientEmail = found.email;
+        } else {
+          setMessages(prev => [...prev, {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: `❌ Could not find email for contact: ${contactName}`,
+            timestamp: new Date(),
+          }]);
+          setEmailDraft(null);
+          setSendingEmail(false);
+          return;
+        }
+      }
+      if (!recipientEmail) {
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: `❌ No recipient email provided or found.`,
+          timestamp: new Date(),
+        }]);
+        setEmailDraft(null);
+        setSendingEmail(false);
+        return;
+      }
+      // Send the email
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: recipientEmail,
+          subject: draft.subject,
+          content: draft.content,
+        }),
+      });
+      const result = await res.json();
+      if (!result.success) {
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: `❌ Failed to send email: ${result.message}`,
+          timestamp: new Date(),
+        }]);
+        setEmailDraft(null);
+        setSendingEmail(false);
+        return;
+      }
+      // After email is sent, create the activity in the DB directly
+      if (!user) throw new Error("User not authenticated");
+      const activityRes = await fetch("/api/log-activity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          teamId: currentTeam?._id,
+          createdBy: user.id,
+          type: "email",
+          subject: draft.subject,
+          description: draft.content,
+          contactId: (emailDraft.activityData as Record<string, unknown>).contactId,
+          accountId: (emailDraft.activityData as Record<string, unknown>).accountId,
+          dealId: (emailDraft.activityData as Record<string, unknown>).dealId,
+          status: (emailDraft.activityData as Record<string, unknown>).status || "scheduled",
+          startTime: (emailDraft.activityData as Record<string, unknown>).startTime,
+          endTime: (emailDraft.activityData as Record<string, unknown>).endTime,
+          attendees: (emailDraft.activityData as Record<string, unknown>).attendees,
+          customFields: (emailDraft.activityData as Record<string, unknown>).customFields,
+        }),
+      });
+      const activityResult = await activityRes.json();
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `✅ Email sent and activity logged!`,
+        timestamp: new Date(),
+      }]);
+      setEmailDraft(null);
+    } catch (err) {
+      setMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `❌ Error sending email: ${err}`,
+        timestamp: new Date(),
+      }]);
+      setEmailDraft(null);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
+  const handleCancelEmail = () => {
+    setEmailDraft(null);
   };
 
   // Show loading state while Clerk is determining authentication
@@ -401,73 +559,91 @@ What would you like to do today?`,
       )}
 
       {/* Chat Interface */}
-      <div className="flex flex-col w-full h-full flex-1">
-        <ScrollArea className="flex-1 w-full h-full overflow-y-auto px-0 pt-32">
-          <div className="space-y-4 w-full px-0">
-            {messages.map((message) => {
-              const isUser = message.role === "user";
-              return (
-                <div
-                  key={message.id}
-                  className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
-                >
-                  <div
-                    className={`max-w-[80%] rounded-lg px-4 py-2 shadow-md ${
-                      isUser
-                        ? "bg-yellow-300 text-white"
-                        : "bg-gray-50"
-                    }`}
-                  >
-                    <div className="whitespace-pre-wrap">{message.content}</div>
-                    {message.needsClarification && message.clarificationQuestion && (
-                      <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-400">
-                        <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                          🤔 {message.clarificationQuestion}
-                        </p>
-                      </div>
-                    )}
-                    {message.action === "read" && message.data && (
-                      <div className="mt-3">
-                        <div className="text-xs text-gray-500 mb-2">
-                          Debug: Data type: {typeof message.data}, Is array: {Array.isArray(message.data)}, Length: {Array.isArray(message.data) ? message.data.length : 'N/A'}
-                        </div>
-                        <DataTable data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : []} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
+      {(() => { if (emailDraft) { console.log("Rendering PreviewCard", emailDraft); } return null; })()}
+      {emailDraft && (
+        <div className="mb-6">
+          <PreviewCard
+            initialData={{
+              title: "Send Email",
+              subject: emailDraft.subject,
+              content: emailDraft.content,
+            }}
+            onSend={(data) => handleSendEmail({
+              to: emailDraft.to,
+              subject: data.subject || emailDraft.subject,
+              content: data.content || emailDraft.content,
             })}
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="rounded-lg px-4 py-2">
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin" />
-                    <span className="text-sm text-gray-500">Thinking...</span>
-                  </div>
+            onCancel={handleCancelEmail}
+            isEditable={!sendingEmail}
+            title="Email Preview"
+          />
+        </div>
+      )}
+      <ScrollArea className="flex-1 w-full h-full overflow-y-auto px-0 pt-32">
+        <div className="space-y-4 w-full px-0">
+          {messages.map((message) => {
+            const isUser = message.role === "user";
+            return (
+              <div
+                key={message.id}
+                className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-lg px-4 py-2 shadow-md ${
+                    isUser
+                      ? "bg-yellow-300 text-white"
+                      : "bg-gray-50"
+                  }`}
+                >
+                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  {message.needsClarification && message.clarificationQuestion && (
+                    <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-400">
+                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                        🤔 {message.clarificationQuestion}
+                      </p>
+                    </div>
+                  )}
+                  {message.action === "read" && message.data && (
+                    <div className="mt-3">
+                      <div className="text-xs text-gray-500 mb-2">
+                        Debug: Data type: {typeof message.data}, Is array: {Array.isArray(message.data)}, Length: {Array.isArray(message.data) ? message.data.length : 'N/A'}
+                      </div>
+                      <DataTable data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : []} />
+                    </div>
+                  )}
                 </div>
               </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-        </ScrollArea>
-        <form onSubmit={handleSubmit} className="flex gap-2 w-full px-4 pb-6 mt-auto">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={currentTeam ? "Ask me anything about your CRM..." : "Loading team..."}
-            disabled={isLoading}
-            className="flex-1 bg-white border border-gray-200 rounded-full px-4 py-3 text-base shadow-sm focus:ring-2 focus:ring-yellow-200"
-          />
-          <Button type="submit" disabled={isLoading} className="rounded-full bg-yellow-400 hover:bg-yellow-500 text-white px-5 py-3 shadow-sm">
-            <Send className="h-5 w-5" />
-          </Button>
-        </form>
-        {/* Debug info (optional, can be removed for production) */}
-        {/* <div className="mt-2 text-xs text-gray-500 text-center">
-          User: {user?.id || 'None'} | Team: {currentTeam?.name || 'None'} | Teams: {teams.length}
-        </div> */}
-      </div>
+            );
+          })}
+          {isLoading && (
+            <div className="flex justify-start">
+              <div className="rounded-lg px-4 py-2">
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <span className="text-sm text-gray-500">Thinking...</span>
+                </div>
+              </div>
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </ScrollArea>
+      <form onSubmit={handleSubmit} className="flex gap-2 w-full px-4 pb-6 mt-auto">
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={currentTeam ? "Ask me anything about your CRM..." : "Loading team..."}
+          disabled={isLoading}
+          className="flex-1 bg-white border border-gray-200 rounded-full px-4 py-3 text-base shadow-sm focus:ring-2 focus:ring-yellow-200"
+        />
+        <Button type="submit" disabled={isLoading} className="rounded-full bg-yellow-400 hover:bg-yellow-500 text-white px-5 py-3 shadow-sm">
+          <Send className="h-5 w-5" />
+        </Button>
+      </form>
+      {/* Debug info (optional, can be removed for production) */}
+      {/* <div className="mt-2 text-xs text-gray-500 text-center">
+        User: {user?.id || 'None'} | Team: {currentTeam?.name || 'None'} | Teams: {teams.length}
+      </div> */}
     </div>
   );
 }
