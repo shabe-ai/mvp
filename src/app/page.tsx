@@ -6,7 +6,7 @@ export default async function Home() {
   const { userId } = await auth();
 
   return (
-    <div className="min-h-screen flex flex-col bg-yellow-50">
+    <div className="min-h-screen flex flex-col bg-white">
       <main className="flex-1 flex flex-col items-center justify-center w-full">
         {userId ? (
           <div className="flex flex-col justify-center items-center w-full h-full max-w-3xl mx-auto px-4" style={{ minHeight: '70vh' }}>
