@@ -270,7 +270,7 @@ What would you like to do today?`,
           className={`max-w-[80%] rounded-lg px-4 py-2 shadow-md ${
             isUser
               ? "bg-yellow-300 text-white"
-              : "bg-gray-100"
+              : "bg-gray-50"
           }`}
         >
           <div className="whitespace-pre-wrap">{message.content}</div>
@@ -415,7 +415,7 @@ What would you like to do today?`,
                     className={`max-w-[80%] rounded-lg px-4 py-2 shadow-md ${
                       isUser
                         ? "bg-yellow-300 text-white"
-                        : "bg-gray-100"
+                        : "bg-gray-50"
                     }`}
                   >
                     <div className="whitespace-pre-wrap">{message.content}</div>
