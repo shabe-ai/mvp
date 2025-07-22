@@ -33,22 +33,22 @@ export default function RootLayout({
                 <div className="flex items-center space-x-3">
                   {/* Logo */}
                   <div className="flex items-center space-x-2">
-                    <Logo size="md" />
+                    <img src="/logo.png" alt="Shabe Logo" className="h-10 w-10" />
                     <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
                       Shabe
                     </h1>
-                  </div>
-                  <div className="hidden md:block">
-                    <Link href="/" className="text-sm text-slate-500 font-medium hover:underline">Home</Link>
                   </div>
                 </div>
                 
                 {/* Auth Buttons and Admin Tab */}
                 <div className="flex items-center space-x-3">
                   <SignedIn>
-                    <a href="/admin" className="text-slate-600 hover:text-slate-900 px-4 py-2 text-sm font-medium transition-colors">
+                    <Link href="/" className="text-slate-500 hover:text-slate-900 px-4 py-2 text-sm font-medium transition-colors">
+                      Home
+                    </Link>
+                    <Link href="/admin" className="text-slate-600 hover:text-slate-900 px-4 py-2 text-sm font-medium transition-colors">
                       Admin
-                    </a>
+                    </Link>
                   </SignedIn>
                   <SignedOut>
                     <SignInButton mode="modal">
