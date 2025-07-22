@@ -404,7 +404,7 @@ What would you like to do today?`,
       <div className="flex-1 w-full flex flex-col justify-end">
         <div className="flex-1 w-full flex flex-col justify-end">
           <ScrollArea className="flex-1 w-full mb-4 px-0">
-            <div className="space-y-4 w-full px-0">
+            <div className="space-y-4 w-full px-0 pt-12">
               {messages.map((message) => {
                 const isUser = message.role === "user";
                 return (
