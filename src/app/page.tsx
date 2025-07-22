@@ -6,11 +6,11 @@ export default async function Home() {
   const { userId } = await auth();
 
   return (
-    <div className="min-h-screen flex flex-col bg-white">
-      <main className="flex-1 flex flex-col items-center justify-center w-full bg-white">
+    <div className="min-h-screen h-screen flex flex-col bg-white overflow-hidden">
+      <main className="flex-1 flex flex-col items-center justify-center w-full bg-white h-screen overflow-hidden">
         {userId ? (
-          <div className="flex flex-col justify-center items-center w-full h-full max-w-3xl mx-auto px-4" style={{ minHeight: '70vh' }}>
-            <div className="flex-1 w-full flex flex-col justify-end">
+          <div className="flex flex-col justify-center items-center w-full h-full max-w-3xl mx-auto px-4">
+            <div className="flex-1 w-full flex flex-col justify-end h-full">
               <Chat hideTeamSelector />
             </div>
           </div>
