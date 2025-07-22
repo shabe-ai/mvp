@@ -6,7 +6,7 @@ export default async function Home() {
   const { userId } = await auth();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-yellow-50 dark:from-slate-900 dark:to-slate-800 flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-yellow-50 flex flex-col items-center justify-center">
       <main className="flex-1 w-full flex items-center justify-center">
         {userId ? (
           <div className="w-full max-w-4xl h-[80vh] flex items-center justify-center">
