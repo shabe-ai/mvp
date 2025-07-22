@@ -338,7 +338,7 @@ What would you like to do today?`,
   }
 
   return (
-    <div className="flex flex-col w-full h-full justify-end shadow-2xl bg-white p-0">
+    <div className="flex flex-col w-full h-full flex-1 justify-end shadow-2xl bg-white p-0">
       {/* Team Selector */}
       {!hideTeamSelector && (
         <Card className="mb-4">
@@ -403,7 +403,7 @@ What would you like to do today?`,
       {/* Chat Interface */}
       <div className="flex-1 w-full flex flex-col justify-end">
         <div className="flex-1 w-full flex flex-col justify-end">
-          <ScrollArea className="flex-1 w-full mb-4 px-0 h-[calc(100vh-12rem)] overflow-y-auto">
+          <ScrollArea className="flex-1 w-full h-full mb-4 px-0 overflow-y-auto">
             <div className="space-y-4 w-full px-0 pt-24">
               {messages.map((message) => {
                 const isUser = message.role === "user";
