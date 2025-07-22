@@ -338,7 +338,7 @@ What would you like to do today?`,
   }
 
   return (
-    <div className="flex flex-col flex-1 w-full h-full justify-end shadow-2xl rounded-2xl bg-white max-w-2xl mx-auto my-12 p-10">
+    <div className="flex flex-col w-full h-full justify-end shadow-2xl bg-white p-0">
       {/* Team Selector */}
       {!hideTeamSelector && (
         <Card className="mb-4">
@@ -404,7 +404,7 @@ What would you like to do today?`,
       <div className="flex-1 w-full flex flex-col justify-end">
         <div className="flex-1 w-full flex flex-col justify-end">
           <ScrollArea className="flex-1 w-full mb-4 px-0">
-            <div className="space-y-4 w-full max-w-2xl mx-auto">
+            <div className="space-y-4 w-full px-0">
               {messages.map((message) => {
                 const isUser = message.role === "user";
                 return (
@@ -453,7 +453,7 @@ What would you like to do today?`,
             </div>
           </ScrollArea>
         </div>
-        <form onSubmit={handleSubmit} className="flex gap-2 w-full max-w-2xl mx-auto pb-6">
+        <form onSubmit={handleSubmit} className="flex gap-2 w-full px-4 pb-6">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}

@@ -7,13 +7,9 @@ export default async function Home() {
 
   return (
     <div className="min-h-screen h-screen flex flex-col bg-white overflow-hidden">
-      <main className="flex-1 flex flex-col items-center justify-center w-full bg-white h-[calc(100vh-4rem)] overflow-hidden">
+      <main className="flex-1 w-full h-full bg-white overflow-hidden p-0 m-0">
         {userId ? (
-          <div className="flex flex-col justify-center items-center w-full h-full">
-            <div className="flex-1 w-full flex flex-col justify-end h-full">
-              <Chat hideTeamSelector />
-            </div>
-          </div>
+          <Chat hideTeamSelector />
         ) : (
           <div className="text-center py-12 w-full max-w-2xl mx-auto">
             <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">
