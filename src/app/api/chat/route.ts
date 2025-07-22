@@ -94,6 +94,11 @@ ${Object.entries(CRM_OBJECTS).map(([key, obj]) =>
   `- ${key}: ${obj.description}\n  Fields: ${Object.entries(obj.fields).map(([field, type]) => `${field} (${type})`).join(', ')}`
 ).join('\n')}
 
+IMPORTANT:
+- When referencing a company or account in a request, use the 'company' or 'accountName' field with the company name (e.g., 'NBA'), unless you know the actual account ID. Only use 'accountId' if you have the real database ID.
+- When referencing a contact, use 'contactName' (e.g., 'John Wall') or 'email' if you do not know the contact's ID. Only use 'contactId' if you have the real database ID.
+- The backend will resolve names to IDs automatically. Do NOT put company names in the 'accountId' field or contact names in the 'contactId' field.
+
 When responding:
 - For general conversation (greetings, questions about capabilities), use action "message"
 - For CRM operations, use appropriate action (create, read, update, delete, add_field)
@@ -307,10 +312,18 @@ async function handleCreate(response: CRMActionRequest, userId: string, teamId: 
     // --- Preprocess data for all object types ---
     if (data) {
       if (typeof data.accountId === 'string') {
-        data.accountId = await resolveAccountId(data.accountId) || data.accountId;
+        const resolvedAccountId = await resolveAccountId(data.accountId);
+        if (data.accountId && !resolvedAccountId) {
+          return `❌ Account not found: ${data.accountId}`;
+        }
+        data.accountId = resolvedAccountId;
       }
       if (typeof data.contactId === 'string') {
-        data.contactId = await resolveContactId(data.contactId) || data.contactId;
+        const resolvedContactId = await resolveContactId(data.contactId);
+        if (data.contactId && !resolvedContactId) {
+          return `❌ Contact not found: ${data.contactId}`;
+        }
+        data.contactId = resolvedContactId;
       }
     }
     switch (objectType) {
