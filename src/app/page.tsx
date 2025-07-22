@@ -9,7 +9,7 @@ export default async function Home() {
     <div className="min-h-screen h-screen flex flex-col bg-white overflow-hidden">
       <main className="flex-1 flex flex-col items-center justify-center w-full bg-white h-[calc(100vh-4rem)] overflow-hidden">
         {userId ? (
-          <div className="flex flex-col justify-center items-center w-full h-full px-4">
+          <div className="flex flex-col justify-center items-center w-full h-full px-4 mt-16">
             <div className="flex-1 w-full flex flex-col justify-end h-full">
               <Chat hideTeamSelector />
             </div>
