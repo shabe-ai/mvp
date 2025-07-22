@@ -40,7 +40,7 @@ interface Team {
   members: string[];
 }
 
-export default function Chat() {
+export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: boolean }) {
   const { user, isLoaded } = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -340,63 +340,65 @@ What would you like to do today?`,
   return (
     <div className="w-full max-w-6xl mx-auto">
       {/* Team Selector */}
-      <Card className="mb-4">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2">
-              <Building className="h-5 w-5" />
-              {currentTeam?.name || "Select Team"}
-            </CardTitle>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowTeamSelector(!showTeamSelector)}
-            >
-              {teams.length > 1 ? "Switch Team" : "Create Team"}
-            </Button>
-          </div>
-        </CardHeader>
-        
-        {showTeamSelector && (
-          <CardContent className="pt-0">
-            <div className="space-y-2">
-              {teams.map(team => (
-                <div
-                  key={team.id}
-                  className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                    currentTeam?.id === team.id
-                      ? "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700"
-                      : "hover:bg-gray-50 dark:hover:bg-gray-800"
-                  }`}
-                  onClick={() => {
-                    setCurrentTeam(team);
-                    setShowTeamSelector(false);
-                  }}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-medium">{team.name}</span>
-                    {team.ownerId === user.id && (
-                      <Badge variant="secondary" className="text-xs">
-                        Owner
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-              ))}
-              
+      {!hideTeamSelector && (
+        <Card className="mb-4">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Building className="h-5 w-5" />
+                {currentTeam?.name || "Select Team"}
+              </CardTitle>
               <Button
                 variant="outline"
                 size="sm"
-                className="w-full mt-2"
-                onClick={createDefaultTeam}
+                onClick={() => setShowTeamSelector(!showTeamSelector)}
               >
-                <Plus className="h-4 w-4 mr-2" />
-                Create New Team
+                {teams.length > 1 ? "Switch Team" : "Create Team"}
               </Button>
             </div>
-          </CardContent>
-        )}
-      </Card>
+          </CardHeader>
+          
+          {showTeamSelector && (
+            <CardContent className="pt-0">
+              <div className="space-y-2">
+                {teams.map(team => (
+                  <div
+                    key={team.id}
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      currentTeam?.id === team.id
+                        ? "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-700"
+                        : "hover:bg-gray-50 dark:hover:bg-gray-800"
+                    }`}
+                    onClick={() => {
+                      setCurrentTeam(team);
+                      setShowTeamSelector(false);
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{team.name}</span>
+                      {team.ownerId === user.id && (
+                        <Badge variant="secondary" className="text-xs">
+                          Owner
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full mt-2"
+                  onClick={createDefaultTeam}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Create New Team
+                </Button>
+              </div>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {/* Chat Interface */}
       <Card>

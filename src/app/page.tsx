@@ -23,7 +23,7 @@ export default async function Home() {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {userId ? (
-          <Chat />
+          <Chat hideTeamSelector />
         ) : (
           <div className="text-center py-12">
             <div className="max-w-2xl mx-auto">
