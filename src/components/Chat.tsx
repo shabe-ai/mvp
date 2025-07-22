@@ -338,7 +338,7 @@ What would you like to do today?`,
   }
 
   return (
-    <div className="flex flex-col w-full h-full flex-1 justify-end bg-white p-0">
+    <div className="flex flex-col w-full h-full flex-1 justify-end bg-white p-0 max-w-7xl mx-auto">
       {/* Team Selector */}
       {!hideTeamSelector && (
         <Card className="mb-4">
