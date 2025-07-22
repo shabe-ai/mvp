@@ -338,7 +338,7 @@ What would you like to do today?`,
   }
 
   return (
-    <div className="flex flex-col w-full h-full flex-1 justify-end shadow-2xl bg-white p-0">
+    <div className="flex flex-col w-full h-full flex-1 justify-end bg-white p-0">
       {/* Team Selector */}
       {!hideTeamSelector && (
         <Card className="mb-4">
@@ -401,59 +401,57 @@ What would you like to do today?`,
       )}
 
       {/* Chat Interface */}
-      <div className="flex-1 w-full flex flex-col justify-end">
-        <div className="flex-1 w-full flex flex-col justify-end">
-          <ScrollArea className="flex-1 w-full h-full mb-4 px-0 overflow-y-auto">
-            <div className="space-y-4 w-full px-0 pt-24">
-              {messages.map((message) => {
-                const isUser = message.role === "user";
-                return (
+      <div className="flex flex-col w-full h-full flex-1">
+        <ScrollArea className="flex-1 w-full h-full overflow-y-auto px-0 pt-24">
+          <div className="space-y-4 w-full px-0">
+            {messages.map((message) => {
+              const isUser = message.role === "user";
+              return (
+                <div
+                  key={message.id}
+                  className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
+                >
                   <div
-                    key={message.id}
-                    className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
+                    className={`max-w-[80%] rounded-lg px-4 py-2 shadow-md ${
+                      isUser
+                        ? "bg-blue-500 text-white"
+                        : "bg-white"
+                    }`}
                   >
-                    <div
-                      className={`max-w-[80%] rounded-lg px-4 py-2 shadow-md ${
-                        isUser
-                          ? "bg-blue-500 text-white"
-                          : "bg-white"
-                      }`}
-                    >
-                      <div className="whitespace-pre-wrap">{message.content}</div>
-                      {message.needsClarification && message.clarificationQuestion && (
-                        <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-400">
-                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                            🤔 {message.clarificationQuestion}
-                          </p>
+                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    {message.needsClarification && message.clarificationQuestion && (
+                      <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-400">
+                        <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                          🤔 {message.clarificationQuestion}
+                        </p>
+                      </div>
+                    )}
+                    {message.action === "read" && message.data && (
+                      <div className="mt-3">
+                        <div className="text-xs text-gray-500 mb-2">
+                          Debug: Data type: {typeof message.data}, Is array: {Array.isArray(message.data)}, Length: {Array.isArray(message.data) ? message.data.length : 'N/A'}
                         </div>
-                      )}
-                      {message.action === "read" && message.data && (
-                        <div className="mt-3">
-                          <div className="text-xs text-gray-500 mb-2">
-                            Debug: Data type: {typeof message.data}, Is array: {Array.isArray(message.data)}, Length: {Array.isArray(message.data) ? message.data.length : 'N/A'}
-                          </div>
-                          <DataTable data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : []} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-              {isLoading && (
-                <div className="flex justify-start">
-                  <div className="rounded-lg px-4 py-2">
-                    <div className="flex items-center gap-2">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                      <span className="text-sm text-gray-500">Thinking...</span>
-                    </div>
+                        <DataTable data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : []} />
+                      </div>
+                    )}
                   </div>
                 </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-          </ScrollArea>
-        </div>
-        <form onSubmit={handleSubmit} className="flex gap-2 w-full px-4 pb-6">
+              );
+            })}
+            {isLoading && (
+              <div className="flex justify-start">
+                <div className="rounded-lg px-4 py-2">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                    <span className="text-sm text-gray-500">Thinking...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        </ScrollArea>
+        <form onSubmit={handleSubmit} className="flex gap-2 w-full px-4 pb-6 mt-auto">
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
