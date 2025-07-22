@@ -10,6 +10,7 @@ import {
 } from "@clerk/nextjs";
 import Logo from "@/components/Logo";
 import "./globals.css";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Shabe - Conversational Workspace",
@@ -38,7 +39,7 @@ export default function RootLayout({
                     </h1>
                   </div>
                   <div className="hidden md:block">
-                    <span className="text-sm text-slate-500 font-medium">Conversational Workspace</span>
+                    <Link href="/" className="text-sm text-slate-500 font-medium hover:underline">Home</Link>
                   </div>
                 </div>
                 
