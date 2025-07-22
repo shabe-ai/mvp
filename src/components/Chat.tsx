@@ -267,7 +267,7 @@ What would you like to do today?`,
         className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
       >
         <div
-          className={`max-w-[80%] rounded-lg px-4 py-2 ${
+          className={`max-w-[80%] rounded-lg px-4 py-2 shadow-md ${
             isUser
               ? "bg-blue-500 text-white"
               : "bg-white"
@@ -338,7 +338,7 @@ What would you like to do today?`,
   }
 
   return (
-    <div className="flex flex-col flex-1 w-full h-full justify-end">
+    <div className="flex flex-col flex-1 w-full h-full justify-end shadow-2xl rounded-2xl bg-white max-w-2xl mx-auto my-8">
       {/* Team Selector */}
       {!hideTeamSelector && (
         <Card className="mb-4">
@@ -405,7 +405,40 @@ What would you like to do today?`,
         <div className="flex-1 w-full flex flex-col justify-end">
           <ScrollArea className="flex-1 w-full mb-4 px-0">
             <div className="space-y-4 w-full max-w-2xl mx-auto">
-              {messages.map(renderMessage)}
+              {messages.map((message) => {
+                const isUser = message.role === "user";
+                return (
+                  <div
+                    key={message.id}
+                    className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
+                  >
+                    <div
+                      className={`max-w-[80%] rounded-lg px-4 py-2 shadow-md ${
+                        isUser
+                          ? "bg-blue-500 text-white"
+                          : "bg-white"
+                      }`}
+                    >
+                      <div className="whitespace-pre-wrap">{message.content}</div>
+                      {message.needsClarification && message.clarificationQuestion && (
+                        <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-400">
+                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                            🤔 {message.clarificationQuestion}
+                          </p>
+                        </div>
+                      )}
+                      {message.action === "read" && message.data && (
+                        <div className="mt-3">
+                          <div className="text-xs text-gray-500 mb-2">
+                            Debug: Data type: {typeof message.data}, Is array: {Array.isArray(message.data)}, Length: {Array.isArray(message.data) ? message.data.length : 'N/A'}
+                          </div>
+                          <DataTable data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : []} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
               {isLoading && (
                 <div className="flex justify-start">
                   <div className="rounded-lg px-4 py-2">
