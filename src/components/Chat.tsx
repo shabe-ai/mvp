@@ -403,8 +403,8 @@ What would you like to do today?`,
       {/* Chat Interface */}
       <div className="flex-1 w-full flex flex-col justify-end">
         <div className="flex-1 w-full flex flex-col justify-end">
-          <ScrollArea className="flex-1 w-full mb-4 px-0">
-            <div className="space-y-4 w-full px-0 pt-12">
+          <ScrollArea className="flex-1 w-full mb-4 px-0 h-[calc(100vh-12rem)] overflow-y-auto">
+            <div className="space-y-4 w-full px-0 pt-24">
               {messages.map((message) => {
                 const isUser = message.role === "user";
                 return (
