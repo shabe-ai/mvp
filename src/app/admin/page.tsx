@@ -1,5 +1,4 @@
 import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
-import Chat from "@/components/Chat";
 
 export default function AdminPage() {
   return (
@@ -19,8 +18,8 @@ export default function AdminPage() {
           <section className="bg-white rounded-lg shadow p-6 border border-slate-100 mb-6">
             <h2 className="text-xl font-semibold mb-2">Team Details</h2>
             <p className="text-gray-600 mb-2">View and manage your team information.</p>
-            {/* Team management UI */}
-            <Chat hideTeamSelector={false} />
+            {/* TODO: Add team details UI here */}
+            <div className="text-sm text-gray-400">(Team details UI coming soon)</div>
           </section>
 
           {/* Future Admin Features */}
