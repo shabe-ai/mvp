@@ -398,94 +398,6 @@ What would you like to do today?`,
         )}
       </Card>
 
-      {/* Quick Actions */}
-      <Card className="mb-4">
-        <CardHeader>
-          <CardTitle className="text-lg">Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleQuickAction("create_contact")}
-              className="flex items-center gap-2"
-            >
-              <Users className="h-4 w-4" />
-              New Contact
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleQuickAction("create_account")}
-              className="flex items-center gap-2"
-            >
-              <Building className="h-4 w-4" />
-              New Account
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleQuickAction("create_deal")}
-              className="flex items-center gap-2"
-            >
-              <TrendingUp className="h-4 w-4" />
-              New Deal
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleQuickAction("create_activity")}
-              className="flex items-center gap-2"
-            >
-              <Calendar className="h-4 w-4" />
-              Schedule Activity
-            </Button>
-          </div>
-          
-          <Separator className="my-4" />
-          
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleQuickAction("view_contacts")}
-              className="flex items-center gap-2"
-            >
-              <Users className="h-4 w-4" />
-              View Contacts
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleQuickAction("view_accounts")}
-              className="flex items-center gap-2"
-            >
-              <Building className="h-4 w-4" />
-              View Accounts
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleQuickAction("view_deals")}
-              className="flex items-center gap-2"
-            >
-              <TrendingUp className="h-4 w-4" />
-              View Deals
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleQuickAction("view_activities")}
-              className="flex items-center gap-2"
-            >
-              <Calendar className="h-4 w-4" />
-              View Activities
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Chat Interface */}
       <Card>
         <CardHeader>
@@ -502,7 +414,7 @@ What would you like to do today?`,
                 <div className="flex justify-start">
                   <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-2">
                     <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin" />
                       <span className="text-sm text-gray-500">Thinking...</span>
                     </div>
                   </div>
