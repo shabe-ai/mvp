@@ -99,6 +99,23 @@ IMPORTANT:
 - When referencing a contact, use 'contactName' (e.g., 'John Wall') or 'email' if you do not know the contact's ID. Only use 'contactId' if you have the real database ID.
 - The backend will resolve names to IDs automatically. Do NOT put company names in the 'accountId' field or contact names in the 'contactId' field.
 
+SPECIAL INSTRUCTIONS FOR BLANK/EMPTY FIELD QUERIES:
+- When the user asks for records where a field is blank, empty, or missing (e.g., "contacts with no email"), return a system action with a filter for that field set to an empty string ("") or null. For example:
+  User: Show me all contacts with no email address.
+  AI: { "action": "read", "objectType": "contacts", "data": { "email": "" } }
+  Or: { "action": "read", "objectType": "contacts", "data": { "email": null } }
+- If unsure whether a blank field is stored as "" or null, include both in the filter if possible.
+- Always use the structured system action format for queries that can be mapped to backend filters.
+
+SPECIAL INSTRUCTIONS FOR COUNT/SUMMARY QUERIES:
+- When the user asks for a count, summary, or specific detail (e.g., "how many contacts do we have at the NBA"), include a human-readable answer in the "message" field (e.g., "You have 1 contact at the NBA.") in addition to any data returned.
+
+SPECIAL INSTRUCTIONS FOR COMPANY FILTERS:
+- When the user asks for contacts at a specific company (e.g., "contacts at the NBA" or "how many contacts do we have at the NBA"), include a filter for company name in the data field: { company: "NBA" }.
+  Example:
+  User: How many contacts do we have at the NBA?
+  AI: { "action": "read", "objectType": "contacts", "data": { "company": "NBA" } }
+
 When responding:
 - For general conversation (greetings, questions about capabilities), use action "message"
 - For CRM operations, use appropriate action (create, read, update, delete, add_field)
@@ -184,6 +201,54 @@ export async function POST(req: NextRequest) {
         message: aiResponse,
         needsClarification: false,
       };
+    }
+
+    // Define lastUserMessage for post-processing
+    const lastUserMessage = messages && messages.length > 0 ? messages[messages.length - 1].content.toLowerCase() : "";
+
+    // --- POST-PROCESSING FOR COMPANY FILTER QUERIES ---
+    if (
+      lastUserMessage &&
+      lastUserMessage.includes("at the ") &&
+      parsedResponse.action === "read" &&
+      parsedResponse.objectType === "contacts" &&
+      (!parsedResponse.data || !parsedResponse.data.company)
+    ) {
+      // Extract company name after 'at the '
+      const match = lastUserMessage.match(/at the ([\w\s]+)/);
+      if (match && match[1]) {
+        const company = match[1].trim();
+        parsedResponse.data = { ...(parsedResponse.data || {}), company };
+      }
+    }
+
+    // --- POST-PROCESSING FOR BLANK EMAIL QUERIES ---
+    if (
+      lastUserMessage &&
+      (lastUserMessage.includes("blank email") || lastUserMessage.includes("no email") || lastUserMessage.includes("empty email")) &&
+      parsedResponse.action === "read" &&
+      parsedResponse.objectType === "contacts" &&
+      (!parsedResponse.data || !parsedResponse.data.email)
+    ) {
+      parsedResponse.data = { ...(parsedResponse.data || {}), email: "" };
+    }
+
+    // --- POST-PROCESSING FOR COUNT/SUMMARY QUERIES ---
+    if (
+      lastUserMessage &&
+      (lastUserMessage.includes("how many") || lastUserMessage.includes("count") || lastUserMessage.includes("number of")) &&
+      parsedResponse.action === "read" &&
+      Array.isArray(parsedResponse.data) &&
+      (!parsedResponse.message || parsedResponse.message.startsWith("📊 Found"))
+    ) {
+      const count = parsedResponse.data.length;
+      let subject = "contacts";
+      if (parsedResponse.objectType) subject = parsedResponse.objectType;
+      // Try to extract filter context from the user message
+      let context = "";
+      const match = lastUserMessage.match(/at (the )?([\w\s]+)/);
+      if (match && match[2]) context = ` at ${match[2].trim()}`;
+      parsedResponse.message = `You have ${count} ${subject}${context}.`;
     }
 
     // Handle the parsed response
@@ -438,34 +503,48 @@ async function handleCreate(response: CRMActionRequest, userId: string, teamId: 
 }
 
 async function handleRead(response: CRMActionRequest, teamId: string) {
-  const { objectType, filters } = response;
-  
+  const { objectType, data } = response;
   try {
-    let data;
+    let records;
     switch (objectType) {
       case "contacts":
-        data = await convex.query(api.crm.getContactsByTeam, { teamId });
+        records = await convex.query(api.crm.getContactsByTeam, { teamId });
+        // Apply all filters in data
+        if (data && typeof data === 'object') {
+          Object.entries(data).forEach(([key, value]) => {
+            if (value === "" || value === null) {
+              records = records.filter((c) => !c[key] || c[key] === "");
+            } else {
+              records = records.filter((c) => c[key] === value);
+            }
+          });
+        }
         break;
       case "accounts":
-        data = await convex.query(api.crm.getAccountsByTeam, { teamId });
+        records = await convex.query(api.crm.getAccountsByTeam, { teamId });
         break;
       case "activities":
-        data = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+        records = await convex.query(api.crm.getActivitiesByTeam, { teamId });
         break;
       case "deals":
-        data = await convex.query(api.crm.getDealsByTeam, { teamId });
+        records = await convex.query(api.crm.getDealsByTeam, { teamId });
         break;
       default:
         return { message: `❌ Unknown object type: ${objectType}` };
     }
 
-    if (data.length === 0) {
+    if (!records || records.length === 0) {
       return { message: `📭 No ${objectType} found.` };
     }
 
+    // Always return an array for data
+    if (!Array.isArray(records)) {
+      records = [records];
+    }
+
     return {
-      message: `📊 Found ${data.length} ${objectType}:`,
-      data: data
+      message: `📊 Found ${records.length} ${objectType}:`,
+      data: records
     };
   } catch (error) {
     console.error("Read error:", error);

@@ -234,7 +234,9 @@ What would you like to do today?`,
         if (
           data.action === "create" &&
           data.data &&
-          (data.data.type === "email" || data.data.type === undefined)
+          data.data.type === "email" &&
+          data.data.subject &&
+          (data.data.content || data.data.description || data.data.body)
         ) {
           // Extract email details from data
           const to = data.data.to || data.data.email || "";
@@ -259,6 +261,105 @@ What would you like to do today?`,
           });
           setIsLoading(false);
           return; // Do NOT add the assistant message to the chat
+        }
+
+        // Intercept delete contact actions to resolve contactId if needed
+        if (
+          data.action === "delete" &&
+          data.objectType === "contacts" &&
+          data.data &&
+          !data.data.contactId &&
+          currentTeam
+        ) {
+          console.debug("[Delete Intercept] Intercepting ambiguous delete contact action", data.data);
+          // Fetch all contacts for the team
+          const contactsRes = await fetch(`/api/contacts?teamId=${currentTeam._id}`);
+          const contacts: Record<string, unknown>[] = await contactsRes.json();
+
+          let matches = contacts;
+
+          // Apply filters if present
+          if (data.data.company !== undefined) {
+            matches = matches.filter((c) => c.company === data.data.company);
+          }
+          if (data.data.firstName) {
+            matches = matches.filter((c) => c.firstName === data.data.firstName);
+          }
+          if (data.data.lastName) {
+            matches = matches.filter((c) => c.lastName === data.data.lastName);
+          }
+
+          // If no filter at all, and only one contact exists, match it
+          if (
+            Object.keys(data.data).length === 0 &&
+            contacts.length === 1 &&
+            contacts[0]._id
+          ) {
+            console.debug("[Delete Intercept] Only one contact exists, auto-deleting", contacts[0]);
+            matches = [contacts[0]];
+          }
+
+          // If no filter and multiple contacts, prompt for clarification
+          if (
+            Object.keys(data.data).length === 0 &&
+            contacts.length > 1
+          ) {
+            console.debug("[Delete Intercept] Multiple contacts, need clarification");
+            setMessages(prev => [...prev, {
+              id: (Date.now() + 1).toString(),
+              role: "assistant",
+              content: `❌ Multiple contacts found. Please specify which one to delete.`,
+              timestamp: new Date(),
+            }]);
+            setIsLoading(false);
+            return;
+          }
+
+          if (matches.length === 1 && matches[0]._id) {
+            // Send delete with contactId
+            console.debug("[Delete Intercept] Deleting contact with id", matches[0]._id);
+            const deleteRes = await fetch("/api/chat", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                messages: [...messages, userMessage],
+                userId: user.id,
+                teamId: currentTeam._id,
+                action: "delete",
+                objectType: "contacts",
+                data: { contactId: matches[0]._id },
+              }),
+            });
+            const deleteData = await deleteRes.json();
+            setMessages(prev => [...prev, {
+              id: (Date.now() + 1).toString(),
+              role: "assistant",
+              content: typeof deleteData.message === 'string' ? deleteData.message : (deleteData.message?.message || JSON.stringify(deleteData.message)),
+              timestamp: new Date(),
+            }]);
+            setIsLoading(false);
+            return;
+          } else if (matches.length > 1) {
+            console.debug("[Delete Intercept] Multiple contacts match filter, need clarification");
+            setMessages(prev => [...prev, {
+              id: (Date.now() + 1).toString(),
+              role: "assistant",
+              content: `❌ Multiple contacts found matching your request. Please specify which one to delete.`,
+              timestamp: new Date(),
+            }]);
+            setIsLoading(false);
+            return;
+          } else {
+            console.debug("[Delete Intercept] No contact found matching request");
+            setMessages(prev => [...prev, {
+              id: (Date.now() + 1).toString(),
+              role: "assistant",
+              content: `❌ No contact found matching your request to delete.`,
+              timestamp: new Date(),
+            }]);
+            setIsLoading(false);
+            return;
+          }
         }
 
         const assistantMessage: Message = {
@@ -307,7 +408,6 @@ What would you like to do today?`,
 
   const renderMessage = (message: Message) => {
     const isUser = message.role === "user";
-    
     return (
       <div
         key={message.id}
@@ -320,8 +420,10 @@ What would you like to do today?`,
               : "bg-gray-50"
           }`}
         >
-          <div className="whitespace-pre-wrap">{message.content}</div>
-          
+          {/* Always show the summary message for assistant */}
+          {message.role === "assistant" && message.content && (
+            <div className="font-semibold mb-2 whitespace-pre-wrap">{message.content}</div>
+          )}
           {message.needsClarification && message.clarificationQuestion && (
             <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-400">
               <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
@@ -329,13 +431,12 @@ What would you like to do today?`,
               </p>
             </div>
           )}
-          
           {message.action === "read" && message.data && (
             <div className="mt-3">
               <div className="text-xs text-gray-500 mb-2">
-                Debug: Data type: {typeof message.data}, Is array: {Array.isArray(message.data)}, Length: {Array.isArray(message.data) ? message.data.length : 'N/A'}
+                Debug: Data type: {typeof message.data}, Is array: {Array.isArray(message.data)}, Length: {Array.isArray(message.data) ? message.data.length : (message.data ? 1 : 'N/A')}
               </div>
-              <DataTable data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : []} />
+              <DataTable data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : message.data ? [message.data as Record<string, unknown>] : []} />
             </div>
           )}
         </div>
@@ -349,25 +450,40 @@ What would you like to do today?`,
     setSendingEmail(true);
     try {
       let recipientEmail = draft.to;
-      // If no recipient, look up by contact name
-      if (!recipientEmail && emailDraft.activityData && (emailDraft.activityData as Record<string, unknown>).contactName && currentTeam) {
-        const contactName = (emailDraft.activityData as Record<string, unknown>).contactName as string;
-        const [firstName, ...rest] = contactName.split(" ");
-        const lastName = rest.join(" ");
+      if (!recipientEmail && emailDraft.activityData && currentTeam) {
+        const contactName = (emailDraft.activityData as Record<string, unknown>).contactName as string | undefined;
+        const contactEmail = (emailDraft.activityData as Record<string, unknown>).email as string | undefined;
         const contactsRes = await fetch(`/api/contacts?teamId=${currentTeam._id}`);
         const contacts: Record<string, unknown>[] = await contactsRes.json();
-        const found = contacts.find((c) =>
-          typeof c.firstName === 'string' && typeof c.lastName === 'string' &&
-          c.firstName.toLowerCase() === firstName.toLowerCase() &&
-          c.lastName.toLowerCase() === lastName.toLowerCase()
-        );
+        let found: Record<string, unknown> | undefined;
+        if (contactEmail) {
+          found = contacts.find((c) => typeof c.email === 'string' && c.email.toLowerCase() === contactEmail.toLowerCase());
+        }
+        if (!found && contactName) {
+          const nameParts = contactName.split(" ");
+          if (nameParts.length > 1) {
+            const [firstName, ...rest] = nameParts;
+            const lastName = rest.join(" ");
+            found = contacts.find((c) =>
+              typeof c.firstName === 'string' && typeof c.lastName === 'string' &&
+              c.firstName.toLowerCase() === firstName.toLowerCase() &&
+              c.lastName.toLowerCase() === lastName.toLowerCase()
+            );
+          } else {
+            // Try to match by first OR last name
+            found = contacts.find((c) =>
+              (typeof c.firstName === 'string' && c.firstName.toLowerCase() === contactName.toLowerCase()) ||
+              (typeof c.lastName === 'string' && c.lastName.toLowerCase() === contactName.toLowerCase())
+            );
+          }
+        }
         if (found && typeof found.email === 'string') {
           recipientEmail = found.email;
         } else {
           setMessages(prev => [...prev, {
             id: (Date.now() + 1).toString(),
             role: "assistant",
-            content: `❌ Could not find email for contact: ${contactName}`,
+            content: `❌ Could not find email for contact: ${contactName || contactEmail || "(unknown)"}`,
             timestamp: new Date(),
           }]);
           setEmailDraft(null);
@@ -595,7 +711,13 @@ What would you like to do today?`,
                       : "bg-gray-50"
                   }`}
                 >
-                  <div className="whitespace-pre-wrap">{message.content}</div>
+                  <div className="whitespace-pre-wrap">
+                    {typeof message.content === 'string'
+                      ? message.content
+                      : typeof message.content === 'object' && message.content !== null
+                        ? (message.content as { message?: string }).message || JSON.stringify(message.content)
+                        : ''}
+                  </div>
                   {message.needsClarification && message.clarificationQuestion && (
                     <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-400">
                       <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
@@ -606,9 +728,9 @@ What would you like to do today?`,
                   {message.action === "read" && message.data && (
                     <div className="mt-3">
                       <div className="text-xs text-gray-500 mb-2">
-                        Debug: Data type: {typeof message.data}, Is array: {Array.isArray(message.data)}, Length: {Array.isArray(message.data) ? message.data.length : 'N/A'}
+                        Debug: Data type: {typeof message.data}, Is array: {Array.isArray(message.data)}, Length: {Array.isArray(message.data) ? message.data.length : (message.data ? 1 : 'N/A')}
                       </div>
-                      <DataTable data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : []} />
+                      <DataTable data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : message.data ? [message.data as Record<string, unknown>] : []} />
                     </div>
                   )}
                 </div>
