@@ -31,6 +31,7 @@ interface Message {
   data?: Record<string, unknown>;
   needsClarification?: boolean;
   clarificationQuestion?: string;
+  fields?: string[];
 }
 
 interface Team {
@@ -413,6 +414,7 @@ What would you like to do today?`,
           data: data.data,
           needsClarification: data.needsClarification,
           clarificationQuestion: data.clarificationQuestion,
+          ...(data.fields ? { fields: data.fields } : {}),
         };
 
         setMessages(prev => [...prev, assistantMessage]);
@@ -474,7 +476,10 @@ What would you like to do today?`,
           {message.content}
           {message.role === "assistant" && message.action === "read" && message.data && (
             <div style={{ marginTop: 12, background: "#fff", borderRadius: 12, padding: 8 }}>
-              <DataTable data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : message.data ? [message.data as Record<string, unknown>] : []} />
+              <DataTable
+                data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : message.data ? [message.data as Record<string, unknown>] : []}
+                fields={Array.isArray((message as any).fields) ? (message as any).fields : undefined}
+              />
             </div>
           )}
         </div>
@@ -760,7 +765,7 @@ What would you like to do today?`,
 }
 
 // Data Table Component for displaying CRM data
-function DataTable({ data }: { data: Record<string, unknown>[] }) {
+function DataTable({ data, fields }: { data: Record<string, unknown>[]; fields?: string[] }) {
   // Ensure data is an array
   if (!Array.isArray(data)) {
     return <div>Invalid data format</div>;
@@ -776,17 +781,37 @@ function DataTable({ data }: { data: Record<string, unknown>[] }) {
     return <div>No valid data to display</div>;
   }
 
-  const columns = Object.keys(validData[0]).filter(key => 
-    !['_id', '_creationTime', 'teamId', 'createdBy', 'sharedWith'].includes(key)
-  );
+  const allColumns = Object.keys(validData[0]).filter(key => !['_id', '_creationTime', 'teamId', 'createdBy', 'sharedWith'].includes(key));
+  const columns = fields && fields.length > 0 ? allColumns.filter(col => fields.includes(col)) : allColumns;
 
   return (
-    <div style={{ background: "#fff", borderRadius: 12, padding: 8 }}>
-      <table>
-        <thead>
-          <tr>
-            {columns.map(column => (
-              <th key={column}>
+    <div
+      style={{
+        background: "#f9fafb",
+        borderRadius: 16,
+        padding: 16,
+        overflowX: "auto",
+        maxWidth: "100%",
+        border: "1px solid #e5e7eb",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+        marginTop: 8,
+      }}
+    >
+      <table style={{ minWidth: 600, width: "100%", borderCollapse: "separate", borderSpacing: 0 }}>
+        <thead style={{ background: "#fde047", borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+          <tr style={{ borderTopLeftRadius: 16, borderTopRightRadius: 16 }}>
+            {columns.map((column, idx) => (
+              <th
+                key={column}
+                style={{
+                  textAlign: "left",
+                  padding: "8px 12px",
+                  fontWeight: 600,
+                  color: "#222",
+                  ...(idx === 0 ? { borderTopLeftRadius: 16 } : {}),
+                  ...(idx === columns.length - 1 ? { borderTopRightRadius: 16 } : {}),
+                }}
+              >
                 {column.charAt(0).toUpperCase() + column.slice(1).replace(/([A-Z])/g, ' $1')}
               </th>
             ))}
@@ -796,7 +821,7 @@ function DataTable({ data }: { data: Record<string, unknown>[] }) {
           {validData.map((row, index) => (
             <tr key={index}>
               {columns.map(column => (
-                <td key={column}>
+                <td key={column} style={{ padding: "8px 12px", color: "#374151" }}>
                   {formatCellValue(row[column])}
                 </td>
               ))}

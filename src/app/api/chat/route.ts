@@ -102,6 +102,9 @@ IMPORTANT:
 - For range or date queries (e.g., "deals over $25k", "created this quarter"), use filter objects with operators like $gt, $gte, $lt, $lte. For example:
   { "amount": { "$gt": 25000 }, "createdAt": { "$gte": 1720000000000 } }
 
+ - When the user specifies which fields/columns to display (e.g., "show only amount, close date, and name"), include a 'fields' array in the system action. For example:
+   { "action": "read", "objectType": "deals", "fields": ["amount", "closeDate", "name"], "data": [...] }
+
 SPECIAL INSTRUCTIONS FOR BLANK/EMPTY FIELD QUERIES:
 - When the user asks for records where a field is blank, empty, or missing (e.g., "contacts with no email"), return a system action with a filter for that field set to an empty string ("") or null. For example:
   User: Show me all contacts with no email address.
@@ -254,6 +257,18 @@ export async function POST(req: NextRequest) {
       parsedResponse.message = `You have ${count} ${subject}${context}.`;
     }
 
+    // --- POST-PROCESSING: Filter data by fields if present ---
+    if (parsedResponse.fields && Array.isArray(parsedResponse.fields) && parsedResponse.data && Array.isArray(parsedResponse.data)) {
+      const allowed = new Set(parsedResponse.fields);
+      parsedResponse.data = parsedResponse.data.map((row: Record<string, unknown>) => {
+        const filtered: Record<string, unknown> = {};
+        for (const key of Object.keys(row)) {
+          if (allowed.has(key)) filtered[key] = row[key];
+        }
+        return filtered;
+      });
+    }
+
     // Handle the parsed response
     let responseMessage = "";
     let needsClarification = false;
@@ -327,6 +342,7 @@ export async function POST(req: NextRequest) {
       clarificationQuestion,
       action: responseAction || parsedResponse.action,
       data: responseData || parsedResponse.data,
+      ...(parsedResponse.fields ? { fields: parsedResponse.fields } : {}),
     });
 
   } catch (error) {
