@@ -79,6 +79,34 @@ What would you like to do today?`,
     }
   }, [user, messages.length]);
 
+  // Load messages from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem("shabe_chat_messages");
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setMessages(parsed);
+          return;
+        }
+      } catch {}
+    }
+    // If no stored messages, show welcome
+    if (user && !messages.length) {
+      setMessages([{
+        id: "welcome",
+        role: "assistant",
+        content: `Welcome to your CRM! 👋 I'm here to help you manage your customer relationships. You can:\n\n• Create contacts, accounts, activities, and deals\n• View and search your data\n• Update records\n• Add custom fields\n• Get insights and reports\n\nWhat would you like to do today?`,
+        timestamp: new Date(),
+      }]);
+    }
+  }, [user]);
+
+  // Save messages to localStorage after every update
+  useEffect(() => {
+    localStorage.setItem("shabe_chat_messages", JSON.stringify(messages));
+  }, [messages]);
+
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -271,7 +299,7 @@ What would you like to do today?`,
           !data.data.contactId &&
           currentTeam
         ) {
-          console.debug("[Delete Intercept] Intercepting ambiguous delete contact action", data.data);
+          console.debug("[Delete Intercept] Running for delete action", data.data);
           // Fetch all contacts for the team
           const contactsRes = await fetch(`/api/contacts?teamId=${currentTeam._id}`);
           const contacts: Record<string, unknown>[] = await contactsRes.json();
@@ -287,6 +315,20 @@ What would you like to do today?`,
           }
           if (data.data.lastName) {
             matches = matches.filter((c) => c.lastName === data.data.lastName);
+          }
+          if (data.data.contactName) {
+            // Robustly split and match contactName
+            const nameParts = String(data.data.contactName).trim().split(/\s+/);
+            const firstName = nameParts[0];
+            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+            matches = matches.filter((c) =>
+              typeof c.firstName === 'string' &&
+              typeof c.lastName === 'string' &&
+              (
+                (firstName && c.firstName.toLowerCase() === firstName.toLowerCase()) ||
+                (lastName && c.lastName.toLowerCase() === lastName.toLowerCase())
+              )
+            );
           }
 
           // If no filter at all, and only one contact exists, match it
@@ -411,31 +453,27 @@ What would you like to do today?`,
     return (
       <div
         key={message.id}
-        className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
+        style={{
+          display: "flex",
+          justifyContent: isUser ? "flex-end" : "flex-start",
+          marginBottom: 16,
+        }}
       >
         <div
-          className={`max-w-[80%] rounded-lg px-4 py-2 shadow-md ${
-            isUser
-              ? "bg-yellow-300 text-white"
-              : "bg-gray-50"
-          }`}
+          style={{
+            maxWidth: "75%",
+            borderRadius: 16,
+            padding: "12px 18px",
+            background: isUser ? "#fde047" : "#fff",
+            color: "#222",
+            fontWeight: 400,
+            boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+            whiteSpace: "pre-wrap",
+          }}
         >
-          {/* Always show the summary message for assistant */}
-          {message.role === "assistant" && message.content && (
-            <div className="font-semibold mb-2 whitespace-pre-wrap">{message.content}</div>
-          )}
-          {message.needsClarification && message.clarificationQuestion && (
-            <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-400">
-              <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                🤔 {message.clarificationQuestion}
-              </p>
-            </div>
-          )}
-          {message.action === "read" && message.data && (
-            <div className="mt-3">
-              <div className="text-xs text-gray-500 mb-2">
-                Debug: Data type: {typeof message.data}, Is array: {Array.isArray(message.data)}, Length: {Array.isArray(message.data) ? message.data.length : (message.data ? 1 : 'N/A')}
-              </div>
+          {message.content}
+          {message.role === "assistant" && message.action === "read" && message.data && (
+            <div style={{ marginTop: 12, background: "#fff", borderRadius: 12, padding: 8 }}>
               <DataTable data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : message.data ? [message.data as Record<string, unknown>] : []} />
             </div>
           )}
@@ -611,8 +649,14 @@ What would you like to do today?`,
     );
   }
 
+  // Add debug log before rendering messages
+  console.debug('DEBUG: Rendering messages array:', messages);
   return (
-    <div className="flex flex-col w-full h-full flex-1 justify-end bg-white p-0 max-w-7xl mx-auto mt-6">
+    <div style={{ width: '100%', height: '100%', background: '#fff', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+        {messages.map(renderMessage)}
+        <div ref={messagesEndRef} />
+      </div>
       {/* Team Selector */}
       {!hideTeamSelector && (
         <Card className="mb-4">
@@ -695,61 +739,6 @@ What would you like to do today?`,
           />
         </div>
       )}
-      <ScrollArea className="flex-1 w-full h-full overflow-y-auto px-0 pt-32">
-        <div className="space-y-4 w-full px-0">
-          {messages.map((message) => {
-            const isUser = message.role === "user";
-            return (
-              <div
-                key={message.id}
-                className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 shadow-md ${
-                    isUser
-                      ? "bg-yellow-300 text-white"
-                      : "bg-gray-50"
-                  }`}
-                >
-                  <div className="whitespace-pre-wrap">
-                    {typeof message.content === 'string'
-                      ? message.content
-                      : typeof message.content === 'object' && message.content !== null
-                        ? (message.content as { message?: string }).message || JSON.stringify(message.content)
-                        : ''}
-                  </div>
-                  {message.needsClarification && message.clarificationQuestion && (
-                    <div className="mt-3 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border-l-4 border-yellow-400">
-                      <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
-                        🤔 {message.clarificationQuestion}
-                      </p>
-                    </div>
-                  )}
-                  {message.action === "read" && message.data && (
-                    <div className="mt-3">
-                      <div className="text-xs text-gray-500 mb-2">
-                        Debug: Data type: {typeof message.data}, Is array: {Array.isArray(message.data)}, Length: {Array.isArray(message.data) ? message.data.length : (message.data ? 1 : 'N/A')}
-                      </div>
-                      <DataTable data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : message.data ? [message.data as Record<string, unknown>] : []} />
-                    </div>
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          {isLoading && (
-            <div className="flex justify-start">
-              <div className="rounded-lg px-4 py-2">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  <span className="text-sm text-gray-500">Thinking...</span>
-                </div>
-              </div>
-            </div>
-          )}
-          <div ref={messagesEndRef} />
-        </div>
-      </ScrollArea>
       <form onSubmit={handleSubmit} className="flex gap-2 w-full px-4 pb-6 mt-auto">
         <Input
           value={input}
@@ -774,17 +763,17 @@ What would you like to do today?`,
 function DataTable({ data }: { data: Record<string, unknown>[] }) {
   // Ensure data is an array
   if (!Array.isArray(data)) {
-    return <div className="text-gray-500 text-sm">Invalid data format</div>;
+    return <div>Invalid data format</div>;
   }
 
   if (!data || data.length === 0) {
-    return <div className="text-gray-500 text-sm">No data to display</div>;
+    return <div>No data to display</div>;
   }
 
   // Ensure we have valid data
   const validData = data.filter(item => item && typeof item === 'object');
   if (validData.length === 0) {
-    return <div className="text-gray-500 text-sm">No valid data to display</div>;
+    return <div>No valid data to display</div>;
   }
 
   const columns = Object.keys(validData[0]).filter(key => 
@@ -792,12 +781,12 @@ function DataTable({ data }: { data: Record<string, unknown>[] }) {
   );
 
   return (
-    <div className="overflow-x-auto border rounded-lg">
-      <table className="w-full text-sm">
+    <div style={{ background: "#fff", borderRadius: 12, padding: 8 }}>
+      <table>
         <thead>
-          <tr className="bg-gray-50 dark:bg-gray-800 border-b">
+          <tr>
             {columns.map(column => (
-              <th key={column} className="text-left p-3 font-medium text-gray-700 dark:text-gray-300">
+              <th key={column}>
                 {column.charAt(0).toUpperCase() + column.slice(1).replace(/([A-Z])/g, ' $1')}
               </th>
             ))}
@@ -805,9 +794,9 @@ function DataTable({ data }: { data: Record<string, unknown>[] }) {
         </thead>
         <tbody>
           {validData.map((row, index) => (
-            <tr key={index} className="border-b hover:bg-gray-50 dark:hover:bg-gray-800">
+            <tr key={index}>
               {columns.map(column => (
-                <td key={column} className="p-3 text-gray-600 dark:text-gray-400">
+                <td key={column}>
                   {formatCellValue(row[column])}
                 </td>
               ))}

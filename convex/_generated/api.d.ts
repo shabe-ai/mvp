@@ -14,6 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as crm from "../crm.js";
+import type * as enrich from "../enrich.js";
 import type * as seed from "../seed.js";
 
 /**
@@ -26,6 +27,7 @@ import type * as seed from "../seed.js";
  */
 declare const fullApi: ApiFromModules<{
   crm: typeof crm;
+  enrich: typeof enrich;
   seed: typeof seed;
 }>;
 export declare const api: FilterApi<

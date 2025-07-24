@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
+import { enrichContact, enrichAccount } from "./enrich";
+import { api } from "./_generated/api";
 
 // ===== TEAM FUNCTIONS =====
 
@@ -76,6 +78,8 @@ export const createContact = mutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+    // Schedule enrichment after creation
+    await ctx.scheduler.runAfter(0, api.enrich.enrichContact, { contactId });
     return contactId;
   },
 });
@@ -150,6 +154,8 @@ export const createAccount = mutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+    // Schedule enrichment after creation
+    await ctx.scheduler.runAfter(0, api.enrich.enrichAccount, { accountId });
     return accountId;
   },
 });

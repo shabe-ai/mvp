@@ -98,6 +98,9 @@ IMPORTANT:
 - When referencing a company or account in a request, use the 'company' or 'accountName' field with the company name (e.g., 'NBA'), unless you know the actual account ID. Only use 'accountId' if you have the real database ID.
 - When referencing a contact, use 'contactName' (e.g., 'John Wall') or 'email' if you do not know the contact's ID. Only use 'contactId' if you have the real database ID.
 - The backend will resolve names to IDs automatically. Do NOT put company names in the 'accountId' field or contact names in the 'contactId' field.
+- For all read/view actions, always return the results as an array of objects in the "data" field. Do NOT format tables in the "message" field. The "message" field should only contain a summary or count, not a table.
+- For range or date queries (e.g., "deals over $25k", "created this quarter"), use filter objects with operators like $gt, $gte, $lt, $lte. For example:
+  { "amount": { "$gt": 25000 }, "createdAt": { "$gte": 1720000000000 } }
 
 SPECIAL INSTRUCTIONS FOR BLANK/EMPTY FIELD QUERIES:
 - When the user asks for records where a field is blank, empty, or missing (e.g., "contacts with no email"), return a system action with a filter for that field set to an empty string ("") or null. For example:
@@ -509,16 +512,6 @@ async function handleRead(response: CRMActionRequest, teamId: string) {
     switch (objectType) {
       case "contacts":
         records = await convex.query(api.crm.getContactsByTeam, { teamId });
-        // Apply all filters in data
-        if (data && typeof data === 'object') {
-          Object.entries(data).forEach(([key, value]) => {
-            if (value === "" || value === null) {
-              records = records.filter((c) => !c[key] || c[key] === "");
-            } else {
-              records = records.filter((c) => c[key] === value);
-            }
-          });
-        }
         break;
       case "accounts":
         records = await convex.query(api.crm.getAccountsByTeam, { teamId });
@@ -531,6 +524,30 @@ async function handleRead(response: CRMActionRequest, teamId: string) {
         break;
       default:
         return { message: `❌ Unknown object type: ${objectType}` };
+    }
+
+    // Enhanced filter logic: support $gt, $gte, $lt, $lte
+    if (data && typeof data === 'object') {
+      Object.entries(data).forEach(([key, value]) => {
+        if (value && typeof value === 'object' && ("$gt" in value || "$gte" in value || "$lt" in value || "$lte" in value)) {
+          if ("$gt" in value) {
+            records = records.filter((c) => typeof c[key] === 'number' && c[key] > value["$gt"]);
+          }
+          if ("$gte" in value) {
+            records = records.filter((c) => typeof c[key] === 'number' && c[key] >= value["$gte"]);
+          }
+          if ("$lt" in value) {
+            records = records.filter((c) => typeof c[key] === 'number' && c[key] < value["$lt"]);
+          }
+          if ("$lte" in value) {
+            records = records.filter((c) => typeof c[key] === 'number' && c[key] <= value["$lte"]);
+          }
+        } else if (value === "" || value === null) {
+          records = records.filter((c) => !c[key] || c[key] === "");
+        } else {
+          records = records.filter((c) => c[key] === value);
+        }
+      });
     }
 
     if (!records || records.length === 0) {
