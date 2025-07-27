@@ -38,6 +38,9 @@ export class EmbeddingsService {
     const chunks: string[] = [];
     let start = 0;
     
+    // Ensure overlap is not larger than chunk size
+    const safeOverlap = Math.min(overlap, chunkSize - 100);
+    
     while (start < text.length) {
       const end = Math.min(start + chunkSize, text.length);
       let chunk = text.slice(start, end);
@@ -54,9 +57,21 @@ export class EmbeddingsService {
       }
       
       chunks.push(chunk.trim());
-      start = end - overlap;
       
-      if (start >= text.length) break;
+      // Calculate next start position with safety check
+      const nextStart = end - safeOverlap;
+      if (nextStart <= start) {
+        // Prevent infinite loop by moving forward at least 100 characters
+        start = start + 100;
+      } else {
+        start = nextStart;
+      }
+      
+      // Safety check to prevent infinite loops
+      if (chunks.length > 1000) {
+        console.warn('⚠️ Too many chunks generated, stopping to prevent infinite loop');
+        break;
+      }
     }
     
     return chunks.filter(chunk => chunk.length > 50); // Filter out very short chunks
