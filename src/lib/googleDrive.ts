@@ -1,8 +1,5 @@
 import { google } from 'googleapis';
 import { TokenStorage } from './tokenStorage';
-import pdf from 'pdf-parse';
-import mammoth from 'mammoth';
-import * as XLSX from 'xlsx';
 
 // Google Drive API scopes
 const DRIVE_SCOPES = [
@@ -182,8 +179,22 @@ export class GoogleDriveService {
         alt: 'media'
       });
       
-      // Parse PDF content
-      const pdfBuffer = Buffer.from(response.data as string, 'base64');
+      // Handle different response data types
+      let pdfBuffer: Buffer;
+      if (response.data instanceof Buffer) {
+        pdfBuffer = response.data;
+      } else if (typeof response.data === 'string') {
+        pdfBuffer = Buffer.from(response.data, 'base64');
+      } else if (response.data instanceof ArrayBuffer) {
+        pdfBuffer = Buffer.from(response.data);
+      } else {
+        // Convert Blob or other types to Buffer
+        const arrayBuffer = await (response.data as unknown as Blob).arrayBuffer();
+        pdfBuffer = Buffer.from(arrayBuffer);
+      }
+      
+      // Dynamic import to avoid the test file issue
+      const pdf = (await import('pdf-parse')).default;
       const pdfData = await pdf(pdfBuffer);
       
       return pdfData.text;
@@ -216,8 +227,22 @@ export class GoogleDriveService {
         alt: 'media'
       });
       
-      // Parse Word document content
-      const docBuffer = Buffer.from(response.data as string, 'base64');
+      // Handle different response data types
+      let docBuffer: Buffer;
+      if (response.data instanceof Buffer) {
+        docBuffer = response.data;
+      } else if (typeof response.data === 'string') {
+        docBuffer = Buffer.from(response.data, 'base64');
+      } else if (response.data instanceof ArrayBuffer) {
+        docBuffer = Buffer.from(response.data);
+      } else {
+        // Convert Blob or other types to Buffer
+        const arrayBuffer = await (response.data as unknown as Blob).arrayBuffer();
+        docBuffer = Buffer.from(arrayBuffer);
+      }
+      
+      // Dynamic import to avoid the test file issue
+      const mammoth = (await import('mammoth')).default;
       const result = await mammoth.extractRawText({ buffer: docBuffer });
       
       return result.value;
@@ -238,14 +263,28 @@ export class GoogleDriveService {
         alt: 'media'
       });
       
-      // Parse Excel content
-      const excelBuffer = Buffer.from(response.data as string, 'base64');
+      // Handle different response data types
+      let excelBuffer: Buffer;
+      if (response.data instanceof Buffer) {
+        excelBuffer = response.data;
+      } else if (typeof response.data === 'string') {
+        excelBuffer = Buffer.from(response.data, 'base64');
+      } else if (response.data instanceof ArrayBuffer) {
+        excelBuffer = Buffer.from(response.data);
+      } else {
+        // Convert Blob or other types to Buffer
+        const arrayBuffer = await (response.data as unknown as Blob).arrayBuffer();
+        excelBuffer = Buffer.from(arrayBuffer);
+      }
+      
+      // Dynamic import to avoid the test file issue
+      const XLSX = await import('xlsx');
       const workbook = XLSX.read(excelBuffer, { type: 'buffer' });
       
       let textContent = '';
       
       // Extract text from all sheets
-      workbook.SheetNames.forEach(sheetName => {
+      workbook.SheetNames.forEach((sheetName: string) => {
         const worksheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
         
