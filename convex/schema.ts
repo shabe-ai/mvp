@@ -258,11 +258,8 @@ export default defineSchema({
     fileId: v.string(), // Google Drive file ID
     folderPath: v.string(),
     
-    // Content
-    content: v.string(),
+    // Processing info (no full content storage)
     contentLength: v.number(),
-    
-    // Processing info
     chunkCount: v.number(),
     embeddingCount: v.number(),
     processingStatus: v.union(

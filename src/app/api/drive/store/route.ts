@@ -86,7 +86,6 @@ export async function POST(request: NextRequest) {
         fileType: processedDocument.fileType,
         fileId: processedDocument.id,
         folderPath: processedDocument.folderPath,
-        content: processedDocument.content,
         contentLength: processedDocument.content.length,
         chunkCount: processedDocument.chunks.length,
         embeddingCount: processedDocument.embeddingCount,
