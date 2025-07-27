@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
 import { Doc, Id } from "../../../../convex/_generated/dataModel";
+import { aiContextService } from "@/lib/aiContext";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -178,11 +179,40 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Get document context for the user's query
+    const lastUserMessage = messages && messages.length > 0 ? messages[messages.length - 1].content : "";
+    let documentContext = "";
+    let hasRelevantDocuments = false;
+    
+    if (lastUserMessage) {
+      try {
+        const contextResult = await aiContextService.createAIContext(
+          lastUserMessage,
+          teamId,
+          3
+        );
+        
+        if (contextResult.hasRelevantDocuments) {
+          documentContext = contextResult.context;
+          hasRelevantDocuments = true;
+          console.log(`📚 Found ${contextResult.totalDocuments} relevant documents for query`);
+        }
+      } catch (error) {
+        console.error('❌ Error getting document context:', error);
+      }
+    }
+
+    // Create enhanced system prompt with document context
+    let enhancedSystemPrompt = CRM_SYSTEM_PROMPT;
+    if (hasRelevantDocuments) {
+      enhancedSystemPrompt += `\n\nDOCUMENT CONTEXT:\n${documentContext}\n\nUse the document context above to provide more informed and accurate responses. If the documents contain relevant information, incorporate it into your response. If not, rely on your general knowledge.`;
+    }
+
     // Call OpenAI to understand the intent
     const completion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
-        { role: "system", content: CRM_SYSTEM_PROMPT },
+        { role: "system", content: enhancedSystemPrompt },
         ...messages.map((msg: Message) => ({
           role: msg.role,
           content: msg.content,
@@ -209,19 +239,19 @@ export async function POST(req: NextRequest) {
       };
     }
 
-    // Define lastUserMessage for post-processing
-    const lastUserMessage = messages && messages.length > 0 ? messages[messages.length - 1].content.toLowerCase() : "";
+    // Define lastUserMessage for post-processing (reuse the one from above)
+    const lastUserMessageLower = lastUserMessage.toLowerCase();
 
     // --- POST-PROCESSING FOR COMPANY FILTER QUERIES ---
     if (
-      lastUserMessage &&
-      lastUserMessage.includes("at the ") &&
+      lastUserMessageLower &&
+      lastUserMessageLower.includes("at the ") &&
       parsedResponse.action === "read" &&
       parsedResponse.objectType === "contacts" &&
       (!parsedResponse.data || !parsedResponse.data.company)
     ) {
       // Extract company name after 'at the '
-      const match = lastUserMessage.match(/at the ([\w\s]+)/);
+      const match = lastUserMessageLower.match(/at the ([\w\s]+)/);
       if (match && match[1]) {
         const company = match[1].trim();
         parsedResponse.data = { ...(parsedResponse.data || {}), company };
@@ -230,8 +260,8 @@ export async function POST(req: NextRequest) {
 
     // --- POST-PROCESSING FOR BLANK EMAIL QUERIES ---
     if (
-      lastUserMessage &&
-      (lastUserMessage.includes("blank email") || lastUserMessage.includes("no email") || lastUserMessage.includes("empty email")) &&
+      lastUserMessageLower &&
+      (lastUserMessageLower.includes("blank email") || lastUserMessageLower.includes("no email") || lastUserMessageLower.includes("empty email")) &&
       parsedResponse.action === "read" &&
       parsedResponse.objectType === "contacts" &&
       (!parsedResponse.data || !parsedResponse.data.email)
@@ -241,8 +271,8 @@ export async function POST(req: NextRequest) {
 
     // --- POST-PROCESSING FOR COUNT/SUMMARY QUERIES ---
     if (
-      lastUserMessage &&
-      (lastUserMessage.includes("how many") || lastUserMessage.includes("count") || lastUserMessage.includes("number of")) &&
+      lastUserMessageLower &&
+      (lastUserMessageLower.includes("how many") || lastUserMessageLower.includes("count") || lastUserMessageLower.includes("number of")) &&
       parsedResponse.action === "read" &&
       Array.isArray(parsedResponse.data) &&
       (!parsedResponse.message || parsedResponse.message.startsWith("📊 Found"))
@@ -252,7 +282,7 @@ export async function POST(req: NextRequest) {
       if (parsedResponse.objectType) subject = parsedResponse.objectType;
       // Try to extract filter context from the user message
       let context = "";
-      const match = lastUserMessage.match(/at (the )?([\w\s]+)/);
+      const match = lastUserMessageLower.match(/at (the )?([\w\s]+)/);
       if (match && match[2]) context = ` at ${match[2].trim()}`;
       parsedResponse.message = `You have ${count} ${subject}${context}.`;
     }
@@ -343,6 +373,13 @@ export async function POST(req: NextRequest) {
       action: responseAction || parsedResponse.action,
       data: responseData || parsedResponse.data,
       ...(parsedResponse.fields ? { fields: parsedResponse.fields } : {}),
+      documentContext: hasRelevantDocuments ? {
+        hasRelevantDocuments: true,
+        totalDocuments: documentContext.split('\n\n').length - 1, // Rough count
+      } : {
+        hasRelevantDocuments: false,
+        totalDocuments: 0,
+      },
     });
 
   } catch (error) {

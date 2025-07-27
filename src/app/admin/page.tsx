@@ -107,6 +107,19 @@ function GoogleDriveSection() {
     chunkCount: number;
     embeddingCount: number;
   } | null>(null);
+  const [aiContextResult, setAiContextResult] = useState<{
+    success: boolean;
+    hasRelevantDocuments: boolean;
+    context: string;
+    documents: Array<{
+      fileName: string;
+      fileType: string;
+      chunkText: string;
+      similarity: number;
+      chunkIndex: number;
+    }>;
+    totalDocuments: number;
+  } | null>(null);
 
   const testDriveConnection = async () => {
     if (!user) return;
@@ -246,6 +259,39 @@ function GoogleDriveSection() {
     } catch (err) {
       console.error('Document storage error:', err);
       setError("Failed to store document");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const testAiContext = async (query: string) => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const res = await fetch("/api/ai/context", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          query, 
+          teamId: 'default-team' // We'll get this from user context later
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setAiContextResult(data);
+      }
+    } catch (err) {
+      console.error('AI context error:', err);
+      setError("Failed to get AI context");
     } finally {
       setLoading(false);
     }
@@ -441,6 +487,36 @@ function GoogleDriveSection() {
         </div>
       </div>
 
+      {/* AI Context Test */}
+      <div className="mt-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">AI Context Test:</h3>
+        <div className="flex space-x-2">
+          <input
+            type="text"
+            placeholder="Enter a question to test AI context..."
+            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm"
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && e.currentTarget.value.trim()) {
+                testAiContext(e.currentTarget.value.trim());
+                e.currentTarget.value = '';
+              }
+            }}
+          />
+          <button
+            onClick={() => {
+              const input = document.querySelector('input[placeholder*="AI context"]') as HTMLInputElement;
+              if (input && input.value.trim()) {
+                testAiContext(input.value.trim());
+                input.value = '';
+              }
+            }}
+            className="px-3 py-2 bg-purple-500 text-white rounded text-sm hover:bg-purple-600"
+          >
+            Test Context
+          </button>
+        </div>
+      </div>
+
       {storageResult && (
         <div className="mt-4">
           <h3 className="text-sm font-medium text-gray-700 mb-2">Storage Results:</h3>
@@ -469,6 +545,45 @@ function GoogleDriveSection() {
             <div className="text-green-600 font-medium">
               ✅ Document successfully stored in Convex!
             </div>
+          </div>
+        </div>
+      )}
+
+      {aiContextResult && (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">AI Context Results:</h3>
+          <div className="bg-gray-50 p-3 rounded text-sm text-gray-800">
+            <div className="mb-2">
+              <strong>Has Relevant Documents:</strong> {aiContextResult.hasRelevantDocuments ? 'Yes' : 'No'}
+            </div>
+            <div className="mb-2">
+              <strong>Total Documents:</strong> {aiContextResult.totalDocuments}
+            </div>
+            
+            {aiContextResult.hasRelevantDocuments && (
+              <div className="mt-3">
+                <strong>Relevant Documents:</strong>
+                <div className="mt-2 space-y-2">
+                  {aiContextResult.documents.map((doc, index) => (
+                    <div key={index} className="border-l-2 border-purple-500 pl-2">
+                      <div className="text-xs text-gray-600">
+                        {doc.fileName} (similarity: {doc.similarity.toFixed(3)})
+                      </div>
+                      <div className="text-sm">{doc.chunkText.substring(0, 200)}...</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {aiContextResult.context && (
+              <div className="mt-3">
+                <strong>Generated Context:</strong>
+                <div className="mt-2 bg-white p-2 rounded text-xs">
+                  {aiContextResult.context}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
