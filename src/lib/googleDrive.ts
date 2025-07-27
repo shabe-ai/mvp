@@ -251,6 +251,7 @@ export class GoogleDriveService {
  */
 export async function getGoogleDriveService(userId: string): Promise<GoogleDriveService | null> {
   try {
+    console.log('🔍 Getting Google Drive service for user:', userId);
     const accessToken = await TokenStorage.getToken(userId);
     
     if (!accessToken) {
@@ -258,6 +259,7 @@ export async function getGoogleDriveService(userId: string): Promise<GoogleDrive
       return null;
     }
 
+    console.log('✅ Google access token found, creating Drive service');
     return new GoogleDriveService(accessToken);
   } catch (error) {
     console.error('❌ Error getting Google Drive service:', error);

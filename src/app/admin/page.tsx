@@ -84,7 +84,10 @@ function GoogleDriveSection() {
     setError(null);
     
     try {
-      const res = await fetch("/api/drive?action=folders");
+      const res = await fetch("/api/drive?action=folders", {
+        credentials: 'include',
+      });
+      
       const data = await res.json();
       
       if (data.error) {
@@ -93,6 +96,7 @@ function GoogleDriveSection() {
         setFolders(data.folders || []);
       }
     } catch (err) {
+      console.error('Drive connection error:', err);
       setError("Failed to connect to Google Drive");
     } finally {
       setLoading(false);

@@ -8,7 +8,10 @@ export async function GET(request: NextRequest) {
     const session = await auth();
     const userId = session?.userId;
 
+    console.log('🔍 Drive API - Session:', { userId: userId ? 'present' : 'missing' });
+
     if (!userId) {
+      console.log('❌ Drive API - User not authenticated');
       return NextResponse.json(
         { error: 'User not authenticated' },
         { status: 401 }
