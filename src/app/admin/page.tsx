@@ -7,6 +7,7 @@ function GoogleIntegrationSection() {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [authUrl, setAuthUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [calendarError, setCalendarError] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -18,6 +19,17 @@ function GoogleIntegrationSection() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+    // Test calendar access
+    fetch("/api/calendar")
+      .then(res => res.json())
+      .then(data => {
+        if (data.summary && data.summary.toLowerCase().includes("insufficient authentication scopes")) {
+          setCalendarError(true);
+        } else {
+          setCalendarError(false);
+        }
+      })
+      .catch(() => setCalendarError(true));
   }, [user]);
 
   const handleConnect = async () => {
@@ -33,11 +45,21 @@ function GoogleIntegrationSection() {
   return (
     <section className="bg-white rounded-lg shadow p-6 border border-slate-100 mb-6">
       <h2 className="text-xl font-semibold mb-2">Google Integration</h2>
-      <p className="text-gray-600 mb-2">Connect your Google account to enable Gmail features.</p>
+      <p className="text-gray-600 mb-2">Connect your Google account to enable Gmail and Calendar features.</p>
       {loading ? (
         <div className="text-gray-400">Checking connection...</div>
       ) : isConnected ? (
-        <div className="text-green-600 font-medium">✅ Google account connected!</div>
+        <>
+          <div className="text-green-600 font-medium">✅ Google account connected!</div>
+          {calendarError && (
+            <button
+              onClick={handleConnect}
+              className="mt-3 px-4 py-2 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors"
+            >
+              Reconnect Google to enable Calendar features
+            </button>
+          )}
+        </>
       ) : (
         <button
           onClick={handleConnect}

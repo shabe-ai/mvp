@@ -6,8 +6,8 @@ export default async function Home() {
   const { userId } = await auth();
 
   return (
-    <div className="min-h-screen h-screen flex flex-col bg-white overflow-hidden">
-      <main className="flex-1 w-full h-full bg-white overflow-hidden p-0 m-0">
+    <div className="flex flex-col bg-white w-full h-full flex-1 min-h-0">
+      <main className="flex-1 min-h-0 w-full bg-white flex flex-col p-0 m-0">
         {userId ? (
           <Chat hideTeamSelector />
         ) : (

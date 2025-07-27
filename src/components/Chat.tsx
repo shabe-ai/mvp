@@ -60,25 +60,44 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
   } | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
 
-  // Initialize with welcome message
+  // Initialize with calendar summary if user is logged in
   useEffect(() => {
-    if (user && !messages.length) {
-      setMessages([{
-        id: "welcome",
-        role: "assistant",
-        content: `Welcome to your CRM! 👋 I'm here to help you manage your customer relationships. You can:
-
-• Create contacts, accounts, activities, and deals
-• View and search your data
-• Update records
-• Add custom fields
-• Get insights and reports
-
-What would you like to do today?`,
-        timestamp: new Date(),
-      }]);
+    if (user && isLoaded) {
+      (async () => {
+        try {
+          const res = await fetch('/api/calendar');
+          const data = await res.json();
+          let content = data.summary;
+          if (data.events && data.events.length > 0) {
+            content += '\n\n';
+            data.events.forEach((event: any, idx: number) => {
+              const start = event.start?.dateTime || event.start?.date || '';
+              const time = start ? new Date(start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+              content += `• ${event.summary || 'Untitled Event'}${time ? ` at ${time}` : ''}`;
+              if (event.attendees && event.attendees.length > 0) {
+                content += ` (Attendees: ${event.attendees.map((a: any) => a.email).join(', ')})`;
+              }
+              content += '\n';
+            });
+            content += '\nWould you like help prepping for any of these meetings?';
+          }
+          setMessages([{
+            id: 'calendar-summary',
+            role: 'assistant',
+            content,
+            timestamp: new Date(),
+          }]);
+        } catch (e) {
+          setMessages([{
+            id: 'calendar-summary',
+            role: 'assistant',
+            content: 'Welcome! (Could not fetch your calendar events.)',
+            timestamp: new Date(),
+          }]);
+        }
+      })();
     }
-  }, [user, messages.length]);
+  }, [user, isLoaded]);
 
   // Load messages from localStorage on mount
   useEffect(() => {
@@ -452,6 +471,7 @@ What would you like to do today?`,
 
   const renderMessage = (message: Message) => {
     const isUser = message.role === "user";
+    const isSystem = message.role === 'assistant' && message.action === 'message' && !message.data;
     return (
       <div
         key={message.id}
@@ -466,10 +486,10 @@ What would you like to do today?`,
             maxWidth: "75%",
             borderRadius: 16,
             padding: "12px 18px",
-            background: isUser ? "#fde047" : "#fff",
+            background: isSystem ? "#f3f4f6" : (isUser ? "#fde047" : "#fff"),
             color: "#222",
             fontWeight: 400,
-            boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+            boxShadow: (isSystem || isUser) ? "0 4px 16px rgba(0,0,0,0.10)" : "0 1px 4px rgba(0,0,0,0.04)",
             whiteSpace: "pre-wrap",
           }}
         >
@@ -657,8 +677,8 @@ What would you like to do today?`,
   // Add debug log before rendering messages
   console.debug('DEBUG: Rendering messages array:', messages);
   return (
-    <div style={{ width: '100%', height: '100%', background: '#fff', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ flex: 1, overflowY: 'auto', padding: 24 }}>
+    <div style={{ width: '100%', background: '#fff' }} className="flex-1 min-h-0 flex flex-col">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-6 pb-4" style={{ width: '100%' }}>
         {messages.map(renderMessage)}
         <div ref={messagesEndRef} />
       </div>
