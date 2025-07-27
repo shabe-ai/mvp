@@ -5,6 +5,7 @@ import { mutation, query } from "./_generated/server";
 export const storeDocument = mutation({
   args: {
     teamId: v.string(),
+    createdBy: v.string(), // Add createdBy parameter
     fileName: v.string(),
     fileType: v.string(),
     fileId: v.string(),
@@ -16,12 +17,8 @@ export const storeDocument = mutation({
     lastModified: v.number(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const userId = identity.subject;
+    // Use the passed userId instead of getting from auth context
+    const userId = args.createdBy;
 
     // Check if document already exists
     const existingDoc = await ctx.db
@@ -70,6 +67,7 @@ export const storeDocument = mutation({
 export const storeDocumentChunks = mutation({
   args: {
     teamId: v.string(),
+    createdBy: v.string(), // Add createdBy parameter
     documentId: v.id("documents"),
     chunks: v.array(
       v.object({
@@ -87,12 +85,8 @@ export const storeDocumentChunks = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const userId = identity.subject;
+    // Use the passed userId instead of getting from auth context
+    const userId = args.createdBy;
 
     // Delete existing chunks for this document
     const existingChunks = await ctx.db

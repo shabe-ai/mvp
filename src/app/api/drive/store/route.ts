@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
     // Store document in Convex
     const documentId = await convex.mutation(api.documents.storeDocument, {
       teamId,
+      createdBy: userId, // Pass the user ID directly
       fileName: processedDocument.fileName,
       fileType: processedDocument.fileType,
       fileId: processedDocument.id,
@@ -99,6 +100,7 @@ export async function POST(request: NextRequest) {
 
     const chunkIds = await convex.mutation(api.documents.storeDocumentChunks, {
       teamId,
+      createdBy: userId, // Pass the user ID directly
       documentId,
       chunks: chunksForStorage,
     });
