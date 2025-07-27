@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log(`🧠 Creating AI context for query: "${query}"`);
+    console.log(`🔍 Using teamId: ${teamId}`);
     
     // Get AI context from stored documents
     const contextResult = await aiContextService.createAIContext(
@@ -32,6 +33,12 @@ export async function POST(request: NextRequest) {
       teamId,
       maxResults
     );
+    
+    console.log(`📊 Context result:`, {
+      hasRelevantDocuments: contextResult.hasRelevantDocuments,
+      totalDocuments: contextResult.totalDocuments,
+      documentsFound: contextResult.documents.length
+    });
 
     return NextResponse.json({
       success: true,

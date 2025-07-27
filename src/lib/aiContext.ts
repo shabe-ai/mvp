@@ -30,12 +30,17 @@ export class AIContextService {
     maxResults: number = 3
   ): Promise<DocumentContext[]> {
     try {
+      console.log(`🔍 AI Context: Searching for team: ${teamId}`);
+      
       // Get all document chunks for the team
       const chunks = await convex.query(api.documents.getTeamChunks, {
         teamId,
       });
 
+      console.log(`📄 AI Context: Found ${chunks.length} chunks for team: ${teamId}`);
+
       if (chunks.length === 0) {
+        console.log(`❌ AI Context: No chunks found for team: ${teamId}`);
         return [];
       }
 
@@ -58,7 +63,7 @@ export class AIContextService {
       }> = [];
 
       for (const chunk of chunks) {
-        const similarity = embeddingsService['cosineSimilarity'](queryEmbedding, chunk.embedding);
+        const similarity = embeddingsService.cosineSimilarity(queryEmbedding, chunk.embedding);
         similarities.push({
           chunk,
           similarity,

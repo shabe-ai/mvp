@@ -65,23 +65,42 @@ export async function POST(request: NextRequest) {
       new Date(file.modifiedTime!)
     );
 
-    // Store document in Convex
-    const documentId = await convex.mutation(api.documents.storeDocument, {
+    console.log(`💾 Storing document in Convex with data:`, {
       teamId,
-      createdBy: userId, // Pass the user ID directly
+      createdBy: userId,
       fileName: processedDocument.fileName,
       fileType: processedDocument.fileType,
       fileId: processedDocument.id,
-      folderPath: processedDocument.folderPath,
-      content: processedDocument.content,
       contentLength: processedDocument.content.length,
       chunkCount: processedDocument.chunks.length,
-      embeddingCount: processedDocument.embeddingCount,
-      lastModified: processedDocument.lastModified.getTime(),
     });
 
-    if (!documentId) {
-      throw new Error('Failed to store document');
+    // Store document in Convex
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let documentId: any; // Will be Convex ID type
+    try {
+      documentId = await convex.mutation(api.documents.storeDocument, {
+        teamId,
+        createdBy: userId, // Pass the user ID directly
+        fileName: processedDocument.fileName,
+        fileType: processedDocument.fileType,
+        fileId: processedDocument.id,
+        folderPath: processedDocument.folderPath,
+        content: processedDocument.content,
+        contentLength: processedDocument.content.length,
+        chunkCount: processedDocument.chunks.length,
+        embeddingCount: processedDocument.embeddingCount,
+        lastModified: processedDocument.lastModified.getTime(),
+      });
+
+      console.log(`📄 Convex mutation result:`, documentId);
+
+      if (!documentId) {
+        throw new Error('Failed to store document');
+      }
+    } catch (error) {
+      console.error('❌ Convex mutation error:', error);
+      throw new Error(`Convex mutation failed: ${error}`);
     }
 
     // Store document chunks with embeddings
