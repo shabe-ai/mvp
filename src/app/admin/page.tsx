@@ -103,6 +103,16 @@ function GoogleDriveSection() {
     }
   };
 
+  const handleConnect = async () => {
+    setLoading(true);
+    const res = await fetch("/api/auth/google");
+    const data = await res.json();
+    setLoading(false);
+    if (data.authUrl) {
+      window.location.href = data.authUrl;
+    }
+  };
+
   return (
     <div>
       {loading ? (
@@ -115,13 +125,24 @@ function GoogleDriveSection() {
         </div>
       ) : null}
       
-      <button
-        onClick={testDriveConnection}
-        disabled={loading}
-        className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
-      >
-        {loading ? "Testing..." : "Test Google Drive Connection"}
-      </button>
+      <div className="space-y-2">
+        <button
+          onClick={testDriveConnection}
+          disabled={loading}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+        >
+          {loading ? "Testing..." : "Test Google Drive Connection"}
+        </button>
+        
+        {error && error.includes("insufficient authentication scopes") && (
+          <button
+            onClick={handleConnect}
+            className="px-4 py-2 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors"
+          >
+            Reconnect Google to enable Drive features
+          </button>
+        )}
+      </div>
       
       {folders.length > 0 && (
         <div className="mt-4">
