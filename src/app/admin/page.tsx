@@ -134,7 +134,7 @@ function GoogleDriveSection() {
           {loading ? "Testing..." : "Test Google Drive Connection"}
         </button>
         
-        {error && error.includes("insufficient authentication scopes") && (
+        {error && (error.includes("insufficient authentication scopes") || error.includes("403")) && (
           <button
             onClick={handleConnect}
             className="px-4 py-2 bg-yellow-500 text-white rounded-lg font-medium hover:bg-yellow-600 transition-colors"
@@ -142,6 +142,14 @@ function GoogleDriveSection() {
             Reconnect Google to enable Drive features
           </button>
         )}
+        
+        {/* Manual reconnection button for testing */}
+        <button
+          onClick={handleConnect}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-600 transition-colors"
+        >
+          Reconnect Google Account
+        </button>
       </div>
       
       {folders.length > 0 && (
