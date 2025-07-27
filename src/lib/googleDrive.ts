@@ -1,5 +1,8 @@
 import { google } from 'googleapis';
 import { TokenStorage } from './tokenStorage';
+import pdf from 'pdf-parse';
+import mammoth from 'mammoth';
+import * as XLSX from 'xlsx';
 
 // Google Drive API scopes
 const DRIVE_SCOPES = [
@@ -172,9 +175,22 @@ export class GoogleDriveService {
    * Extract text from PDF files
    */
   private async extractPdfFile(fileId: string): Promise<string> {
-    // For now, return a placeholder. PDF extraction requires additional libraries
-    console.log('📄 PDF extraction not yet implemented');
-    return '[PDF content - extraction coming soon]';
+    try {
+      // Download the PDF file
+      const response = await this.drive.files.get({
+        fileId: fileId,
+        alt: 'media'
+      });
+      
+      // Parse PDF content
+      const pdfBuffer = Buffer.from(response.data as string, 'base64');
+      const pdfData = await pdf(pdfBuffer);
+      
+      return pdfData.text;
+    } catch (error) {
+      console.error('❌ Error extracting PDF text:', error);
+      return '[PDF content - extraction failed]';
+    }
   }
 
   /**
@@ -193,18 +209,60 @@ export class GoogleDriveService {
    * Extract text from Word documents
    */
   private async extractWordDoc(fileId: string): Promise<string> {
-    // For now, return a placeholder. Word extraction requires additional libraries
-    console.log('📄 Word document extraction not yet implemented');
-    return '[Word document content - extraction coming soon]';
+    try {
+      // Download the Word document
+      const response = await this.drive.files.get({
+        fileId: fileId,
+        alt: 'media'
+      });
+      
+      // Parse Word document content
+      const docBuffer = Buffer.from(response.data as string, 'base64');
+      const result = await mammoth.extractRawText({ buffer: docBuffer });
+      
+      return result.value;
+    } catch (error) {
+      console.error('❌ Error extracting Word document text:', error);
+      return '[Word document content - extraction failed]';
+    }
   }
 
   /**
    * Extract text from Excel files
    */
   private async extractExcelFile(fileId: string): Promise<string> {
-    // For now, return a placeholder. Excel extraction requires additional libraries
-    console.log('📄 Excel file extraction not yet implemented');
-    return '[Excel content - extraction coming soon]';
+    try {
+      // Download the Excel file
+      const response = await this.drive.files.get({
+        fileId: fileId,
+        alt: 'media'
+      });
+      
+      // Parse Excel content
+      const excelBuffer = Buffer.from(response.data as string, 'base64');
+      const workbook = XLSX.read(excelBuffer, { type: 'buffer' });
+      
+      let textContent = '';
+      
+      // Extract text from all sheets
+      workbook.SheetNames.forEach(sheetName => {
+        const worksheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+        
+        textContent += `Sheet: ${sheetName}\n`;
+        jsonData.forEach((row: unknown) => {
+          if (Array.isArray(row) && row.length > 0) {
+            textContent += row.join('\t') + '\n';
+          }
+        });
+        textContent += '\n';
+      });
+      
+      return textContent;
+    } catch (error) {
+      console.error('❌ Error extracting Excel text:', error);
+      return '[Excel content - extraction failed]';
+    }
   }
 
   /**

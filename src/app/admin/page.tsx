@@ -75,8 +75,10 @@ function GoogleIntegrationSection() {
 function GoogleDriveSection() {
   const { user } = useUser();
   const [folders, setFolders] = useState<Array<{id: string; name: string}>>([]);
+  const [files, setFiles] = useState<Array<{id: string; name: string; mimeType: string}>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [extractedText, setExtractedText] = useState<string | null>(null);
 
   const testDriveConnection = async () => {
     if (!user) return;
@@ -98,6 +100,61 @@ function GoogleDriveSection() {
     } catch (err) {
       console.error('Drive connection error:', err);
       setError("Failed to connect to Google Drive");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const getFolderContents = async (folderId: string) => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const res = await fetch(`/api/drive?action=contents&folderId=${folderId}`, {
+        credentials: 'include',
+      });
+      
+      const data = await res.json();
+      
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setFiles(data.contents || []);
+      }
+    } catch (err) {
+      console.error('Folder contents error:', err);
+      setError("Failed to get folder contents");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const extractDocumentText = async (fileId: string) => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const res = await fetch("/api/drive/extract", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ fileId }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setExtractedText(data.extractedText);
+      }
+    } catch (err) {
+      console.error('Document extraction error:', err);
+      setError("Failed to extract document text");
     } finally {
       setLoading(false);
     }
@@ -155,10 +212,18 @@ function GoogleDriveSection() {
       {folders.length > 0 && (
         <div className="mt-4">
           <h3 className="text-sm font-medium text-gray-700 mb-2">Available Folders:</h3>
-          <div className="space-y-1">
+          <div className="space-y-2">
             {folders.slice(0, 5).map((folder) => (
-              <div key={folder.id} className="text-sm text-gray-600">
-                📁 {folder.name}
+              <div key={folder.id} className="flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  📁 {folder.name}
+                </div>
+                <button
+                  onClick={() => getFolderContents(folder.id)}
+                  className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                >
+                  Browse
+                </button>
               </div>
             ))}
             {folders.length > 5 && (
@@ -166,6 +231,42 @@ function GoogleDriveSection() {
                 ... and {folders.length - 5} more folders
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {files.length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Files in Folder:</h3>
+          <div className="space-y-2">
+            {files.slice(0, 10).map((file) => (
+              <div key={file.id} className="flex items-center justify-between">
+                <div className="text-sm text-gray-600">
+                  📄 {file.name} ({file.mimeType})
+                </div>
+                <button
+                  onClick={() => extractDocumentText(file.id)}
+                  className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                >
+                  Extract
+                </button>
+              </div>
+            ))}
+            {files.length > 10 && (
+              <div className="text-sm text-gray-500">
+                ... and {files.length - 10} more files
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {extractedText && (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Extracted Text:</h3>
+          <div className="bg-gray-50 p-3 rounded text-sm text-gray-800 max-h-40 overflow-y-auto">
+            {extractedText.substring(0, 500)}
+            {extractedText.length > 500 && '...'}
           </div>
         </div>
       )}
