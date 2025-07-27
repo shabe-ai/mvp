@@ -97,6 +97,16 @@ function GoogleDriveSection() {
     };
   } | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [storageResult, setStorageResult] = useState<{
+    success: boolean;
+    documentId: string;
+    chunkIds: string[];
+    fileName: string;
+    fileType: string;
+    textLength: number;
+    chunkCount: number;
+    embeddingCount: number;
+  } | null>(null);
 
   const testDriveConnection = async () => {
     if (!user) return;
@@ -208,6 +218,39 @@ function GoogleDriveSection() {
     }
   };
 
+  const storeDocument = async (fileId: string) => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const res = await fetch("/api/drive/store", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          fileId, 
+          teamId: 'default-team' // We'll get this from user context later
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setStorageResult(data);
+      }
+    } catch (err) {
+      console.error('Document storage error:', err);
+      setError("Failed to store document");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleConnect = async () => {
     setLoading(true);
     const res = await fetch("/api/auth/google");
@@ -305,6 +348,12 @@ function GoogleDriveSection() {
                   >
                     Embed
                   </button>
+                  <button
+                    onClick={() => storeDocument(file.id)}
+                    className="px-2 py-1 text-xs bg-blue-500 text-white rounded hover:bg-blue-600"
+                  >
+                    Store
+                  </button>
                 </div>
               </div>
             ))}
@@ -391,9 +440,41 @@ function GoogleDriveSection() {
           </button>
         </div>
       </div>
+
+      {storageResult && (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Storage Results:</h3>
+          <div className="bg-gray-50 p-3 rounded text-sm text-gray-800">
+            <div className="mb-2">
+              <strong>Document ID:</strong> {storageResult.documentId}
+            </div>
+            <div className="mb-2">
+              <strong>File:</strong> {storageResult.fileName}
+            </div>
+            <div className="mb-2">
+              <strong>Type:</strong> {storageResult.fileType}
+            </div>
+            <div className="mb-2">
+              <strong>Text Length:</strong> {storageResult.textLength} characters
+            </div>
+            <div className="mb-2">
+              <strong>Chunks:</strong> {storageResult.chunkCount}
+            </div>
+            <div className="mb-2">
+              <strong>Embeddings:</strong> {storageResult.embeddingCount}
+            </div>
+            <div className="mb-2">
+              <strong>Chunk IDs:</strong> {storageResult.chunkIds.length} stored
+            </div>
+            <div className="text-green-600 font-medium">
+              ✅ Document successfully stored in Convex!
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+  }
 
 export default function AdminPage() {
   return (

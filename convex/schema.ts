@@ -245,4 +245,68 @@ export default defineSchema({
   })
     .index("by_team_and_object", ["teamId", "objectType"])
     .index("by_field_name", ["fieldName"]),
+
+  // Documents table (processed Google Drive documents)
+  documents: defineTable({
+    teamId: v.string(),
+    createdBy: v.string(),
+    sharedWith: v.array(v.string()),
+    
+    // Document metadata
+    fileName: v.string(),
+    fileType: v.string(),
+    fileId: v.string(), // Google Drive file ID
+    folderPath: v.string(),
+    
+    // Content
+    content: v.string(),
+    contentLength: v.number(),
+    
+    // Processing info
+    chunkCount: v.number(),
+    embeddingCount: v.number(),
+    processingStatus: v.union(
+      v.literal("pending"),
+      v.literal("processing"),
+      v.literal("completed"),
+      v.literal("failed")
+    ),
+    
+    // Timestamps
+    lastModified: v.number(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_team", ["teamId"])
+    .index("by_created_by", ["createdBy"])
+    .index("by_file_id", ["fileId"])
+    .index("by_status", ["processingStatus"])
+    .index("by_created_at", ["createdAt"]),
+
+  // Document chunks table (for embeddings and search)
+  documentChunks: defineTable({
+    teamId: v.string(),
+    documentId: v.id("documents"),
+    createdBy: v.string(),
+    
+    // Chunk details
+    chunkIndex: v.number(),
+    text: v.string(),
+    embedding: v.array(v.number()), // Vector embedding
+    
+    // Metadata
+    metadata: v.object({
+      fileName: v.string(),
+      fileType: v.string(),
+      folderPath: v.string(),
+      totalChunks: v.number(),
+      lastModified: v.number(),
+    }),
+    
+    createdAt: v.number(),
+  })
+    .index("by_team", ["teamId"])
+    .index("by_document", ["documentId"])
+    .index("by_created_by", ["createdBy"])
+    .index("by_chunk_index", ["chunkIndex"]),
 }); 
