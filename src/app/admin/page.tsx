@@ -72,6 +72,74 @@ function GoogleIntegrationSection() {
   );
 }
 
+function GoogleDriveSection() {
+  const { user } = useUser();
+  const [folders, setFolders] = useState<Array<{id: string; name: string}>>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const testDriveConnection = async () => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const res = await fetch("/api/drive?action=folders");
+      const data = await res.json();
+      
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setFolders(data.folders || []);
+      }
+    } catch (err) {
+      setError("Failed to connect to Google Drive");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      {loading ? (
+        <div className="text-gray-400">Testing Google Drive connection...</div>
+      ) : error ? (
+        <div className="text-red-600 mb-3">{error}</div>
+      ) : folders.length > 0 ? (
+        <div className="text-green-600 font-medium mb-3">
+          ✅ Google Drive connected! Found {folders.length} folders.
+        </div>
+      ) : null}
+      
+      <button
+        onClick={testDriveConnection}
+        disabled={loading}
+        className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
+      >
+        {loading ? "Testing..." : "Test Google Drive Connection"}
+      </button>
+      
+      {folders.length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Available Folders:</h3>
+          <div className="space-y-1">
+            {folders.slice(0, 5).map((folder) => (
+              <div key={folder.id} className="text-sm text-gray-600">
+                📁 {folder.name}
+              </div>
+            ))}
+            {folders.length > 5 && (
+              <div className="text-sm text-gray-500">
+                ... and {folders.length - 5} more folders
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminPage() {
   return (
     <div className="max-w-3xl mx-auto py-12">
@@ -87,6 +155,13 @@ export default function AdminPage() {
             <p className="text-gray-600 mb-2">View and manage your team information.</p>
             {/* TODO: Add team details UI here */}
             <div className="text-sm text-gray-400">(Team details UI coming soon)</div>
+          </section>
+
+          {/* Google Drive Integration Section */}
+          <section className="bg-white rounded-lg shadow p-6 border border-slate-100">
+            <h2 className="text-xl font-semibold mb-2">Google Drive Integration</h2>
+            <p className="text-gray-600 mb-2">Connect your Google Drive to enable AI-powered document analysis.</p>
+            <GoogleDriveSection />
           </section>
 
           {/* Future Admin Features */}
