@@ -284,6 +284,21 @@ export class GoogleDriveService {
   }
 
   /**
+   * Get file metadata
+   */
+  async getFileMetadata(fileId: string) {
+    try {
+      return await this.drive.files.get({
+        fileId: fileId,
+        fields: 'id,name,mimeType,modifiedTime'
+      });
+    } catch (error) {
+      console.error('❌ Error getting file metadata:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Monitor folder for changes (returns files modified since a given date)
    */
   async getModifiedFiles(folderId: string, sinceDate: Date): Promise<DriveFile[]> {

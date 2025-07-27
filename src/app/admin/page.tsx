@@ -79,6 +79,24 @@ function GoogleDriveSection() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [extractedText, setExtractedText] = useState<string | null>(null);
+  const [embeddingsResult, setEmbeddingsResult] = useState<{
+    success: boolean;
+    fileId: string;
+    fileName?: string;
+    fileType?: string;
+    textLength: number;
+    chunkCount: number;
+    embeddingCount: number;
+    semanticSearch?: {
+      query: string;
+      results: Array<{
+        chunkText: string;
+        similarity: number;
+        chunkIndex: number;
+      }>;
+    };
+  } | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   const testDriveConnection = async () => {
     if (!user) return;
@@ -155,6 +173,36 @@ function GoogleDriveSection() {
     } catch (err) {
       console.error('Document extraction error:', err);
       setError("Failed to extract document text");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processEmbeddings = async (fileId: string, query?: string) => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const res = await fetch("/api/drive/embeddings", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ fileId, query }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setEmbeddingsResult(data);
+      }
+    } catch (err) {
+      console.error('Embeddings processing error:', err);
+      setError("Failed to process embeddings");
     } finally {
       setLoading(false);
     }
@@ -244,12 +292,20 @@ function GoogleDriveSection() {
                 <div className="text-sm text-gray-600">
                   📄 {file.name} ({file.mimeType})
                 </div>
-                <button
-                  onClick={() => extractDocumentText(file.id)}
-                  className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
-                >
-                  Extract
-                </button>
+                <div className="flex space-x-1">
+                  <button
+                    onClick={() => extractDocumentText(file.id)}
+                    className="px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                  >
+                    Extract
+                  </button>
+                  <button
+                    onClick={() => processEmbeddings(file.id)}
+                    className="px-2 py-1 text-xs bg-purple-500 text-white rounded hover:bg-purple-600"
+                  >
+                    Embed
+                  </button>
+                </div>
               </div>
             ))}
             {files.length > 10 && (
@@ -270,6 +326,71 @@ function GoogleDriveSection() {
           </div>
         </div>
       )}
+
+      {embeddingsResult && (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">Embeddings Results:</h3>
+          <div className="bg-gray-50 p-3 rounded text-sm text-gray-800">
+            <div className="mb-2">
+              <strong>File:</strong> {embeddingsResult.fileName}
+            </div>
+            <div className="mb-2">
+              <strong>Text Length:</strong> {embeddingsResult.textLength} characters
+            </div>
+            <div className="mb-2">
+              <strong>Chunks:</strong> {embeddingsResult.chunkCount}
+            </div>
+            <div className="mb-2">
+              <strong>Embeddings:</strong> {embeddingsResult.embeddingCount}
+            </div>
+            
+            {embeddingsResult.semanticSearch && (
+              <div className="mt-3">
+                <strong>Semantic Search Results:</strong>
+                <div className="mt-2 space-y-2">
+                  {embeddingsResult.semanticSearch.results.map((result: {
+                    chunkText: string;
+                    similarity: number;
+                    chunkIndex: number;
+                  }, index: number) => (
+                    <div key={index} className="border-l-2 border-purple-500 pl-2">
+                      <div className="text-xs text-gray-600">
+                        Chunk {result.chunkIndex} (similarity: {result.similarity.toFixed(3)})
+                      </div>
+                      <div className="text-sm">{result.chunkText}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Semantic Search Input */}
+      <div className="mt-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Semantic Search:</h3>
+        <div className="flex space-x-2">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Enter search query..."
+            className="flex-1 px-3 py-2 border border-gray-300 rounded text-sm"
+          />
+          <button
+            onClick={() => {
+              if (files.length > 0 && searchQuery) {
+                processEmbeddings(files[0].id, searchQuery);
+              }
+            }}
+            disabled={!searchQuery || files.length === 0}
+            className="px-3 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 disabled:opacity-50"
+          >
+            Search
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
