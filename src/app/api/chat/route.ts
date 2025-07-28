@@ -785,7 +785,7 @@ async function handleUpdate(response: CRMActionRequest, userId: string, teamId: 
             lastName: data.lastName
           };
           // Extract updates from data (remove name fields)
-          const { firstName, lastName, ...updateFields } = data;
+          const { firstName: _, lastName: __, ...updateFields } = data;
           contactUpdates = updateFields;
         } else if (data && data.contactName) {
           // Handle contactName as a string (e.g., "vigeash gobal")
@@ -796,7 +796,7 @@ async function handleUpdate(response: CRMActionRequest, userId: string, teamId: 
             lastName: nameParts.length > 1 ? nameParts.slice(1).join(" ") : ""
           };
           // Extract updates from data (remove contactName field)
-          const { contactName, ...updateFields } = data;
+          const { contactName: _, ...updateFields } = data;
           contactUpdates = updateFields;
         } else if (data) {
           return '❌ Invalid contact name for update';
@@ -831,7 +831,7 @@ async function handleUpdate(response: CRMActionRequest, userId: string, teamId: 
               return `❌ Contact not found: ${String(contactName.firstName)} ${String(contactName.lastName)}`;
             }
           } else {
-            return { message: `❌ Unknown object type: ${objectType}`, data: null };
+            return `❌ Unknown object type: ${objectType}`;
           }
         }
 
