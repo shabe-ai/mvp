@@ -700,28 +700,29 @@ async function handleRead(response: CRMActionRequest, teamId: string) {
     if (data && typeof data === 'object') {
       Object.entries(data).forEach(([key, value]) => {
         if (value && typeof value === 'object' && ("$gt" in value || "$gte" in value || "$lt" in value || "$lte" in value)) {
+          const filterValue = value as Record<string, unknown>;
           if ("$gt" in value) {
             records = records.filter((c) => {
               const record = c as Record<string, unknown>;
-              return typeof record[key] === 'number' && record[key] > (value as Record<string, unknown>)["$gt"];
+              return typeof record[key] === 'number' && record[key] > (filterValue["$gt"] as number);
             });
           }
           if ("$gte" in value) {
             records = records.filter((c) => {
               const record = c as Record<string, unknown>;
-              return typeof record[key] === 'number' && record[key] >= (value as Record<string, unknown>)["$gte"];
+              return typeof record[key] === 'number' && record[key] >= (filterValue["$gte"] as number);
             });
           }
           if ("$lt" in value) {
             records = records.filter((c) => {
               const record = c as Record<string, unknown>;
-              return typeof record[key] === 'number' && record[key] < (value as Record<string, unknown>)["$lt"];
+              return typeof record[key] === 'number' && record[key] < (filterValue["$lt"] as number);
             });
           }
           if ("$lte" in value) {
             records = records.filter((c) => {
               const record = c as Record<string, unknown>;
-              return typeof record[key] === 'number' && record[key] <= (value as Record<string, unknown>)["$lte"];
+              return typeof record[key] === 'number' && record[key] <= (filterValue["$lte"] as number);
             });
           }
         } else if (value === "" || value === null) {
