@@ -81,7 +81,7 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
             content,
             timestamp: new Date(),
           }]);
-        } catch (error) {
+        } catch {
           setMessages([{
             id: 'calendar-summary',
             role: 'assistant',

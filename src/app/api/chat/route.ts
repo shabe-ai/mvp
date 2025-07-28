@@ -251,7 +251,7 @@ export async function POST(req: NextRequest) {
       const jsonMatch = aiResponse.match(/```json\n([\s\S]*?)\n```/);
       const jsonString = jsonMatch ? jsonMatch[1] : aiResponse;
       parsedResponse = JSON.parse(jsonString);
-    } catch (error) {
+    } catch {
       // If JSON parsing fails, create a simple response
       parsedResponse = {
         action: "message",
@@ -791,12 +791,9 @@ async function handleUpdate(response: CRMActionRequest, userId: string, teamId: 
           // Handle contactName as a string (e.g., "vigeash gobal")
           const contactNameStr = String(data.contactName);
           const nameParts = contactNameStr.split(" ");
-          const firstName = nameParts[0];
-          const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
-          
           contactName = {
-            firstName,
-            lastName
+            firstName: nameParts[0],
+            lastName: nameParts.length > 1 ? nameParts.slice(1).join(" ") : ""
           };
           // Extract updates from data (remove contactName field)
           const { contactName, ...updateFields } = data;

@@ -4,7 +4,7 @@ import { v } from "convex/values";
 
 const APOLLO_API_KEY = "4aO-qM5GwS8m70Ds-ks4kQ";
 
-export const enrichContact = action({
+export const enrichContact: ReturnType<typeof action> = action({
   args: {
     contactId: v.id("contacts"),
   },
@@ -54,7 +54,7 @@ export const enrichContact = action({
   },
 });
 
-export const enrichAccount = action({
+export const enrichAccount: ReturnType<typeof action> = action({
   args: {
     accountId: v.id("accounts"),
   },
