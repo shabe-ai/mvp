@@ -949,7 +949,7 @@ async function handleUpdate(response: CRMActionRequest, userId: string, teamId: 
         
         // Update the deal
         await convex.mutation(api.crm.updateDeal, {
-          dealId,
+          dealId: dealId as string & { __tableName: "deals" },
           updates: contactUpdates,
         });
         return `✅ Deal updated successfully.`;
@@ -1007,7 +1007,7 @@ async function handleDelete(response: CRMActionRequest, teamId: string) {
         }
         
         await convex.mutation(api.crm.deleteContact, {
-          contactId: contactId,
+          contactId: contactId as string & { __tableName: "contacts" },
         });
         return `✅ Contact deleted successfully.`;
       case "accounts":
@@ -1042,7 +1042,7 @@ async function handleDelete(response: CRMActionRequest, teamId: string) {
         }
         
         await convex.mutation(api.crm.deleteAccount, {
-          accountId: accountId,
+          accountId: accountId as string & { __tableName: "accounts" },
         });
         return `✅ Account deleted successfully.`;
       case "activities":
