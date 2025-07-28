@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 function GoogleIntegrationSection() {
   const { user } = useUser();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
-  const [authUrl, setAuthUrl] = useState<string | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [calendarError, setCalendarError] = useState(false);
 

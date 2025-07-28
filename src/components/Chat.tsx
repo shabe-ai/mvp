@@ -6,17 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+
 import { 
   Send, 
   Plus, 
-  Mail, 
-  Phone, 
   Building, 
-  Users, 
-  Calendar,
-  TrendingUp,
   MessageSquare,
   Loader2
 } from "lucide-react";
@@ -70,12 +64,12 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
           let content = data.summary;
           if (data.events && data.events.length > 0) {
             content += '\n\n';
-            data.events.forEach((event: any, idx: number) => {
-              const start = event.start?.dateTime || event.start?.date || '';
-              const time = start ? new Date(start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+            data.events.forEach((event: Record<string, unknown>) => {
+              const start = (event.start as Record<string, unknown>)?.dateTime || (event.start as Record<string, unknown>)?.date || '';
+              const time = start ? new Date(start as string).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
               content += `• ${event.summary || 'Untitled Event'}${time ? ` at ${time}` : ''}`;
-              if (event.attendees && event.attendees.length > 0) {
-                content += ` (Attendees: ${event.attendees.map((a: any) => a.email).join(', ')})`;
+              if (event.attendees && Array.isArray(event.attendees) && event.attendees.length > 0) {
+                content += ` (Attendees: ${(event.attendees as Record<string, unknown>[]).map((a: Record<string, unknown>) => a.email).join(', ')})`;
               }
               content += '\n';
             });
@@ -87,7 +81,7 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
             content,
             timestamp: new Date(),
           }]);
-        } catch (e) {
+        } catch (error) {
           setMessages([{
             id: 'calendar-summary',
             role: 'assistant',
@@ -509,7 +503,7 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
             <div style={{ marginTop: 12, background: "#fff", borderRadius: 12, padding: 8 }}>
               <DataTable
                 data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : message.data ? [message.data as Record<string, unknown>] : []}
-                fields={Array.isArray((message as any).fields) ? (message as any).fields : undefined}
+                fields={Array.isArray(message.fields) ? message.fields : undefined}
               />
             </div>
           )}

@@ -8,7 +8,7 @@ import {
   SignedOut,
   UserButton,
 } from "@clerk/nextjs";
-import Logo from "@/components/Logo";
+
 import "./globals.css";
 import Link from "next/link";
 

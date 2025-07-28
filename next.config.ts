@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Re-enable checks for code quality
   eslint: {
-    ignoreDuringBuilds: true,
+    // Enable ESLint during builds
   },
   typescript: {
-    ignoreBuildErrors: true,
+    // Enable TypeScript checks during builds
   },
 };
 

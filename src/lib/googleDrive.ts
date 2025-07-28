@@ -2,10 +2,7 @@ import { google } from 'googleapis';
 import { TokenStorage } from './tokenStorage';
 
 // Google Drive API scopes
-const DRIVE_SCOPES = [
-  'https://www.googleapis.com/auth/drive.readonly',
-  'https://www.googleapis.com/auth/drive.metadata.readonly'
-];
+
 
 // Initialize Google OAuth2 client
 const oauth2Client = new google.auth.OAuth2(

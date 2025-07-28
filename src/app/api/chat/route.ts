@@ -338,7 +338,7 @@ export async function POST(req: NextRequest) {
           console.log("✅ Email draft condition met, processing contact resolution");
           
           // For email drafts, we need to resolve the contact and get their email
-          let emailData = { ...parsedResponse.data };
+          const emailData = { ...parsedResponse.data };
           if (parsedResponse.data.contactName && !parsedResponse.data.to && !parsedResponse.data.email) {
             // Try to resolve the contact name to get their email
             const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
@@ -591,7 +591,7 @@ async function handleCreate(response: CRMActionRequest, userId: string, teamId: 
         // If this is an email, return both the message and the data for preview
         if (activityData.type === "email") {
           // For email activities, we need to resolve the contact and get their email
-          let emailData = { ...(data || {}) };
+          const emailData = { ...(data || {}) };
           if (data && data.contactName && !data.to && !data.email) {
             // Try to resolve the contact name to get their email
             const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
@@ -678,7 +678,7 @@ async function handleCreate(response: CRMActionRequest, userId: string, teamId: 
 async function handleRead(response: CRMActionRequest, teamId: string) {
   const { objectType, data } = response;
   try {
-    let records;
+    let records: unknown[];
     switch (objectType) {
       case "contacts":
         records = await convex.query(api.crm.getContactsByTeam, { teamId });
@@ -701,21 +701,39 @@ async function handleRead(response: CRMActionRequest, teamId: string) {
       Object.entries(data).forEach(([key, value]) => {
         if (value && typeof value === 'object' && ("$gt" in value || "$gte" in value || "$lt" in value || "$lte" in value)) {
           if ("$gt" in value) {
-            records = records.filter((c) => typeof c[key] === 'number' && c[key] > value["$gt"]);
+            records = records.filter((c) => {
+              const record = c as Record<string, unknown>;
+              return typeof record[key] === 'number' && record[key] > (value as Record<string, unknown>)["$gt"];
+            });
           }
           if ("$gte" in value) {
-            records = records.filter((c) => typeof c[key] === 'number' && c[key] >= value["$gte"]);
+            records = records.filter((c) => {
+              const record = c as Record<string, unknown>;
+              return typeof record[key] === 'number' && record[key] >= (value as Record<string, unknown>)["$gte"];
+            });
           }
           if ("$lt" in value) {
-            records = records.filter((c) => typeof c[key] === 'number' && c[key] < value["$lt"]);
+            records = records.filter((c) => {
+              const record = c as Record<string, unknown>;
+              return typeof record[key] === 'number' && record[key] < (value as Record<string, unknown>)["$lt"];
+            });
           }
           if ("$lte" in value) {
-            records = records.filter((c) => typeof c[key] === 'number' && c[key] <= value["$lte"]);
+            records = records.filter((c) => {
+              const record = c as Record<string, unknown>;
+              return typeof record[key] === 'number' && record[key] <= (value as Record<string, unknown>)["$lte"];
+            });
           }
         } else if (value === "" || value === null) {
-          records = records.filter((c) => !c[key] || c[key] === "");
+          records = records.filter((c) => {
+            const record = c as Record<string, unknown>;
+            return !record[key] || record[key] === "";
+          });
         } else {
-          records = records.filter((c) => c[key] === value);
+          records = records.filter((c) => {
+            const record = c as Record<string, unknown>;
+            return record[key] === value;
+          });
         }
       });
     }
@@ -781,7 +799,7 @@ async function handleUpdate(response: CRMActionRequest, userId: string, teamId: 
             lastName
           };
           // Extract updates from data (remove contactName field)
-          const { contactName: _, ...updateFields } = data;
+          const { contactName, ...updateFields } = data;
           contactUpdates = updateFields;
         } else if (data) {
           return '❌ Invalid contact name for update';
@@ -821,7 +839,7 @@ async function handleUpdate(response: CRMActionRequest, userId: string, teamId: 
         }
 
         // Update the contact
-        const updateResult = await convex.mutation(api.crm.updateContact, {
+        await convex.mutation(api.crm.updateContact, {
           contactId,
           updates: contactUpdates,
         });
@@ -990,7 +1008,7 @@ async function handleDelete(response: CRMActionRequest, teamId: string) {
           return `❌ No contact ID provided and no matching contact found.`;
         }
         
-        const deleteResult = await convex.mutation(api.crm.deleteContact, {
+        await convex.mutation(api.crm.deleteContact, {
           contactId: contactId,
         });
         return `✅ Contact deleted successfully.`;
@@ -1025,7 +1043,7 @@ async function handleDelete(response: CRMActionRequest, teamId: string) {
           return `❌ No account ID provided and no matching account found.`;
         }
         
-        const deleteAccountResult = await convex.mutation(api.crm.deleteAccount, {
+        await convex.mutation(api.crm.deleteAccount, {
           accountId: accountId,
         });
         return `✅ Account deleted successfully.`;
@@ -1060,7 +1078,7 @@ async function handleDelete(response: CRMActionRequest, teamId: string) {
           return `❌ No activity ID provided and no matching activity found.`;
         }
         
-        const deleteActivityResult = await convex.mutation(api.crm.deleteActivity, {
+        await convex.mutation(api.crm.deleteActivity, {
           activityId: activityId,
         });
         return `✅ Activity deleted successfully.`;
@@ -1095,7 +1113,7 @@ async function handleDelete(response: CRMActionRequest, teamId: string) {
           return `❌ No deal ID provided and no matching deal found.`;
         }
         
-        const deleteDealResult = await convex.mutation(api.crm.deleteDeal, {
+        await convex.mutation(api.crm.deleteDeal, {
           dealId: dealId,
         });
         return `✅ Deal deleted successfully.`;

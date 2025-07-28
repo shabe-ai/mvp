@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { TokenStorage } from '@/lib/tokenStorage';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await auth();
     const userId = session?.userId;

@@ -3,11 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { TokenStorage } from './tokenStorage';
 
 // Gmail API scopes
-const SCOPES = [
-  'https://www.googleapis.com/auth/gmail.send',
-  'https://www.googleapis.com/auth/gmail.compose',
-  'https://www.googleapis.com/auth/gmail.modify'
-];
+
 
 // Initialize Google OAuth2 client
 const oauth2Client = new google.auth.OAuth2(
@@ -107,9 +103,7 @@ export class GmailService {
 }
 
 // Google Calendar API scopes
-const CALENDAR_SCOPES = [
-  'https://www.googleapis.com/auth/calendar.readonly'
-];
+
 
 export class GoogleCalendarService {
   private calendar: ReturnType<typeof google.calendar>;
@@ -121,7 +115,7 @@ export class GoogleCalendarService {
     this.calendar = google.calendar({ version: 'v3', auth: oauth2Client });
   }
 
-  async getTodaysEvents(): Promise<{ events: any[]; summary: string }> {
+  async getTodaysEvents(): Promise<{ events: unknown[]; summary: string }> {
     const now = new Date();
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
@@ -143,9 +137,10 @@ export class GoogleCalendarService {
         summary = `You have ${events.length} meeting${events.length > 1 ? 's' : ''} today.`;
       }
       return { events, summary };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error fetching today\'s calendar events:', error);
-      if (error && error.response && error.response.status === 403 && error.message && error.message.toLowerCase().includes('insufficient authentication scopes')) {
+      const errorObj = error as { response?: { status?: number }; message?: string };
+      if (errorObj?.response?.status === 403 && errorObj?.message?.toLowerCase().includes('insufficient authentication scopes')) {
         return { events: [], summary: 'Insufficient authentication scopes for Google Calendar. Please reconnect your Google account.' };
       }
       return { events: [], summary: 'Could not fetch calendar events.' };
@@ -180,7 +175,7 @@ export async function getUserGoogleToken(): Promise<string | null> {
 } 
 
 // Helper to get today's events for the current user
-export async function getTodaysEventsForUser(): Promise<{ events: any[]; summary: string }> {
+export async function getTodaysEventsForUser(): Promise<{ events: unknown[]; summary: string }> {
   const accessToken = await getUserGoogleToken();
   if (!accessToken) {
     return { events: [], summary: 'Google account not connected.' };

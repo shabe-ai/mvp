@@ -1,5 +1,4 @@
 import { auth } from "@clerk/nextjs/server";
-import { redirect } from "next/navigation";
 import Chat from "@/components/Chat";
 
 export default async function Home() {
