@@ -460,4 +460,85 @@ export const getCustomFieldsByTeam = query({
       )
       .collect();
   },
+});
+
+// ===== ACCOUNT FIELD FUNCTIONS =====
+
+export const addAccountField = mutation({
+  args: {
+    teamId: v.string(),
+    accountId: v.id("accounts"),
+    fieldName: v.string(),
+    fieldValue: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const account = await ctx.db.get(args.accountId);
+    if (!account) {
+      throw new Error("Account not found");
+    }
+    
+    const customFields = account.customFields || {};
+    customFields[args.fieldName] = args.fieldValue;
+    
+    await ctx.db.patch(args.accountId, {
+      customFields,
+      updatedAt: Date.now(),
+    });
+    
+    return { message: `✅ Custom field '${args.fieldName}' added to account successfully.` };
+  },
+});
+
+// ===== ACTIVITY FIELD FUNCTIONS =====
+
+export const addActivityField = mutation({
+  args: {
+    teamId: v.string(),
+    activityId: v.id("activities"),
+    fieldName: v.string(),
+    fieldValue: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const activity = await ctx.db.get(args.activityId);
+    if (!activity) {
+      throw new Error("Activity not found");
+    }
+    
+    const customFields = activity.customFields || {};
+    customFields[args.fieldName] = args.fieldValue;
+    
+    await ctx.db.patch(args.activityId, {
+      customFields,
+      updatedAt: Date.now(),
+    });
+    
+    return { message: `✅ Custom field '${args.fieldName}' added to activity successfully.` };
+  },
+});
+
+// ===== DEAL FIELD FUNCTIONS =====
+
+export const addDealField = mutation({
+  args: {
+    teamId: v.string(),
+    dealId: v.id("deals"),
+    fieldName: v.string(),
+    fieldValue: v.any(),
+  },
+  handler: async (ctx, args) => {
+    const deal = await ctx.db.get(args.dealId);
+    if (!deal) {
+      throw new Error("Deal not found");
+    }
+    
+    const customFields = deal.customFields || {};
+    customFields[args.fieldName] = args.fieldValue;
+    
+    await ctx.db.patch(args.dealId, {
+      customFields,
+      updatedAt: Date.now(),
+    });
+    
+    return { message: `✅ Custom field '${args.fieldName}' added to deal successfully.` };
+  },
 }); 

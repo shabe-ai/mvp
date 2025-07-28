@@ -123,6 +123,27 @@ SPECIAL INSTRUCTIONS FOR COMPANY FILTERS:
   User: How many contacts do we have at the NBA?
   AI: { "action": "read", "objectType": "contacts", "data": { "company": "NBA" } }
 
+SPECIAL INSTRUCTIONS FOR EMAIL REQUESTS:
+- When the user asks to send an email to someone, you MUST:
+  1. Extract the contact name from the request (e.g., "vigeash gobal" from "send email to vigeash gobal")
+  2. Set the "contactName" field in the data to the extracted name
+  3. Set the "type" field to "email"
+  4. Generate an appropriate subject and content
+  5. The backend will automatically resolve the contact name to find their email address
+  6. If the contact doesn't exist, create them first with the email provided in the user's request
+  Example:
+  User: "send an email to vigeash gobal thanking him for his time"
+  AI: { 
+    "action": "create", 
+    "objectType": "activities", 
+    "data": {
+      "type": "email",
+      "contactName": "vigeash gobal",
+      "subject": "Thank You for Your Time",
+      "description": "Dear Vigeash Gobal,\n\nI would like to thank you for your time and look forward to future collaborations.\n\nBest Regards,\n[Your Name]"
+    }
+  }
+
 When responding:
 - For general conversation (greetings, questions about capabilities), use action "message"
 - For CRM operations, use appropriate action (create, read, update, delete, add_field)
@@ -312,13 +333,63 @@ export async function POST(req: NextRequest) {
         break;
       case "create":
         // If draftOnly, do NOT create the activity, just return the draft data
-        if (draftOnly && parsedResponse.objectType === "activities" && parsedResponse.data && (parsedResponse.data.type === "email" || parsedResponse.data.type === undefined)) {
+        console.log("🔍 Create case - draftOnly:", draftOnly, "objectType:", parsedResponse.objectType, "data:", parsedResponse.data);
+        if (draftOnly && parsedResponse.data && (parsedResponse.objectType === "activities" || parsedResponse.objectType === undefined) && (parsedResponse.data.type === "email" || parsedResponse.data.type === undefined)) {
+          console.log("✅ Email draft condition met, processing contact resolution");
+          
+          // For email drafts, we need to resolve the contact and get their email
+          let emailData = { ...parsedResponse.data };
+          if (parsedResponse.data.contactName && !parsedResponse.data.to && !parsedResponse.data.email) {
+            // Try to resolve the contact name to get their email
+            const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+            const contactName = String(parsedResponse.data.contactName);
+            const nameParts = contactName.split(" ");
+            const firstName = nameParts[0];
+            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+            
+            const foundContact = contacts.find((c) =>
+              typeof c.firstName === 'string' && typeof c.lastName === 'string' &&
+              c.firstName.toLowerCase() === firstName.toLowerCase() &&
+              c.lastName.toLowerCase() === lastName.toLowerCase()
+            );
+            
+            if (foundContact && typeof foundContact.email === 'string') {
+              emailData.to = foundContact.email;
+              emailData.contactId = foundContact._id;
+              console.log(`✅ Found contact ${contactName} with email ${foundContact.email}`);
+            } else {
+              // Contact not found - try to create it if we have an email
+              const emailMatch = lastUserMessage.toLowerCase().match(/email should be ([^\s]+@[^\s]+)/i);
+              if (emailMatch && emailMatch[1]) {
+                const email = emailMatch[1];
+                const nameParts = contactName.split(" ");
+                const firstName = nameParts[0];
+                const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+                
+                // Create the contact
+                const contactId = await convex.mutation(api.crm.createContact, {
+                  teamId,
+                  createdBy: userId,
+                  firstName,
+                  lastName,
+                  email,
+                  contactType: "contact",
+                  leadStatus: "contacted"
+                });
+                
+                emailData.to = email;
+                emailData.contactId = contactId;
+                console.log(`✅ Created contact ${contactName} with email ${email}`);
+              }
+            }
+          }
+          
           responseMessage = "✉️ Email draft ready. Review and send.";
-          responseData = parsedResponse.data;
+          responseData = emailData;
           responseAction = "create";
           break;
         }
-        const createResult = await handleCreate(parsedResponse, userId, teamId);
+        const createResult = await handleCreate(parsedResponse, userId, teamId, lastUserMessage);
         responseMessage = createResult.message;
         responseData = createResult.data;
         responseAction = "create";
@@ -333,7 +404,7 @@ export async function POST(req: NextRequest) {
         responseMessage = await handleUpdate(parsedResponse, userId, teamId);
         break;
       case "delete":
-        responseMessage = await handleDelete(parsedResponse);
+        responseMessage = await handleDelete(parsedResponse, teamId);
         break;
       case "add_field":
         responseMessage = await handleAddField(parsedResponse, teamId);
@@ -392,7 +463,7 @@ export async function POST(req: NextRequest) {
 }
 
 // Handler functions for different actions
-async function handleCreate(response: CRMActionRequest, userId: string, teamId: string) {
+async function handleCreate(response: CRMActionRequest, userId: string, teamId: string, originalMessage?: string) {
   const { objectType, data } = response;
   
   // Allowed literals for union types
@@ -519,9 +590,55 @@ async function handleCreate(response: CRMActionRequest, userId: string, teamId: 
         if (Array.isArray(data?.attendees)) activityData.attendees = data.attendees;
         // If this is an email, return both the message and the data for preview
         if (activityData.type === "email") {
+          // For email activities, we need to resolve the contact and get their email
+          let emailData = { ...(data || {}) };
+          if (data && data.contactName && !data.to && !data.email) {
+            // Try to resolve the contact name to get their email
+            const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+            const contactName = String(data.contactName);
+            const nameParts = contactName.split(" ");
+            const firstName = nameParts[0];
+            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+            
+            const foundContact = contacts.find((c) =>
+              typeof c.firstName === 'string' && typeof c.lastName === 'string' &&
+              c.firstName.toLowerCase() === firstName.toLowerCase() &&
+              c.lastName.toLowerCase() === lastName.toLowerCase()
+            );
+            
+            if (foundContact && typeof foundContact.email === 'string') {
+              emailData.to = foundContact.email;
+              emailData.contactId = foundContact._id;
+            } else {
+              // Contact not found - try to create it if we have an email
+              const emailMatch = originalMessage?.toLowerCase().match(/email should be ([^\s]+@[^\s]+)/i);
+              if (emailMatch && emailMatch[1]) {
+                const email = emailMatch[1];
+                const nameParts = contactName.split(" ");
+                const firstName = nameParts[0];
+                const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+                
+                // Create the contact
+                const contactId = await convex.mutation(api.crm.createContact, {
+                  teamId,
+                  createdBy: userId,
+                  firstName,
+                  lastName,
+                  email,
+                  contactType: "contact",
+                  leadStatus: "contacted"
+                });
+                
+                emailData.to = email;
+                emailData.contactId = contactId;
+                console.log(`✅ Created contact ${contactName} with email ${email}`);
+              }
+            }
+          }
+          
           return {
             message: `✅ Activity created successfully! ID: ${await convex.mutation(api.crm.createActivity, activityData as Doc<'activities'>)}`,
-            data: data,
+            data: emailData,
             action: "create",
             objectType: "activities"
           };
@@ -652,6 +769,20 @@ async function handleUpdate(response: CRMActionRequest, userId: string, teamId: 
           // Extract updates from data (remove name fields)
           const { firstName, lastName, ...updateFields } = data;
           contactUpdates = updateFields;
+        } else if (data && data.contactName) {
+          // Handle contactName as a string (e.g., "vigeash gobal")
+          const contactNameStr = String(data.contactName);
+          const nameParts = contactNameStr.split(" ");
+          const firstName = nameParts[0];
+          const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : "";
+          
+          contactName = {
+            firstName,
+            lastName
+          };
+          // Extract updates from data (remove contactName field)
+          const { contactName: _, ...updateFields } = data;
+          contactUpdates = updateFields;
         } else if (data) {
           return '❌ Invalid contact name for update';
         }
@@ -691,58 +822,290 @@ async function handleUpdate(response: CRMActionRequest, userId: string, teamId: 
 
         // Update the contact
         const updateResult = await convex.mutation(api.crm.updateContact, {
-          teamId,
           contactId,
           updates: contactUpdates,
         });
-        return updateResult.message;
+        return `✅ Contact updated successfully.`;
       case "accounts":
-        // Implementation for updating an account
-        return { message: `❌ Update not implemented for accounts` };
+        let accountId = id;
+        
+        // If no ID provided, try to find the account by name
+        if (!accountId && data) {
+          const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+          
+          // Filter accounts based on data criteria
+          let matches = accounts;
+          
+          if (data.name) {
+            matches = matches.filter(a =>
+              typeof a.name === 'string' &&
+              a.name.toLowerCase() === String(data.name).toLowerCase()
+            );
+          }
+          
+          if (matches.length === 1) {
+            accountId = matches[0]._id;
+            console.log(`✅ Found account to update: ${matches[0].name}`);
+          } else if (matches.length > 1) {
+            return `❌ Multiple accounts found matching your criteria. Please be more specific.`;
+          } else {
+            return `❌ No account found matching your criteria.`;
+          }
+        }
+        
+        if (!accountId) {
+          return `❌ No account ID provided and no matching account found.`;
+        }
+        
+        // Update the account
+        await convex.mutation(api.crm.updateAccount, {
+          accountId,
+          updates: contactUpdates,
+        });
+        return `✅ Account updated successfully.`;
       case "activities":
-        // Implementation for updating an activity
-        return { message: `❌ Update not implemented for activities` };
+        let activityId = id;
+        
+        // If no ID provided, try to find the activity by subject
+        if (!activityId && data) {
+          const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+          
+          // Filter activities based on data criteria
+          let matches = activities;
+          
+          if (data.subject) {
+            matches = matches.filter(a =>
+              typeof a.subject === 'string' &&
+              a.subject.toLowerCase().includes(String(data.subject).toLowerCase())
+            );
+          }
+          
+          if (matches.length === 1) {
+            activityId = matches[0]._id;
+            console.log(`✅ Found activity to update: ${matches[0].subject}`);
+          } else if (matches.length > 1) {
+            return `❌ Multiple activities found matching your criteria. Please be more specific.`;
+          } else {
+            return `❌ No activity found matching your criteria.`;
+          }
+        }
+        
+        if (!activityId) {
+          return `❌ No activity ID provided and no matching activity found.`;
+        }
+        
+        // Update the activity
+        await convex.mutation(api.crm.updateActivity, {
+          activityId,
+          updates: contactUpdates,
+        });
+        return `✅ Activity updated successfully.`;
       case "deals":
-        // Implementation for updating a deal
-        return { message: `❌ Update not implemented for deals` };
+        let dealId = id;
+        
+        // If no ID provided, try to find the deal by name
+        if (!dealId && data) {
+          const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+          
+          // Filter deals based on data criteria
+          let matches = deals;
+          
+          if (data.name) {
+            matches = matches.filter(d =>
+              typeof d.name === 'string' &&
+              d.name.toLowerCase().includes(String(data.name).toLowerCase())
+            );
+          }
+          
+          if (matches.length === 1) {
+            dealId = matches[0]._id;
+            console.log(`✅ Found deal to update: ${matches[0].name}`);
+          } else if (matches.length > 1) {
+            return `❌ Multiple deals found matching your criteria. Please be more specific.`;
+          } else {
+            return `❌ No deal found matching your criteria.`;
+          }
+        }
+        
+        if (!dealId) {
+          return `❌ No deal ID provided and no matching deal found.`;
+        }
+        
+        // Update the deal
+        await convex.mutation(api.crm.updateDeal, {
+          dealId,
+          updates: contactUpdates,
+        });
+        return `✅ Deal updated successfully.`;
       default:
-        return { message: `❌ Unknown object type: ${objectType}`, data: null };
+        return `❌ Unknown object type: ${objectType}`;
     }
-  } catch (error) {
-    console.error("Update error:", error);
-    return { message: `❌ Error updating ${objectType}: ${error}` };
-  }
+      } catch (error) {
+      console.error("Update error:", error);
+      return `❌ Error updating ${objectType}: ${error}`;
+    }
 }
 
-async function handleDelete(response: CRMActionRequest) {
-  const { objectType, id } = response;
+async function handleDelete(response: CRMActionRequest, teamId: string) {
+  const { objectType, id, data } = response;
   
-  console.log("Delete request:", { objectType, id });
+  console.log("Delete request:", { objectType, id, data, teamId });
   
   try {
     switch (objectType) {
       case "contacts":
+        let contactId = id;
+        
+        // If no ID provided, try to find the contact by name or filter
+        if (!contactId && data) {
+          const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+          
+          // Filter contacts based on data criteria
+          let matches = contacts;
+          
+          if (data.firstName && data.lastName) {
+            matches = matches.filter(c =>
+              typeof c.firstName === 'string' && typeof c.lastName === 'string' &&
+              c.firstName.toLowerCase() === String(data.firstName).toLowerCase() &&
+              c.lastName.toLowerCase() === String(data.lastName).toLowerCase()
+            );
+          }
+          
+          // Filter by email if specified
+          if (data.email === "" || data.email === null) {
+            matches = matches.filter(c => !c.email || c.email === "");
+          }
+          
+          if (matches.length === 1) {
+            contactId = matches[0]._id;
+            console.log(`✅ Found contact to delete: ${matches[0].firstName} ${matches[0].lastName} (${matches[0].email || 'no email'})`);
+          } else if (matches.length > 1) {
+            return `❌ Multiple contacts found matching your criteria. Please be more specific.`;
+          } else {
+            return `❌ No contact found matching your criteria.`;
+          }
+        }
+        
+        if (!contactId) {
+          return `❌ No contact ID provided and no matching contact found.`;
+        }
+        
         const deleteResult = await convex.mutation(api.crm.deleteContact, {
-          teamId: response.teamId,
-          contactId: id,
+          contactId: contactId,
         });
-        return deleteResult.message;
+        return `✅ Contact deleted successfully.`;
       case "accounts":
-        // Implementation for deleting an account
-        return { message: `❌ Delete not implemented for accounts` };
+        let accountId = id;
+        
+        // If no ID provided, try to find the account by name
+        if (!accountId && data) {
+          const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+          
+          // Filter accounts based on data criteria
+          let matches = accounts;
+          
+          if (data.name) {
+            matches = matches.filter(a =>
+              typeof a.name === 'string' &&
+              a.name.toLowerCase() === String(data.name).toLowerCase()
+            );
+          }
+          
+          if (matches.length === 1) {
+            accountId = matches[0]._id;
+            console.log(`✅ Found account to delete: ${matches[0].name}`);
+          } else if (matches.length > 1) {
+            return `❌ Multiple accounts found matching your criteria. Please be more specific.`;
+          } else {
+            return `❌ No account found matching your criteria.`;
+          }
+        }
+        
+        if (!accountId) {
+          return `❌ No account ID provided and no matching account found.`;
+        }
+        
+        const deleteAccountResult = await convex.mutation(api.crm.deleteAccount, {
+          accountId: accountId,
+        });
+        return `✅ Account deleted successfully.`;
       case "activities":
-        // Implementation for deleting an activity
-        return { message: `❌ Delete not implemented for activities` };
+        let activityId = id;
+        
+        // If no ID provided, try to find the activity by subject
+        if (!activityId && data) {
+          const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+          
+          // Filter activities based on data criteria
+          let matches = activities;
+          
+          if (data.subject) {
+            matches = matches.filter(a =>
+              typeof a.subject === 'string' &&
+              a.subject.toLowerCase().includes(String(data.subject).toLowerCase())
+            );
+          }
+          
+          if (matches.length === 1) {
+            activityId = matches[0]._id;
+            console.log(`✅ Found activity to delete: ${matches[0].subject}`);
+          } else if (matches.length > 1) {
+            return `❌ Multiple activities found matching your criteria. Please be more specific.`;
+          } else {
+            return `❌ No activity found matching your criteria.`;
+          }
+        }
+        
+        if (!activityId) {
+          return `❌ No activity ID provided and no matching activity found.`;
+        }
+        
+        const deleteActivityResult = await convex.mutation(api.crm.deleteActivity, {
+          activityId: activityId,
+        });
+        return `✅ Activity deleted successfully.`;
       case "deals":
-        // Implementation for deleting a deal
-        return { message: `❌ Delete not implemented for deals` };
+        let dealId = id;
+        
+        // If no ID provided, try to find the deal by name
+        if (!dealId && data) {
+          const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+          
+          // Filter deals based on data criteria
+          let matches = deals;
+          
+          if (data.name) {
+            matches = matches.filter(d =>
+              typeof d.name === 'string' &&
+              d.name.toLowerCase().includes(String(data.name).toLowerCase())
+            );
+          }
+          
+          if (matches.length === 1) {
+            dealId = matches[0]._id;
+            console.log(`✅ Found deal to delete: ${matches[0].name}`);
+          } else if (matches.length > 1) {
+            return `❌ Multiple deals found matching your criteria. Please be more specific.`;
+          } else {
+            return `❌ No deal found matching your criteria.`;
+          }
+        }
+        
+        if (!dealId) {
+          return `❌ No deal ID provided and no matching deal found.`;
+        }
+        
+        const deleteDealResult = await convex.mutation(api.crm.deleteDeal, {
+          dealId: dealId,
+        });
+        return `✅ Deal deleted successfully.`;
       default:
-        return { message: `❌ Unknown object type: ${objectType}`, data: null };
+        return `❌ Unknown object type: ${objectType}`;
     }
-  } catch (error) {
-    console.error("Delete error:", error);
-    return { message: `❌ Error deleting ${objectType}: ${error}` };
-  }
+      } catch (error) {
+      console.error("Delete error:", error);
+      return `❌ Error deleting ${objectType}: ${error}`;
+    }
 }
 
 async function handleAddField(response: CRMActionRequest, teamId: string) {
@@ -761,14 +1124,29 @@ async function handleAddField(response: CRMActionRequest, teamId: string) {
         });
         return addFieldResult.message;
       case "accounts":
-        // Implementation for adding a field to an account
-        return { message: `❌ Add field not implemented for accounts` };
+        const addAccountFieldResult = await convex.mutation(api.crm.addAccountField, {
+          teamId,
+          accountId: id,
+          fieldName: field,
+          fieldValue: value,
+        });
+        return addAccountFieldResult.message;
       case "activities":
-        // Implementation for adding a field to an activity
-        return { message: `❌ Add field not implemented for activities` };
+        const addActivityFieldResult = await convex.mutation(api.crm.addActivityField, {
+          teamId,
+          activityId: id,
+          fieldName: field,
+          fieldValue: value,
+        });
+        return addActivityFieldResult.message;
       case "deals":
-        // Implementation for adding a field to a deal
-        return { message: `❌ Add field not implemented for deals` };
+        const addDealFieldResult = await convex.mutation(api.crm.addDealField, {
+          teamId,
+          dealId: id,
+          fieldName: field,
+          fieldValue: value,
+        });
+        return addDealFieldResult.message;
       default:
         return { message: `❌ Unknown object type: ${objectType}`, data: null };
     }

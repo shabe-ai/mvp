@@ -427,7 +427,7 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: data.message,
+          content: typeof data.message === 'string' ? data.message : JSON.stringify(data.message),
           timestamp: new Date(),
           action: data.action,
           data: data.data,
@@ -471,7 +471,17 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
 
   const renderMessage = (message: Message) => {
     const isUser = message.role === "user";
-    const isSystem = message.role === 'assistant' && message.action === 'message' && !message.data;
+    // System messages are assistant messages that are informational (not responses to user queries)
+    const isSystem = message.role === 'assistant' && (
+      message.action === 'message' || 
+      (!message.action && !message.data) ||
+      message.content.includes('meeting') && message.content.includes('today') ||
+      message.content.startsWith('❌') || // Error messages
+      message.content.startsWith('✅') || // Success messages
+      message.content.startsWith('📊') || // Data messages
+      message.content.startsWith('📭') || // No data messages
+      message.content.startsWith('📄')    // Document messages
+    );
     return (
       <div
         key={message.id}
@@ -486,11 +496,12 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
             maxWidth: "75%",
             borderRadius: 16,
             padding: "12px 18px",
-            background: isSystem ? "#f3f4f6" : (isUser ? "#fde047" : "#fff"),
+            background: isSystem ? "#f8f9fa" : (isUser ? "#fde047" : "#fff"),
             color: "#222",
             fontWeight: 400,
-            boxShadow: (isSystem || isUser) ? "0 4px 16px rgba(0,0,0,0.10)" : "0 1px 4px rgba(0,0,0,0.04)",
+            boxShadow: isSystem ? "0 6px 20px rgba(0,0,0,0.15)" : (isUser ? "0 4px 16px rgba(0,0,0,0.10)" : "0 1px 4px rgba(0,0,0,0.04)"),
             whiteSpace: "pre-wrap",
+            border: isSystem ? "1px solid #e9ecef" : "none",
           }}
         >
           {message.content}
