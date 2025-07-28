@@ -838,7 +838,7 @@ async function handleUpdate(response: CRMActionRequest, userId: string, teamId: 
 
         // Update the contact
         await convex.mutation(api.crm.updateContact, {
-          contactId: contactId as any,
+          contactId: contactId as string & { __tableName: "contacts" },
           updates: contactUpdates,
         });
         return `✅ Contact updated successfully.`;
@@ -875,7 +875,7 @@ async function handleUpdate(response: CRMActionRequest, userId: string, teamId: 
         
         // Update the account
         await convex.mutation(api.crm.updateAccount, {
-          accountId: accountId as any,
+          accountId: accountId as string & { __tableName: "accounts" },
           updates: contactUpdates,
         });
         return `✅ Account updated successfully.`;
@@ -912,7 +912,7 @@ async function handleUpdate(response: CRMActionRequest, userId: string, teamId: 
         
         // Update the activity
         await convex.mutation(api.crm.updateActivity, {
-          activityId: activityId as any,
+          activityId: activityId as string & { __tableName: "activities" },
           updates: contactUpdates,
         });
         return `✅ Activity updated successfully.`;
