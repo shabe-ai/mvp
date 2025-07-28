@@ -297,6 +297,45 @@ function GoogleDriveSection() {
     }
   };
 
+  const testHybridStorage = async () => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+    
+    try {
+      // Test the new hybrid storage approach
+      console.log('🧪 Testing hybrid storage approach...');
+      
+      // This will test that we can store documents without full content
+      // and still retrieve them properly
+      const res = await fetch("/api/drive/store", {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({ 
+          fileId: '1kJR4fY0tr9w4ehidQMuxTXrWER4aS3CM', // Use the same test file
+          teamId: 'default-team'
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.error) {
+        setError(data.error);
+      } else {
+        console.log('✅ Hybrid storage test successful:', data);
+        alert('Hybrid storage test successful! Check console for details.');
+      }
+    } catch (err) {
+      console.error('Hybrid storage test error:', err);
+      setError("Failed to test hybrid storage");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleConnect = async () => {
     setLoading(true);
     const res = await fetch("/api/auth/google");
@@ -516,6 +555,45 @@ function GoogleDriveSection() {
           </button>
         </div>
       </div>
+      {aiContextResult && (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium text-gray-700 mb-2">AI Context Results:</h3>
+          <div className="bg-gray-50 p-3 rounded text-sm text-gray-800">
+            <div><strong>Has Relevant Documents:</strong> {aiContextResult.hasRelevantDocuments ? 'Yes' : 'No'}</div>
+            <div><strong>Total Documents:</strong> {aiContextResult.totalDocuments}</div>
+            {aiContextResult.documents.length > 0 && (
+              <div className="mt-2">
+                <div><strong>Relevant Documents:</strong></div>
+                {aiContextResult.documents.map((doc, index) => (
+                  <div key={index} className="mt-1 text-xs">
+                    {doc.fileName} (similarity: {doc.similarity.toFixed(3)})<br/>
+                    <span className="text-gray-600">{doc.chunkText.substring(0, 100)}...</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {aiContextResult.context && (
+              <div className="mt-2">
+                <div><strong>Generated Context:</strong></div>
+                <div className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">{aiContextResult.context}</div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Hybrid Storage Test */}
+      <div className="mt-4">
+        <h3 className="text-sm font-medium text-gray-700 mb-2">Hybrid Storage Test:</h3>
+        <div className="flex space-x-2">
+          <button
+            onClick={testHybridStorage}
+            className="px-3 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600"
+          >
+            Test Hybrid Storage
+          </button>
+        </div>
+      </div>
 
       {storageResult && (
         <div className="mt-4">
@@ -545,45 +623,6 @@ function GoogleDriveSection() {
             <div className="text-green-600 font-medium">
               ✅ Document successfully stored in Convex!
             </div>
-          </div>
-        </div>
-      )}
-
-      {aiContextResult && (
-        <div className="mt-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">AI Context Results:</h3>
-          <div className="bg-gray-50 p-3 rounded text-sm text-gray-800">
-            <div className="mb-2">
-              <strong>Has Relevant Documents:</strong> {aiContextResult.hasRelevantDocuments ? 'Yes' : 'No'}
-            </div>
-            <div className="mb-2">
-              <strong>Total Documents:</strong> {aiContextResult.totalDocuments}
-            </div>
-            
-            {aiContextResult.hasRelevantDocuments && (
-              <div className="mt-3">
-                <strong>Relevant Documents:</strong>
-                <div className="mt-2 space-y-2">
-                  {aiContextResult.documents.map((doc, index) => (
-                    <div key={index} className="border-l-2 border-purple-500 pl-2">
-                      <div className="text-xs text-gray-600">
-                        {doc.fileName} (similarity: {doc.similarity.toFixed(3)})
-                      </div>
-                      <div className="text-sm">{doc.chunkText.substring(0, 200)}...</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            
-            {aiContextResult.context && (
-              <div className="mt-3">
-                <strong>Generated Context:</strong>
-                <div className="mt-2 bg-white p-2 rounded text-xs">
-                  {aiContextResult.context}
-                </div>
-              </div>
-            )}
           </div>
         </div>
       )}
