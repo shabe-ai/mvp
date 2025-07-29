@@ -13,6 +13,7 @@ interface File {
   id: string;
   name: string;
   mimeType: string;
+  size?: string;
 }
 
 interface ProcessingStatus {
@@ -137,16 +138,24 @@ export default function GoogleDriveIntegration({
       }
 
       const folderFiles = data.contents || [];
-      const processableFiles = folderFiles.filter((file: File) => 
-        file.mimeType.includes('document') || 
-        file.mimeType.includes('pdf') ||
-        file.mimeType.includes('text') ||
-        file.mimeType.includes('spreadsheet') ||
-        file.mimeType.includes('csv') ||
-        file.mimeType.includes('excel') ||
-        file.mimeType.includes('xlsx') ||
-        file.mimeType.includes('xls')
-      );
+      const processableFiles = folderFiles.filter((file: File) => {
+        // Check if file type is supported
+        const isSupportedType = file.mimeType.includes('document') || 
+          file.mimeType.includes('pdf') ||
+          file.mimeType.includes('text') ||
+          file.mimeType.includes('spreadsheet') ||
+          file.mimeType.includes('csv') ||
+          file.mimeType.includes('excel') ||
+          file.mimeType.includes('xlsx') ||
+          file.mimeType.includes('xls');
+        
+        // Skip HTML files that are too large (they cause processing issues)
+        if (file.mimeType.includes('html') && file.size && parseInt(file.size) > 500000) {
+          return false;
+        }
+        
+        return isSupportedType;
+      });
 
       if (processableFiles.length === 0) {
         setError("No processable documents found in this folder");

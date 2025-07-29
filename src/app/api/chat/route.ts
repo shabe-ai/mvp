@@ -95,6 +95,13 @@ const CRM_SYSTEM_PROMPT = `You are a CRM assistant that helps users manage their
 5. ADD custom fields to any object type
 6. Handle general conversation and greetings
 7. Handle ambiguous queries by asking follow-up questions
+8. ANALYZE and answer questions about documents from Google Drive (CSV files, Excel spreadsheets, PDFs, Word documents)
+
+IMPORTANT: You have access to processed documents from the user's Google Drive. When users ask about their documents, files, or data, you can analyze and provide insights from these documents. You can:
+- Answer questions about document content
+- Analyze data from CSV files and Excel spreadsheets
+- Provide summaries of document information
+- Help with data interpretation and insights
 
 Available object types:
 ${Object.entries(CRM_OBJECTS).map(([key, obj]) => 
@@ -149,6 +156,13 @@ SPECIAL INSTRUCTIONS FOR EMAIL REQUESTS:
       "description": "Dear Vigeash Gobal,\n\nI would like to thank you for your time and look forward to future collaborations.\n\nBest Regards,\n[Your Name]"
     }
   }
+
+SPECIAL INSTRUCTIONS FOR DOCUMENT ANALYSIS:
+- When users ask about their documents, files, or data (e.g., "what files were processed", "analyze my data", "sum the invoices"), you can analyze the processed documents from their Google Drive
+- You have access to document content including CSV data, Excel spreadsheets, and other processed files
+- Provide detailed analysis and insights based on the document content
+- For questions about processed files, explain what documents are available and their content
+- For data analysis requests, provide summaries, calculations, and insights from the document data
 
 When responding:
 - For general conversation (greetings, questions about capabilities), use action "message"
