@@ -30,6 +30,7 @@ export default function TeamManagement() {
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -172,6 +173,36 @@ export default function TeamManagement() {
     }
   };
 
+  const seedTeamData = async (teamId: string) => {
+    if (!user) return;
+    setSeeding(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/seed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ teamId }),
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        setError(data.error);
+      } else {
+        // Reload team stats after seeding
+        if (selectedTeam?._id === teamId) {
+          loadTeamStats(teamId);
+        }
+        alert(data.message || 'Sample data added successfully!');
+      }
+    } catch (err) {
+      setError("Failed to seed team data");
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -299,6 +330,13 @@ export default function TeamManagement() {
             <h3 className="text-xl font-semibold text-slate-900">Team Details</h3>
             <div className="flex items-center space-x-2">
               <span className="text-sm text-slate-500">Last updated: {formatDate(selectedTeam.updatedAt)}</span>
+              <button
+                onClick={() => seedTeamData(selectedTeam._id)}
+                disabled={seeding}
+                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {seeding ? "Adding Sample Data..." : "Add Sample Data"}
+              </button>
             </div>
           </div>
 

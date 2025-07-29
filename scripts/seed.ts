@@ -10,7 +10,7 @@ async function main() {
   const teamId = "jx7e02h2edxjt9yg4nerfza7rs7m39ns";
 
   console.log("Seeding data for teamId:", teamId, "userId:", userId);
-  const result = await convex.mutation(api.seed.seedSampleData, { teamId, userId });
+  const result = await convex.mutation(api.seed.seedTeamData, { teamId });
   console.log("Seed result:", result);
 }
 
