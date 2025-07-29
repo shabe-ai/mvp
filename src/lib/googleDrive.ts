@@ -144,6 +144,10 @@ export class GoogleDriveService {
           return await this.extractExcelFile(fileId);
         
         default:
+          // Try to extract as text for CSV and other text-based files
+          if (file.mimeType?.includes('csv') || file.mimeType?.includes('text')) {
+            return await this.extractTextFile(fileId);
+          }
           console.warn(`⚠️ Unsupported file type: ${file.mimeType} for file: ${file.name}`);
           return `[Unsupported file type: ${file.mimeType} - ${file.name}]`;
       }
@@ -190,17 +194,10 @@ export class GoogleDriveService {
         pdfBuffer = Buffer.from(arrayBuffer);
       }
       
-      // Use a more reliable PDF parsing approach
-      try {
-        const pdf = (await import('pdf-parse')).default;
-        const pdfData = await pdf(pdfBuffer);
-        return pdfData.text;
-      } catch (pdfError) {
-        console.warn('PDF parsing failed, trying alternative approach:', pdfError);
-        
-        // Fallback: return a placeholder for PDF content
-        return '[PDF content - text extraction not available for this file type]';
-      }
+      // Parse PDF content
+      const pdf = (await import('pdf-parse')).default;
+      const pdfData = await pdf(pdfBuffer);
+      return pdfData.text;
     } catch (error) {
       console.error('❌ Error extracting PDF text:', error);
       return '[PDF content - extraction failed]';
