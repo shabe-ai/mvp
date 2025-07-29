@@ -237,16 +237,38 @@ export async function POST(req: NextRequest) {
     
     if (lastUserMessage) {
       try {
+        // Determine how many documents to retrieve based on the query
+        const lastUserMessageLower = lastUserMessage.toLowerCase();
+        let maxResults = 3; // Default for specific queries
+        
+        // For comprehensive queries that need all documents, increase the limit
+        if (
+          lastUserMessageLower.includes("all") ||
+          lastUserMessageLower.includes("sum") ||
+          lastUserMessageLower.includes("total") ||
+          lastUserMessageLower.includes("every") ||
+          lastUserMessageLower.includes("each") ||
+          lastUserMessageLower.includes("complete") ||
+          lastUserMessageLower.includes("full") ||
+          lastUserMessageLower.includes("entire") ||
+          lastUserMessageLower.includes("everything") ||
+          lastUserMessageLower.includes("processed") ||
+          lastUserMessageLower.includes("files") ||
+          lastUserMessageLower.includes("documents")
+        ) {
+          maxResults = 20; // Get many more documents for comprehensive queries
+        }
+        
         const contextResult = await aiContextService.createAIContext(
           lastUserMessage,
           teamId,
-          3
+          maxResults
         );
         
         if (contextResult.hasRelevantDocuments) {
           documentContext = contextResult.context;
           hasRelevantDocuments = true;
-          console.log(`📚 Found ${contextResult.totalDocuments} relevant documents for query`);
+          console.log(`📚 Found ${contextResult.totalDocuments} relevant documents for query (max: ${maxResults})`);
         }
       } catch (error) {
         console.error('❌ Error getting document context:', error);

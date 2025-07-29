@@ -110,9 +110,31 @@ export class AIContextService {
       // Create context string
       let context = 'Based on your question, here are relevant documents from your knowledge base:\n\n';
       
-      relevantDocs.forEach((doc, index) => {
-        context += `${index + 1}. **${doc.fileName}** (similarity: ${doc.similarity.toFixed(3)})\n`;
-        context += `Content: ${doc.chunkText}\n\n`;
+      // Group documents by filename to avoid repetition
+      const groupedDocs = new Map<string, { fileName: string; fileType: string; chunks: string[]; avgSimilarity: number }>();
+      
+      relevantDocs.forEach((doc) => {
+        if (!groupedDocs.has(doc.fileName)) {
+          groupedDocs.set(doc.fileName, {
+            fileName: doc.fileName,
+            fileType: doc.fileType,
+            chunks: [],
+            avgSimilarity: 0
+          });
+        }
+        
+        const group = groupedDocs.get(doc.fileName)!;
+        group.chunks.push(doc.chunkText);
+        group.avgSimilarity += doc.similarity;
+      });
+      
+      // Calculate average similarity and format context
+      let docIndex = 1;
+      groupedDocs.forEach((group) => {
+        const avgSimilarity = group.avgSimilarity / group.chunks.length;
+        context += `${docIndex}. **${group.fileName}** (${group.fileType}, avg similarity: ${avgSimilarity.toFixed(3)})\n`;
+        context += `Content: ${group.chunks.join(' ')}\n\n`;
+        docIndex++;
       });
 
       context += 'Please use this information to provide a comprehensive answer. If the documents don\'t contain relevant information, you can still provide a helpful response based on your general knowledge.';
@@ -121,7 +143,7 @@ export class AIContextService {
         hasRelevantDocuments: true,
         context,
         documents: relevantDocs,
-        totalDocuments: relevantDocs.length,
+        totalDocuments: groupedDocs.size, // Return number of unique documents
       };
     } catch (error) {
       console.error('❌ Error creating AI context:', error);
