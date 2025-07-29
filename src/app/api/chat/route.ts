@@ -4,6 +4,12 @@ import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
 import { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { aiContextService } from "@/lib/aiContext";
+import { 
+  handleApiError, 
+  validateRequiredFields, 
+  validateStringField,
+  ValidationError 
+} from "@/lib/errorHandler";
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -192,12 +198,22 @@ export async function POST(req: NextRequest) {
       draftOnly = true;
     }
 
-    if (!userId || !teamId) {
-      console.log("Missing userId or teamId:", { userId, teamId });
-      return NextResponse.json(
-        { error: "User ID and Team ID are required" },
-        { status: 400 }
-      );
+    // Validate required fields
+    validateRequiredFields(body, ['userId', 'teamId', 'messages']);
+    
+    // Validate messages array
+    if (!Array.isArray(messages) || messages.length === 0) {
+      throw new ValidationError('Messages must be a non-empty array', 'INVALID_MESSAGES');
+    }
+
+    // Validate each message has required fields
+    for (let i = 0; i < messages.length; i++) {
+      const message = messages[i];
+      if (!message.role || !message.content) {
+        throw new ValidationError(`Message at index ${i} is missing required fields`, 'INVALID_MESSAGE_FORMAT', { index: i });
+      }
+      validateStringField(message.role, `message[${i}].role`);
+      validateStringField(message.content, `message[${i}].content`, 10000); // Max 10k chars per message
     }
 
     // Get document context for the user's query
@@ -235,7 +251,7 @@ export async function POST(req: NextRequest) {
       messages: [
         { role: "system", content: enhancedSystemPrompt },
         ...messages.map((msg: Message) => ({
-          role: msg.role,
+          role: msg.role as "user" | "assistant",
           content: msg.content,
         })),
       ],
@@ -454,11 +470,7 @@ export async function POST(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Chat API error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 }
 

@@ -1,6 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { GmailService, getUserGoogleToken } from '@/lib/gmail';
+import { 
+  handleApiError, 
+  validateRequiredFields, 
+  validateStringField,
+  validateEmail,
+  AuthenticationError,
+  ValidationError 
+} from '@/lib/errorHandler';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,23 +21,27 @@ export async function POST(req: NextRequest) {
     const userId = session?.userId;
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: "User not authenticated" },
-        { status: 401 }
-      );
+      throw new AuthenticationError();
     }
+
+    // Validate required fields
+    validateRequiredFields({ subject, content, to }, ['to', 'content']);
+    
+    // Validate email format
+    validateEmail(to);
+    
+    // Validate content length
+    validateStringField(content, 'content', 50000); // Max 50k chars for email content
+    validateStringField(subject, 'subject', 200); // Max 200 chars for subject
 
     // Get user's Google access token
     const accessToken = await getUserGoogleToken();
     
     if (!accessToken) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          message: "Google account not connected. Please connect your Gmail account first.",
-          requiresOAuth: true
-        },
-        { status: 403 }
+      throw new ValidationError(
+        "Google account not connected. Please connect your Gmail account first.",
+        'GOOGLE_NOT_CONNECTED',
+        { requiresOAuth: true }
       );
     }
 
@@ -51,18 +63,10 @@ export async function POST(req: NextRequest) {
         messageId: result.messageId
       });
     } else {
-      console.error("❌ Failed to send email:", result.error);
-      return NextResponse.json(
-        { success: false, message: result.error || "Failed to send email" },
-        { status: 500 }
-      );
+      throw new Error(result.error || "Failed to send email");
     }
     
   } catch (error) {
-    console.error("❌ Error sending email:", error);
-    return NextResponse.json(
-      { success: false, message: "Failed to send email" },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 } 

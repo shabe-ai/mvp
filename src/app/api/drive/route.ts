@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getGoogleDriveService } from '@/lib/googleDrive';
+import { 
+  handleApiError, 
+  validateStringField,
+  AuthenticationError,
+  ValidationError 
+} from '@/lib/errorHandler';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,11 +17,7 @@ export async function GET(request: NextRequest) {
     console.log('🔍 Drive API - Session:', { userId: userId ? 'present' : 'missing' });
 
     if (!userId) {
-      console.log('❌ Drive API - User not authenticated');
-      return NextResponse.json(
-        { error: 'User not authenticated' },
-        { status: 401 }
-      );
+      throw new AuthenticationError();
     }
 
     const { searchParams } = new URL(request.url);
@@ -25,9 +27,9 @@ export async function GET(request: NextRequest) {
     const driveService = await getGoogleDriveService(userId);
     
     if (!driveService) {
-      return NextResponse.json(
-        { error: 'Google Drive not connected. Please connect your Google account first.' },
-        { status: 400 }
+      throw new ValidationError(
+        'Google Drive not connected. Please connect your Google account first.',
+        'GOOGLE_NOT_CONNECTED'
       );
     }
 
@@ -40,37 +42,30 @@ export async function GET(request: NextRequest) {
       case 'contents':
         // Get contents of a specific folder
         if (!folderId) {
-          return NextResponse.json(
-            { error: 'folderId parameter is required' },
-            { status: 400 }
-          );
+          throw new ValidationError('folderId parameter is required', 'MISSING_FOLDER_ID');
         }
+        validateStringField(folderId, 'folderId');
         const contents = await driveService.getFolderContents(folderId);
         return NextResponse.json({ contents });
 
       case 'structure':
         // Get full folder structure
         if (!folderId) {
-          return NextResponse.json(
-            { error: 'folderId parameter is required' },
-            { status: 400 }
-          );
+          throw new ValidationError('folderId parameter is required', 'MISSING_FOLDER_ID');
         }
+        validateStringField(folderId, 'folderId');
         const structure = await driveService.getFolderStructure(folderId);
         return NextResponse.json({ structure });
 
       default:
-        return NextResponse.json(
-          { error: 'Invalid action. Use: folders, contents, or structure' },
-          { status: 400 }
+        throw new ValidationError(
+          'Invalid action. Use: folders, contents, or structure',
+          'INVALID_ACTION',
+          { validActions: ['folders', 'contents', 'structure'] }
         );
     }
 
   } catch (error) {
-    console.error('❌ Google Drive API error:', error);
-    return NextResponse.json(
-      { error: 'Failed to access Google Drive' },
-      { status: 500 }
-    );
+    return handleApiError(error);
   }
 } 

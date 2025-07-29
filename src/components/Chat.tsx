@@ -15,6 +15,7 @@ import {
   Loader2
 } from "lucide-react";
 import PreviewCard from "@/components/PreviewCard";
+import GoogleDriveIntegration from "./GoogleDriveIntegration";
 
 interface Message {
   id: string;
@@ -53,6 +54,7 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
     activityData: Record<string, unknown>;
   } | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [processedDocumentsCount, setProcessedDocumentsCount] = useState(0);
 
   // Initialize with calendar summary if user is logged in
   useEffect(() => {
@@ -638,6 +640,18 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
     setEmailDraft(null);
   };
 
+  const handleDocumentsProcessed = (count: number) => {
+    setProcessedDocumentsCount(prev => prev + count);
+    // Add a system message to inform the user
+    const systemMessage: Message = {
+      id: Date.now().toString(),
+      role: "assistant",
+      content: `✅ Successfully processed ${count} document${count > 1 ? 's' : ''} from your Google Drive. You can now ask questions about these documents in the chat!`,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, systemMessage]);
+  };
+
   // Show loading state while Clerk is determining authentication
   if (!isLoaded) {
     return (
@@ -769,6 +783,14 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
           />
         </div>
       )}
+
+      {/* Google Drive Integration */}
+      <div className="px-4 mb-4">
+        <GoogleDriveIntegration onDocumentsProcessed={handleDocumentsProcessed} />
+      </div>
+
+
+
       <form onSubmit={handleSubmit} className="flex gap-2 w-full px-4 pb-6 mt-auto">
         <Input
           value={input}
