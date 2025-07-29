@@ -42,15 +42,25 @@ function GoogleIntegrationSection() {
   };
 
   return (
-    <section className="bg-white rounded-lg shadow p-6 border border-slate-100 mb-6">
-      <h2 className="text-xl font-semibold mb-2">Google Workspace Integration</h2>
-      <p className="text-gray-600 mb-4">Connect your Google account to enable Gmail and Google Drive features.</p>
+    <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 mb-8">
+      <div className="flex items-center mb-6">
+        <div className="w-12 h-12 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-lg flex items-center justify-center mr-4">
+          <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M10 2a8 8 0 100 16 8 8 0 000-16zm0 14a6 6 0 110-12 6 6 0 010 12z"/>
+            <path d="M10 6a4 4 0 100 8 4 4 0 000-8zm0 6a2 2 0 110-4 2 2 0 010 4z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-1">Google Workspace Integration</h2>
+          <p className="text-slate-600">Connect your Google account to enable Gmail and Google Drive features.</p>
+        </div>
+      </div>
       
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between p-6 bg-slate-50 rounded-lg border border-slate-200">
           <div>
-            <h3 className="text-sm font-medium text-gray-900">Connection Status</h3>
-            <p className="text-sm text-gray-600">
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">Connection Status</h3>
+            <p className="text-slate-600">
               {isConnected === null ? "Checking..." : 
                isConnected ? "✅ Connected" : "❌ Not connected"}
             </p>
@@ -58,17 +68,22 @@ function GoogleIntegrationSection() {
           <button
             onClick={handleConnect}
             disabled={loading}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+            className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "Connecting..." : "Connect Google Account"}
           </button>
         </div>
 
         {calendarError && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <p className="text-sm text-yellow-800">
-              ⚠️ Calendar access requires additional permissions. Please reconnect your Google account.
-            </p>
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-amber-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <p className="text-sm text-amber-800">
+                Calendar access requires additional permissions. Please reconnect your Google account.
+              </p>
+            </div>
           </div>
         )}
       </div>
@@ -138,49 +153,70 @@ function GoogleDriveSection() {
   };
 
   return (
-    <section className="bg-white rounded-lg shadow p-6 border border-slate-100 mb-6">
-      <h2 className="text-xl font-semibold mb-2">Google Drive Integration</h2>
-      <p className="text-gray-600 mb-4">Connect your Google Drive to enable AI-powered document analysis.</p>
+    <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 mb-8">
+      <div className="flex items-center mb-6">
+        <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-4">
+          <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
+          </svg>
+        </div>
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 mb-1">Google Drive Integration</h2>
+          <p className="text-slate-600">Connect your Google Drive to enable AI-powered document analysis.</p>
+        </div>
+      </div>
       
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
+      <div className="space-y-6">
+        <div className="flex items-center justify-between p-6 bg-slate-50 rounded-lg border border-slate-200">
           <div>
-            <h3 className="text-sm font-medium text-gray-900">Connection Status</h3>
-            <p className="text-sm text-gray-600">
+            <h3 className="text-lg font-semibold text-slate-900 mb-1">Connection Status</h3>
+            <p className="text-slate-600">
               {isConnected === null ? "Checking..." : 
                isConnected ? "✅ Connected" : "❌ Not connected"}
             </p>
           </div>
-          <div className="flex space-x-2">
+          <div className="flex space-x-3">
             <button
               onClick={testDriveConnection}
               disabled={loading}
-              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Testing..." : "Test Google Drive Connection"}
+              {loading ? "Testing..." : "Test Connection"}
             </button>
             <button
               onClick={handleConnect}
               disabled={loading}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+              className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? "Connecting..." : "Reconnect Google Account"}
+              {loading ? "Connecting..." : "Connect Account"}
             </button>
           </div>
         </div>
 
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-red-800">{error}</p>
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <p className="text-red-800">{error}</p>
+            </div>
           </div>
         )}
 
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 className="text-sm font-medium text-blue-900 mb-2">💡 Tip</h4>
-          <p className="text-sm text-blue-700">
-            The Google Drive integration is now available in the main chat interface. 
-            Go to the Home page to connect your Google Drive and process documents for AI context.
-          </p>
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+          <div className="flex items-start">
+            <svg className="w-6 h-6 text-blue-600 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <div>
+              <h4 className="text-lg font-semibold text-blue-900 mb-2">💡 Integration Tip</h4>
+              <p className="text-blue-700">
+                The Google Drive integration is now available in the main chat interface. 
+                Go to the Home page to connect your Google Drive and process documents for AI context.
+              </p>
+            </div>
+          </div>
         </div>
       </div>
     </section>
@@ -189,40 +225,90 @@ function GoogleDriveSection() {
 
 export default function AdminPage() {
   return (
-    <div className="max-w-3xl mx-auto py-12">
-      <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
+    <div className="max-w-4xl mx-auto py-8">
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent mb-2">
+          Admin Dashboard
+        </h1>
+        <p className="text-slate-600 text-lg">Manage your Shabe workspace settings and integrations.</p>
+      </div>
+      
       <SignedIn>
         <div className="space-y-8">
           {/* Google Integration Section */}
           <GoogleIntegrationSection />
 
           {/* Team Details Section */}
-          <section className="bg-white rounded-lg shadow p-6 border border-slate-100 mb-6">
-            <h2 className="text-xl font-semibold mb-2">Team Details</h2>
-            <p className="text-gray-600 mb-2">View and manage your team information.</p>
-            {/* TODO: Add team details UI here */}
-            <div className="text-sm text-gray-400">(Team details UI coming soon)</div>
+          <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 mb-8">
+            <div className="flex items-center mb-6">
+              <div className="w-12 h-12 bg-gradient-to-r from-slate-500 to-slate-600 rounded-lg flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">Team Details</h2>
+                <p className="text-slate-600">View and manage your team information.</p>
+              </div>
+            </div>
+            
+            <div className="bg-slate-50 rounded-lg p-6 border border-slate-200">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-slate-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <span className="text-slate-500">Team details UI coming soon</span>
+              </div>
+            </div>
           </section>
 
           {/* Google Drive Integration Section */}
           <GoogleDriveSection />
 
           {/* Future Admin Features */}
-          <section className="bg-white rounded-lg shadow p-6 border border-slate-100">
-            <h2 className="text-xl font-semibold mb-2">More Admin Features</h2>
-            <div className="text-sm text-gray-400">(More admin features coming soon)</div>
+          <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+            <div className="flex items-center mb-6">
+              <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-lg flex items-center justify-center mr-4">
+                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-slate-900 mb-1">More Admin Features</h2>
+                <p className="text-slate-600">Additional administrative tools and settings.</p>
+              </div>
+            </div>
+            
+            <div className="bg-slate-50 rounded-lg p-6 border border-slate-200">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-slate-400 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                <span className="text-slate-500">More admin features coming soon</span>
+              </div>
+            </div>
           </section>
         </div>
       </SignedIn>
+      
       <SignedOut>
-        <div className="text-center py-12">
-          <h2 className="text-2xl font-bold mb-4">Admin Access</h2>
-          <p className="mb-6 text-gray-600">Please sign in to access admin features.</p>
-          <SignInButton mode="modal">
-            <button className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors">
-              Sign In
-            </button>
-          </SignInButton>
+        <div className="text-center py-16">
+          <div className="w-24 h-24 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg className="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+            </svg>
+          </div>
+          <h2 className="text-3xl font-bold text-slate-900 mb-4">Admin Access Required</h2>
+          <p className="text-lg text-slate-600 mb-8 max-w-md mx-auto">
+            Please sign in to access admin features and manage your Shabe workspace settings.
+          </p>
+          <div className="flex justify-center space-x-4">
+            <SignInButton mode="modal">
+              <button className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md">
+                Sign In
+              </button>
+            </SignInButton>
+          </div>
         </div>
       </SignedOut>
     </div>
