@@ -128,14 +128,47 @@ export class AIContextService {
         group.avgSimilarity += doc.similarity;
       });
       
-      // Calculate average similarity and format context
+      // Calculate average similarity and format context with token limit management
       let docIndex = 1;
-      groupedDocs.forEach((group) => {
+      let totalTokens = 0;
+      const maxTokensPerContext = 4000; // Conservative limit to leave room for system prompt and messages
+      let shouldBreak = false;
+      
+      for (const [fileName, group] of groupedDocs) {
+        if (shouldBreak) break;
+        
         const avgSimilarity = group.avgSimilarity / group.chunks.length;
-        context += `${docIndex}. **${group.fileName}** (${group.fileType}, avg similarity: ${avgSimilarity.toFixed(3)})\n`;
-        context += `Content: ${group.chunks.join(' ')}\n\n`;
-        docIndex++;
-      });
+        const combinedContent = group.chunks.join(' ');
+        
+        // Estimate tokens (roughly 4 characters per token)
+        const estimatedTokens = combinedContent.length / 4;
+        
+        // If adding this document would exceed the limit, truncate or skip
+        if (totalTokens + estimatedTokens > maxTokensPerContext) {
+          // Truncate the content to fit within limits
+          const remainingTokens = maxTokensPerContext - totalTokens;
+          const maxChars = remainingTokens * 4;
+          const truncatedContent = combinedContent.length > maxChars 
+            ? combinedContent.substring(0, maxChars) + '... [content truncated]'
+            : combinedContent;
+          
+          context += `${docIndex}. **${group.fileName}** (${group.fileType}, avg similarity: ${avgSimilarity.toFixed(3)})\n`;
+          context += `Content: ${truncatedContent}\n\n`;
+          totalTokens += estimatedTokens;
+          docIndex++;
+          
+          // Add a note about truncation
+          if (combinedContent.length > maxChars) {
+            context += `[Note: Some document content was truncated due to length limits. ${groupedDocs.size - docIndex + 1} more documents available.]\n\n`;
+            shouldBreak = true;
+          }
+        } else {
+          context += `${docIndex}. **${group.fileName}** (${group.fileType}, avg similarity: ${avgSimilarity.toFixed(3)})\n`;
+          context += `Content: ${combinedContent}\n\n`;
+          totalTokens += estimatedTokens;
+          docIndex++;
+        }
+      }
 
       context += 'Please use this information to provide a comprehensive answer. If the documents don\'t contain relevant information, you can still provide a helpful response based on your general knowledge.';
 

@@ -282,17 +282,46 @@ export async function POST(req: NextRequest) {
     }
 
     // Call OpenAI to understand the intent
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        { role: "system", content: enhancedSystemPrompt },
-        ...messages.map((msg: Message) => ({
-          role: msg.role as "user" | "assistant",
-          content: msg.content,
-        })),
-      ],
-      temperature: 0.1,
-    });
+    let completion;
+    try {
+      completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          { role: "system", content: enhancedSystemPrompt },
+          ...messages.map((msg: Message) => ({
+            role: msg.role as "user" | "assistant",
+            content: msg.content,
+          })),
+        ],
+        temperature: 0.1,
+      });
+    } catch (error: unknown) {
+      // If we hit token limit, try with reduced context
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'context_length_exceeded' && hasRelevantDocuments) {
+        console.log('⚠️ Token limit exceeded, retrying with reduced context...');
+        
+        // Create a simplified context with just document names and types
+        const simplifiedContext = 'Based on your question, here are the relevant documents from your knowledge base:\n\n' +
+          documentContext.split('\n\n').slice(0, 3).join('\n\n') + // Take only first 3 documents
+          '\n\n[Note: Document content was simplified due to length limits. Please ask for specific documents if you need detailed analysis.]';
+        
+        enhancedSystemPrompt = CRM_SYSTEM_PROMPT + `\n\nDOCUMENT CONTEXT:\n${simplifiedContext}\n\nUse the document context above to provide more informed and accurate responses. If the documents contain relevant information, incorporate it into your response. If not, rely on your general knowledge.`;
+        
+        completion = await openai.chat.completions.create({
+          model: "gpt-4",
+          messages: [
+            { role: "system", content: enhancedSystemPrompt },
+            ...messages.map((msg: Message) => ({
+              role: msg.role as "user" | "assistant",
+              content: msg.content,
+            })),
+          ],
+          temperature: 0.1,
+        });
+      } else {
+        throw error;
+      }
+    }
 
     const aiResponse = completion.choices[0]?.message?.content || "";
     
