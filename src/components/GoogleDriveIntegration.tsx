@@ -140,7 +140,12 @@ export default function GoogleDriveIntegration({
       const processableFiles = folderFiles.filter((file: File) => 
         file.mimeType.includes('document') || 
         file.mimeType.includes('pdf') ||
-        file.mimeType.includes('text')
+        file.mimeType.includes('text') ||
+        file.mimeType.includes('spreadsheet') ||
+        file.mimeType.includes('csv') ||
+        file.mimeType.includes('excel') ||
+        file.mimeType.includes('xlsx') ||
+        file.mimeType.includes('xls')
       );
 
       if (processableFiles.length === 0) {
