@@ -1143,24 +1143,24 @@ async function handleAddField(response: CRMActionRequest, teamId: string) {
       case "accounts":
         const addAccountFieldResult = await convex.mutation(api.crm.addAccountField, {
           teamId,
-          accountId: id,
-          fieldName: field,
+          accountId: id as string & { __tableName: "accounts" },
+          fieldName: field as string,
           fieldValue: value,
         });
         return addAccountFieldResult.message;
       case "activities":
         const addActivityFieldResult = await convex.mutation(api.crm.addActivityField, {
           teamId,
-          activityId: id,
-          fieldName: field,
+          activityId: id as string & { __tableName: "activities" },
+          fieldName: field as string,
           fieldValue: value,
         });
         return addActivityFieldResult.message;
       case "deals":
         const addDealFieldResult = await convex.mutation(api.crm.addDealField, {
           teamId,
-          dealId: id,
-          fieldName: field,
+          dealId: id as string & { __tableName: "deals" },
+          fieldName: field as string,
           fieldValue: value,
         });
         return addDealFieldResult.message;
