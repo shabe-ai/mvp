@@ -194,14 +194,20 @@ export class GoogleDriveService {
         pdfBuffer = Buffer.from(arrayBuffer);
       }
       
-      // Use a simpler approach for PDF text extraction
+      // Extract text from PDF using pdf-parse
       try {
-        // For now, return a placeholder since PDF parsing is complex
-        // We'll implement a proper solution in the next iteration
-        return '[PDF content - text extraction temporarily unavailable. The PDF file was processed but text extraction is being improved.]';
+        const pdfParse = (await import('pdf-parse')).default;
+        const pdfData = await pdfParse(pdfBuffer);
+        
+        if (pdfData.text && pdfData.text.trim().length > 0) {
+          return pdfData.text;
+        } else {
+          console.warn('PDF extracted but no text content found - may be image-based PDF');
+          return '[PDF content - no text found (likely image-based PDF). File processed but text extraction not available.]';
+        }
       } catch (pdfError) {
         console.warn('PDF extraction failed:', pdfError);
-        return '[PDF content - text extraction not available. The PDF file was processed but text extraction failed. This may be due to the PDF being image-based or having security restrictions.]';
+        return '[PDF content - text extraction failed. This may be due to the PDF being image-based or having security restrictions.]';
       }
     } catch (error) {
       console.error('❌ Error extracting PDF text:', error);
