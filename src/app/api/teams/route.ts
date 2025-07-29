@@ -101,4 +101,42 @@ export async function PUT(req: NextRequest) {
   } catch (error) {
     return handleApiError(error);
   }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const session = await auth();
+    const userId = session?.userId;
+
+    if (!userId) {
+      throw new AuthenticationError();
+    }
+
+    const { searchParams } = new URL(req.url);
+    const teamId = searchParams.get("teamId");
+
+    if (!teamId) {
+      throw new ValidationError('Team ID is required', 'MISSING_TEAM_ID');
+    }
+
+    validateStringField(teamId, 'teamId');
+
+    // Verify user owns the team before deleting
+    const team = await convex.query(api.crm.getTeamById, { teamId: teamId as Id<"teams"> });
+    if (!team) {
+      throw new ValidationError('Team not found', 'TEAM_NOT_FOUND');
+    }
+
+    if (team.ownerId !== userId) {
+      throw new ValidationError('Only team owner can delete team', 'INSUFFICIENT_PERMISSIONS');
+    }
+
+    await convex.mutation(api.crm.deleteTeam, {
+      teamId: teamId as Id<"teams">,
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    return handleApiError(error);
+  }
 } 

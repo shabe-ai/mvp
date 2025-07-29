@@ -144,6 +144,34 @@ export default function TeamManagement() {
     }
   };
 
+  const deleteTeam = async (teamId: string) => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch(`/api/teams?teamId=${teamId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        setError(data.error);
+      } else {
+        setTeams(prev => prev.filter(team => team._id !== teamId));
+        if (selectedTeam?._id === teamId) {
+          setSelectedTeam(teams.find(team => team._id !== teamId) || null);
+        }
+      }
+    } catch (err) {
+      setError("Failed to delete team");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -241,6 +269,22 @@ export default function TeamManagement() {
                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
                     </svg>
                   </button>
+                  {team.ownerId === user?.id && teams.length > 1 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (confirm(`Are you sure you want to delete "${team.name}"? This action cannot be undone.`)) {
+                          deleteTeam(team._id);
+                        }
+                      }}
+                      className="text-red-400 hover:text-red-600 transition-colors"
+                      title="Delete team"
+                    >
+                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

@@ -142,7 +142,7 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
     if (!user) return;
     
     try {
-      const response = await fetch(`/api/teams?userId=${user.id}`, {
+      const response = await fetch('/api/teams', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -179,7 +179,6 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: `${user.firstName || user.username || 'My'}'s Team`,
-          ownerId: user.id,
         }),
       });
       

@@ -27,10 +27,15 @@ export const createTeam = mutation({
 export const getTeamsByUser = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("teams")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.userId))
-      .collect();
+    // Get all teams and filter by membership
+    const allTeams = await ctx.db.query("teams").collect();
+    
+    // Filter teams where user is owner or member
+    const userTeams = allTeams.filter(team => 
+      team.ownerId === args.userId || team.members.includes(args.userId)
+    );
+    
+    return userTeams;
   },
 });
 
@@ -133,6 +138,19 @@ export const getTeamStats = query({
       deals: deals.length,
       totalRecords: contacts.length + accounts.length + activities.length + deals.length,
     };
+  },
+});
+
+export const deleteTeam = mutation({
+  args: { teamId: v.id("teams") },
+  handler: async (ctx, args) => {
+    const team = await ctx.db.get(args.teamId);
+    if (!team) {
+      throw new Error("Team not found");
+    }
+    
+    await ctx.db.delete(args.teamId);
+    return true;
   },
 });
 
