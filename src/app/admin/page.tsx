@@ -53,7 +53,7 @@ function GoogleIntegrationSection() {
         </div>
         <div>
           <h2 className="text-2xl font-bold text-slate-900 mb-1">Google Workspace Integration</h2>
-          <p className="text-slate-600">Connect your Google account to enable Gmail and Google Drive features.</p>
+          <p className="text-slate-600">Connect your Google account to enable Gmail, Google Drive, and Calendar features.</p>
         </div>
       </div>
       
@@ -87,123 +87,6 @@ function GoogleIntegrationSection() {
             </div>
           </div>
         )}
-      </div>
-    </section>
-  );
-}
-
-function GoogleDriveSection() {
-  const { user } = useUser();
-  const [isConnected, setIsConnected] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    checkConnection();
-  }, [user]);
-
-  const checkConnection = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/test-token");
-      const data = await res.json();
-      setIsConnected(!!data.hasToken);
-    } catch {
-      setIsConnected(false);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleConnect = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/auth/google");
-      const data = await res.json();
-      if (data.authUrl) {
-        window.location.href = data.authUrl;
-      }
-    } catch {
-      setError("Failed to connect Google account");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const testDriveConnection = async () => {
-    if (!user) return;
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const res = await fetch("/api/drive?action=folders");
-      const data = await res.json();
-      
-      if (data.error) {
-        setError(data.error);
-      } else {
-        setError(null);
-        alert("Google Drive connection successful! You can now use the integration in the main chat.");
-      }
-    } catch {
-      setError("Failed to connect to Google Drive");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-8 mb-8">
-      <div className="flex items-center mb-6">
-        <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg flex items-center justify-center mr-4">
-          <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"/>
-          </svg>
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 mb-1">Google Drive Integration</h2>
-          <p className="text-slate-600">Connect your Google Drive to enable AI-powered document analysis.</p>
-        </div>
-      </div>
-      
-      <div className="space-y-6">
-        <div className="flex items-center justify-between p-6 bg-slate-50 rounded-lg border border-slate-200">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 mb-1">Connection Status</h3>
-            <p className="text-slate-600">
-              {isConnected === null ? "Checking..." : 
-               isConnected ? "✅ Connected" : "❌ Not connected"}
-            </p>
-          </div>
-          <div className="flex space-x-3">
-            <button
-              onClick={testDriveConnection}
-              disabled={loading}
-              className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Testing..." : "Test Connection"}
-            </button>
-            <button
-              onClick={handleConnect}
-              disabled={loading}
-              className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? "Connecting..." : "Connect Account"}
-            </button>
-          </div>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-center">
-              <svg className="w-5 h-5 text-red-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <p className="text-red-800">{error}</p>
-            </div>
-          </div>
-        )}
 
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
           <div className="flex items-start">
@@ -213,8 +96,8 @@ function GoogleDriveSection() {
             <div>
               <h4 className="text-lg font-semibold text-blue-900 mb-2">💡 Integration Tip</h4>
               <p className="text-blue-700">
-                The Google Drive integration is now available in the main chat interface. 
-                Go to the Home page to connect your Google Drive and process documents for AI context.
+                Once connected, you can use Google Drive integration in the main chat interface. 
+                Go to the Home page to process documents for AI context.
               </p>
             </div>
           </div>
@@ -255,9 +138,6 @@ export default function AdminPage() {
             
             <TeamManagement />
           </section>
-
-          {/* Google Drive Integration Section */}
-          <GoogleDriveSection />
 
           {/* Future Admin Features */}
           <section className="bg-white rounded-xl shadow-sm border border-slate-200 p-8">

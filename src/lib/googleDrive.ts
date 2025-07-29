@@ -198,7 +198,6 @@ export class GoogleDriveService {
       try {
         const pdfParse = (await import('pdf-parse')).default;
         const pdfData = await pdfParse(pdfBuffer);
-        
         if (pdfData.text && pdfData.text.trim().length > 0) {
           return pdfData.text;
         } else {
