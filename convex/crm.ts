@@ -34,6 +34,108 @@ export const getTeamsByUser = query({
   },
 });
 
+export const getTeamById = query({
+  args: { teamId: v.id("teams") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.teamId);
+  },
+});
+
+export const updateTeam = mutation({
+  args: {
+    teamId: v.id("teams"),
+    name: v.optional(v.string()),
+    settings: v.optional(v.any()),
+  },
+  handler: async (ctx, args) => {
+    const team = await ctx.db.get(args.teamId);
+    if (!team) {
+      throw new Error("Team not found");
+    }
+
+    await ctx.db.patch(args.teamId, {
+      ...(args.name && { name: args.name }),
+      ...(args.settings && { settings: args.settings }),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const addTeamMember = mutation({
+  args: {
+    teamId: v.id("teams"),
+    memberId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const team = await ctx.db.get(args.teamId);
+    if (!team) {
+      throw new Error("Team not found");
+    }
+
+    if (!team.members.includes(args.memberId)) {
+      await ctx.db.patch(args.teamId, {
+        members: [...team.members, args.memberId],
+        updatedAt: Date.now(),
+      });
+    }
+  },
+});
+
+export const removeTeamMember = mutation({
+  args: {
+    teamId: v.id("teams"),
+    memberId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const team = await ctx.db.get(args.teamId);
+    if (!team) {
+      throw new Error("Team not found");
+    }
+
+    if (team.ownerId === args.memberId) {
+      throw new Error("Cannot remove team owner");
+    }
+
+    await ctx.db.patch(args.teamId, {
+      members: team.members.filter(id => id !== args.memberId),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const getTeamStats = query({
+  args: { teamId: v.string() },
+  handler: async (ctx, args) => {
+    const contacts = await ctx.db
+      .query("contacts")
+      .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
+      .collect();
+
+    const accounts = await ctx.db
+      .query("accounts")
+      .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
+      .collect();
+
+    const activities = await ctx.db
+      .query("activities")
+      .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
+      .collect();
+
+    const deals = await ctx.db
+      .query("deals")
+      .withIndex("by_team", (q) => q.eq("teamId", args.teamId))
+      .collect();
+
+    return {
+      contacts: contacts.length,
+      accounts: accounts.length,
+      activities: activities.length,
+      deals: deals.length,
+      totalRecords: contacts.length + accounts.length + activities.length + deals.length,
+    };
+  },
+});
+
 // ===== CONTACT FUNCTIONS =====
 
 export const createContact = mutation({
