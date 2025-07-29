@@ -44,6 +44,63 @@ export class AIContextService {
         return [];
       }
 
+      // Check if this is a comprehensive query that needs all documents
+      const queryLower = query.toLowerCase();
+      const isComprehensiveQuery = 
+        queryLower.includes('all') ||
+        queryLower.includes('sum') ||
+        queryLower.includes('total') ||
+        queryLower.includes('every') ||
+        queryLower.includes('each') ||
+        queryLower.includes('complete') ||
+        queryLower.includes('full') ||
+        queryLower.includes('entire') ||
+        queryLower.includes('everything') ||
+        queryLower.includes('processed') ||
+        queryLower.includes('files') ||
+        queryLower.includes('documents') ||
+        queryLower.includes('invoices') ||
+        queryLower.includes('expenses');
+
+      if (isComprehensiveQuery) {
+        console.log(`🔍 AI Context: Comprehensive query detected, returning all documents`);
+        
+        // For comprehensive queries, return all documents without similarity filtering
+        const uniqueFiles = new Map<string, { fileName: string; fileType: string; chunks: string[] }>();
+        
+        chunks.forEach((chunk) => {
+          const fileName = chunk.metadata.fileName;
+          if (!uniqueFiles.has(fileName)) {
+            uniqueFiles.set(fileName, {
+              fileName,
+              fileType: chunk.metadata.fileType,
+              chunks: []
+            });
+          }
+          uniqueFiles.get(fileName)!.chunks.push(chunk.text);
+        });
+
+        // Convert to DocumentContext format
+        const results: DocumentContext[] = [];
+        let chunkIndex = 0;
+        
+        for (const [fileName, fileData] of uniqueFiles) {
+          // Take the first chunk of each file for comprehensive queries
+          results.push({
+            fileName,
+            fileType: fileData.fileType,
+            chunkText: fileData.chunks[0] || '',
+            similarity: 1.0, // High similarity for comprehensive queries
+            chunkIndex: chunkIndex++
+          });
+        }
+
+        return results.slice(0, maxResults);
+      }
+
+      // For specific queries, use similarity-based filtering
+      console.log(`🔍 AI Context: Specific query detected, using similarity filtering`);
+      
       // Generate embedding for the query
       const queryEmbeddings = await embeddingsService.generateEmbeddings([query]);
       const queryEmbedding = queryEmbeddings[0];
