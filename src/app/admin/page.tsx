@@ -3,11 +3,40 @@ import { SignedIn, SignedOut, SignInButton, useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import TeamManagement from "@/components/TeamManagement";
 
+interface GoogleFolder {
+  id: string;
+  name: string;
+}
+
+interface GoogleFile {
+  id: string;
+  name: string;
+  mimeType: string;
+  size?: string;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  ownerId: string;
+  members: string[];
+}
+
 function GoogleIntegrationSection() {
   const { user } = useUser();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(false);
   const [calendarError, setCalendarError] = useState(false);
+  
+  // Google Drive processing states
+  const [showDriveSection, setShowDriveSection] = useState(false);
+  const [folders, setFolders] = useState<GoogleFolder[]>([]);
+  const [selectedFolder, setSelectedFolder] = useState<string>("");
+  const [folderFiles, setFolderFiles] = useState<GoogleFile[]>([]);
+  const [processingFiles, setProcessingFiles] = useState(false);
+  const [processedCount, setProcessedCount] = useState(0);
+  const [totalFiles, setTotalFiles] = useState(0);
+  const [currentTeam, setCurrentTeam] = useState<Team | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -30,7 +59,22 @@ function GoogleIntegrationSection() {
         }
       })
       .catch(() => setCalendarError(true));
+    
+    // Load current team
+    loadCurrentTeam();
   }, [user]);
+
+  const loadCurrentTeam = async () => {
+    try {
+      const response = await fetch('/api/teams/current');
+      const data = await response.json();
+      if (data.team) {
+        setCurrentTeam(data.team);
+      }
+    } catch (error) {
+      console.error('Failed to load current team:', error);
+    }
+  };
 
   const handleConnect = async () => {
     setLoading(true);
@@ -39,6 +83,100 @@ function GoogleIntegrationSection() {
     setLoading(false);
     if (data.authUrl) {
       window.location.href = data.authUrl;
+    }
+  };
+
+  const loadFolders = async () => {
+    if (!isConnected) return;
+    
+    try {
+      const response = await fetch('/api/drive?action=folders');
+      const data = await response.json();
+      if (data.folders) {
+        setFolders(data.folders);
+      }
+    } catch (error) {
+      console.error('Failed to load folders:', error);
+    }
+  };
+
+  const loadFolderContents = async (folderId: string) => {
+    try {
+      const response = await fetch(`/api/drive?action=contents&folderId=${folderId}`);
+      const data = await response.json();
+      if (data.files) {
+        setFolderFiles(data.files);
+        setTotalFiles(data.files.length);
+      }
+    } catch (error) {
+      console.error('Failed to load folder contents:', error);
+    }
+  };
+
+  const processFiles = async () => {
+    if (!selectedFolder || !currentTeam) return;
+    
+    setProcessingFiles(true);
+    setProcessedCount(0);
+    
+    try {
+      // Get files in the selected folder
+      const response = await fetch(`/api/drive?action=contents&folderId=${selectedFolder}`);
+      const data = await response.json();
+      
+      if (!data.files) {
+        throw new Error('No files found');
+      }
+      
+      const processableFiles = data.files.filter((file: GoogleFile) => {
+        const isSupportedType = file.mimeType.includes('document') ||
+          file.mimeType.includes('pdf') ||
+          file.mimeType.includes('text') ||
+          file.mimeType.includes('spreadsheet') ||
+          file.mimeType.includes('csv') ||
+          file.mimeType.includes('excel') ||
+          file.mimeType.includes('xlsx') ||
+          file.mimeType.includes('xls');
+        
+        if (file.mimeType.includes('html') && file.size && parseInt(file.size) > 500000) {
+          return false;
+        }
+        
+        return isSupportedType;
+      });
+      
+      setTotalFiles(processableFiles.length);
+      
+      // Process each file
+      for (let i = 0; i < processableFiles.length; i++) {
+        const file = processableFiles[i];
+        
+        try {
+          const storeResponse = await fetch('/api/drive/store', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              fileId: file.id,
+              teamId: currentTeam.id
+            }),
+          });
+          
+          if (storeResponse.ok) {
+            setProcessedCount(i + 1);
+          }
+        } catch (error) {
+          console.error(`Failed to process file ${file.name}:`, error);
+        }
+      }
+      
+      alert(`Successfully processed ${processedCount} documents for your team!`);
+    } catch (error) {
+      console.error('Failed to process files:', error);
+      alert('Failed to process files. Please try again.');
+    } finally {
+      setProcessingFiles(false);
     }
   };
 
@@ -88,6 +226,101 @@ function GoogleIntegrationSection() {
           </div>
         )}
 
+        {/* Google Drive Processing Section */}
+        {isConnected && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h4 className="text-lg font-semibold text-blue-900 mb-1">📁 Google Drive Processing</h4>
+                <p className="text-blue-700 text-sm">
+                  Process your Google Drive files once to enable AI context in chat.
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowDriveSection(!showDriveSection);
+                  if (!showDriveSection) {
+                    loadFolders();
+                  }
+                }}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+              >
+                {showDriveSection ? "Hide" : "Show Drive Processing"}
+              </button>
+            </div>
+
+            {showDriveSection && (
+              <div className="space-y-4">
+                {/* Folder Selection */}
+                <div>
+                  <label className="block text-sm font-medium text-blue-900 mb-2">
+                    Select Google Drive Folder
+                  </label>
+                  <select
+                    value={selectedFolder}
+                    onChange={(e) => {
+                      setSelectedFolder(e.target.value);
+                      if (e.target.value) {
+                        loadFolderContents(e.target.value);
+                      }
+                    }}
+                    className="w-full p-3 border border-blue-300 rounded-lg bg-white text-blue-900"
+                  >
+                    <option value="">Choose a folder...</option>
+                    {folders.map((folder) => (
+                      <option key={folder.id} value={folder.id}>
+                        {folder.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* File List */}
+                {selectedFolder && folderFiles.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium text-blue-900 mb-2">
+                      Files in folder ({folderFiles.length} total)
+                    </h5>
+                    <div className="max-h-40 overflow-y-auto bg-white rounded-lg border border-blue-200 p-3">
+                      {folderFiles.slice(0, 10).map((file) => (
+                        <div key={file.id} className="text-sm text-blue-800 py-1">
+                          📄 {file.name}
+                        </div>
+                      ))}
+                      {folderFiles.length > 10 && (
+                        <div className="text-sm text-blue-600 py-1">
+                          ... and {folderFiles.length - 10} more files
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Processing Button */}
+                {selectedFolder && (
+                  <button
+                    onClick={processFiles}
+                    disabled={processingFiles || !currentTeam}
+                    className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {processingFiles ? (
+                      <div className="flex items-center justify-center">
+                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Processing... ({processedCount}/{totalFiles})
+                      </div>
+                    ) : (
+                      "Process Files for AI Context"
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
           <div className="flex items-start">
             <svg className="w-6 h-6 text-blue-600 mr-3 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
@@ -96,8 +329,8 @@ function GoogleIntegrationSection() {
             <div>
               <h4 className="text-lg font-semibold text-blue-900 mb-2">💡 Integration Tip</h4>
               <p className="text-blue-700">
-                Once connected, you can use Google Drive integration in the main chat interface. 
-                Go to the Home page to process documents for AI context.
+                Once connected and files are processed, you can use Google Drive integration in the main chat interface. 
+                Go to the Home page to start chatting with AI context from your documents.
               </p>
             </div>
           </div>

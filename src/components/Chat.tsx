@@ -15,7 +15,7 @@ import {
   Loader2
 } from "lucide-react";
 import PreviewCard from "@/components/PreviewCard";
-import GoogleDriveIntegration from "./GoogleDriveIntegration";
+
 
 interface Message {
   id: string;
@@ -54,7 +54,7 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
     activityData: Record<string, unknown>;
   } | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
-  const [processedDocumentsCount, setProcessedDocumentsCount] = useState(0);
+
 
   // Initialize with calendar summary if user is logged in
   useEffect(() => {
@@ -639,17 +639,7 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
     setEmailDraft(null);
   };
 
-  const handleDocumentsProcessed = (count: number) => {
-    setProcessedDocumentsCount(prev => prev + count);
-    // Add a system message to inform the user
-    const systemMessage: Message = {
-      id: Date.now().toString(),
-      role: "assistant",
-      content: `✅ Successfully processed ${count} document${count > 1 ? 's' : ''} from your Google Drive. You can now ask questions about these documents in the chat!`,
-      timestamp: new Date(),
-    };
-    setMessages(prev => [...prev, systemMessage]);
-  };
+
 
   // Show loading state while Clerk is determining authentication
   if (!isLoaded) {
@@ -783,18 +773,31 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
         </div>
       )}
 
-      {/* Google Drive Integration */}
-      <div className="px-4 mb-4">
-        <GoogleDriveIntegration onDocumentsProcessed={handleDocumentsProcessed} />
-      </div>
 
 
+
+
+      {/* Document Context Indicator */}
+      {currentTeam && (
+        <div className="px-4 mb-2">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+            <div className="flex items-center">
+              <svg className="w-4 h-4 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
+              </svg>
+              <span className="text-sm text-blue-800">
+                💡 AI has access to your team&apos;s processed documents. Ask questions about your files!
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="flex gap-2 w-full px-4 pb-6 mt-auto">
         <Input
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={currentTeam ? "Ask me anything about your CRM..." : "Loading team..."}
+          placeholder={currentTeam ? "Ask me anything about your CRM or documents..." : "Loading team..."}
           disabled={isLoading}
           className="flex-1 bg-white border border-gray-200 rounded-full px-4 py-3 text-base shadow-sm focus:ring-2 focus:ring-yellow-200"
         />
