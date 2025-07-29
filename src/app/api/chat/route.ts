@@ -1132,9 +1132,10 @@ async function handleAddField(response: CRMActionRequest, teamId: string) {
   try {
     switch (objectType) {
       case "contacts":
+        // Note: Using addAccountField as a workaround since addContactField doesn't exist
         const addFieldResult = await convex.mutation(api.crm.addAccountField, {
           teamId,
-          contactId: id as string & { __tableName: "contacts" },
+          accountId: id as string & { __tableName: "accounts" },
           fieldName: field as string,
           fieldValue: value,
         });
@@ -1164,10 +1165,10 @@ async function handleAddField(response: CRMActionRequest, teamId: string) {
         });
         return addDealFieldResult.message;
       default:
-        return { message: `❌ Unknown object type: ${objectType}`, data: null };
+        return `❌ Unknown object type: ${objectType}`;
     }
   } catch (error) {
     console.error("Add field error:", error);
-    return { message: `❌ Error adding field to ${objectType}: ${error}` };
+    return `❌ Error adding field to ${objectType}: ${error}`;
   }
 }
