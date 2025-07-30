@@ -104,9 +104,9 @@ function GoogleIntegrationSection() {
     try {
       const response = await fetch(`/api/drive?action=contents&folderId=${folderId}`);
       const data = await response.json();
-      if (data.files) {
-        setFolderFiles(data.files);
-        setTotalFiles(data.files.length);
+      if (data.contents) {
+        setFolderFiles(data.contents);
+        setTotalFiles(data.contents.length);
       }
     } catch (error) {
       console.error('Failed to load folder contents:', error);
@@ -124,11 +124,11 @@ function GoogleIntegrationSection() {
       const response = await fetch(`/api/drive?action=contents&folderId=${selectedFolder}`);
       const data = await response.json();
       
-      if (!data.files) {
+      if (!data.contents) {
         throw new Error('No files found');
       }
       
-      const processableFiles = data.files.filter((file: GoogleFile) => {
+      const processableFiles = data.contents.filter((file: GoogleFile) => {
         const isSupportedType = file.mimeType.includes('document') ||
           file.mimeType.includes('pdf') ||
           file.mimeType.includes('text') ||
