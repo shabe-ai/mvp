@@ -146,6 +146,7 @@ function GoogleIntegrationSection() {
       });
       
       setTotalFiles(processableFiles.length);
+      let successfulProcesses = 0;
       
       // Process each file
       for (let i = 0; i < processableFiles.length; i++) {
@@ -164,14 +165,15 @@ function GoogleIntegrationSection() {
           });
           
           if (storeResponse.ok) {
-            setProcessedCount(i + 1);
+            successfulProcesses++;
+            setProcessedCount(successfulProcesses);
           }
         } catch (error) {
           console.error(`Failed to process file ${file.name}:`, error);
         }
       }
       
-      alert(`Successfully processed ${processedCount} documents for your team!`);
+      alert(`Successfully processed ${successfulProcesses} documents for your team!`);
     } catch (error) {
       console.error('Failed to process files:', error);
       alert('Failed to process files. Please try again.');
