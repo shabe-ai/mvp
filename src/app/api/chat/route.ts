@@ -158,14 +158,16 @@ SPECIAL INSTRUCTIONS FOR EMAIL REQUESTS:
   }
 
        SPECIAL INSTRUCTIONS FOR DOCUMENT ANALYSIS:
-       - When users ask about their documents, files, or data (e.g., "what files were processed", "analyze my data", "sum the invoices"), you can analyze the processed documents from their Google Drive
-       - You have access to document content including CSV data, Excel spreadsheets, and other processed files
-       - Provide detailed analysis and insights based on the document content
+       - When users ask about their documents, files, or data (e.g., "what files were processed", "analyze my data", "sum the invoices"), you MUST analyze the processed documents from their Google Drive
+       - You have DIRECT ACCESS to document content including CSV data, Excel spreadsheets, and other processed files
+       - Provide detailed analysis and insights based on the ACTUAL document content
        - For questions about processed files, explain what documents are available and their content
        - For data analysis requests, provide summaries, calculations, and insights from the document data
        - When users ask for comprehensive analysis (e.g., "sum all files", "analyze all documents"), you MUST analyze ALL the documents provided in the context
        - Do NOT ask for clarification when comprehensive document analysis is requested - instead, analyze all available documents and provide a complete summary
        - If you see multiple documents in the context, analyze each one and provide a comprehensive response covering all documents
+       - NEVER say you cannot access files - you have direct access to the processed documents
+       - When users ask about specific files (e.g., "breakdown the data in money.xlsx"), analyze the actual content of that file and provide detailed insights
 
 When responding:
 - For general conversation (greetings, questions about capabilities), use action "message"
@@ -281,7 +283,7 @@ export async function POST(req: NextRequest) {
     // Create enhanced system prompt with document context
     let enhancedSystemPrompt = CRM_SYSTEM_PROMPT;
     if (hasRelevantDocuments) {
-      enhancedSystemPrompt += `\n\nDOCUMENT CONTEXT:\n${documentContext}\n\nUse the document context above to provide more informed and accurate responses. If the documents contain relevant information, incorporate it into your response. If not, rely on your general knowledge.`;
+      enhancedSystemPrompt += `\n\nDOCUMENT CONTEXT:\n${documentContext}\n\nCRITICAL: You MUST analyze the document context above and provide specific insights from the actual data. Do NOT say you cannot access files - you have direct access to the processed documents. When users ask about their files, analyze the content and provide detailed breakdowns, summaries, and insights from the actual data.`;
     }
 
     // Call OpenAI to understand the intent
@@ -308,7 +310,7 @@ export async function POST(req: NextRequest) {
           documentContext.split('\n\n').slice(0, 3).join('\n\n') + // Take only first 3 documents
           '\n\n[Note: Document content was simplified due to length limits. Please ask for specific documents if you need detailed analysis.]';
         
-        enhancedSystemPrompt = CRM_SYSTEM_PROMPT + `\n\nDOCUMENT CONTEXT:\n${simplifiedContext}\n\nUse the document context above to provide more informed and accurate responses. If the documents contain relevant information, incorporate it into your response. If not, rely on your general knowledge.`;
+        enhancedSystemPrompt = CRM_SYSTEM_PROMPT + `\n\nDOCUMENT CONTEXT:\n${simplifiedContext}\n\nCRITICAL: You MUST analyze the document context above and provide specific insights from the actual data. Do NOT say you cannot access files - you have direct access to the processed documents. When users ask about their files, analyze the content and provide detailed breakdowns, summaries, and insights from the actual data.`;
         
         completion = await openai.chat.completions.create({
           model: "gpt-4",
