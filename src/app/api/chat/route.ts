@@ -1393,11 +1393,11 @@ async function handleChart(response: CRMActionRequest, userMessage: string, sess
           messages: [
             {
               role: "system",
-              content: "You are a business analyst. Generate a concise narrative (2-3 sentences) explaining the key insights from the data."
+              content: "You are a business analyst. Generate a concise narrative (2-3 sentences) explaining the key insights from the data. Focus on trends, patterns, and actionable insights. Do NOT repeat the chart description - provide different analysis."
             },
             {
               role: "user",
-              content: `Generate a narrative for this data: ${JSON.stringify(chartData)}. Query: ${userMessage}`
+              content: `Generate a narrative for this data: ${JSON.stringify(chartData)}. Query: ${userMessage}. Focus on insights, trends, and patterns rather than describing what the chart shows.`
             }
           ],
           stream: false,
@@ -1406,7 +1406,7 @@ async function handleChart(response: CRMActionRequest, userMessage: string, sess
         const narrative = narrativeResponse.choices[0]?.message?.content || "No narrative generated";
 
         return {
-          message: `📊 Chart generated from uploaded file data! ${narrative}`,
+          message: `📊 Chart generated from uploaded file data!`,
           data: {
             chartSpec,
             narrative
