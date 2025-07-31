@@ -168,6 +168,13 @@ SPECIAL INSTRUCTIONS FOR EMAIL REQUESTS:
        - If you see multiple documents in the context, analyze each one and provide a comprehensive response covering all documents
        - NEVER say you cannot access files - you have direct access to the processed documents
        - When users ask about specific files (e.g., "breakdown the data in money.xlsx"), analyze the actual content of that file and provide detailed insights
+       
+       CHART AND VISUALIZATION CAPABILITIES:
+       - When users ask for charts, graphs, plots, or visualizations (e.g., "plot this on a chart", "create a graph", "show me a visualization"), you can generate charts
+       - You have access to a chart generation system that can create LineChart, BarChart, PieChart, AreaChart, and ScatterChart
+       - When chart requests are detected, respond with a JSON action that includes chartSpec and narrative
+       - Chart requests should trigger the "chart" action type with appropriate data and visualization parameters
+       - You can create charts from document data, CRM data, or any analyzed information
 
 When responding:
 - For general conversation (greetings, questions about capabilities), use action "message"
@@ -494,6 +501,12 @@ export async function POST(req: NextRequest) {
         break;
       case "add_field":
         responseMessage = await handleAddField(parsedResponse, teamId);
+        break;
+      case "chart":
+        const chartResult = await handleChart(parsedResponse, lastUserMessage);
+        responseMessage = chartResult.message;
+        responseData = chartResult.data;
+        responseAction = "chart";
         break;
       case "ask_clarification":
         needsClarification = true;
@@ -1252,5 +1265,46 @@ async function handleAddField(response: CRMActionRequest, teamId: string) {
   } catch (error) {
     console.error("Add field error:", error);
     return `❌ Error adding field to ${objectType}: ${error}`;
+  }
+}
+
+async function handleChart(response: CRMActionRequest, userMessage: string) {
+  try {
+    console.log("📊 Chart request:", response);
+    
+    // Call the report API to generate chart
+    const reportResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/report`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        query: userMessage,
+        dataType: response.dataType || 'sales',
+        timeRange: response.timeRange || '30d',
+        chartType: response.chartType,
+        data: response.data
+      }),
+    });
+
+    if (!reportResponse.ok) {
+      throw new Error(`Report API error: ${reportResponse.statusText}`);
+    }
+
+    const reportData = await reportResponse.json();
+    
+    return {
+      message: `📊 Chart generated successfully! ${reportData.narrative || ''}`,
+      data: {
+        chartSpec: reportData.chartSpec,
+        narrative: reportData.narrative
+      }
+    };
+  } catch (error) {
+    console.error("Chart generation error:", error);
+    return {
+      message: `❌ Error generating chart: ${error}`,
+      data: null
+    };
   }
 }

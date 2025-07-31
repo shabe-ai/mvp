@@ -15,6 +15,7 @@ import {
   Loader2
 } from "lucide-react";
 import PreviewCard from "@/components/PreviewCard";
+import ChartDisplay from "@/components/ChartDisplay";
 
 
 interface Message {
@@ -27,6 +28,18 @@ interface Message {
   needsClarification?: boolean;
   clarificationQuestion?: string;
   fields?: string[];
+  chartSpec?: {
+    chartType: string;
+    data: Record<string, unknown>[];
+    chartConfig: {
+      width: number;
+      height: number;
+      margin?: Record<string, number>;
+      xAxis?: Record<string, unknown>;
+      yAxis?: Record<string, unknown>;
+    };
+  };
+  narrative?: string;
 }
 
 interface Team {
@@ -429,6 +442,8 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
           needsClarification: data.needsClarification,
           clarificationQuestion: data.clarificationQuestion,
           ...(data.fields ? { fields: data.fields } : {}),
+          ...(data.chartSpec ? { chartSpec: data.chartSpec } : {}),
+          ...(data.narrative ? { narrative: data.narrative } : {}),
         };
 
         setMessages(prev => [...prev, assistantMessage]);
@@ -505,6 +520,14 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
               <DataTable
                 data={Array.isArray(message.data) ? message.data as Record<string, unknown>[] : message.data ? [message.data as Record<string, unknown>] : []}
                 fields={Array.isArray(message.fields) ? message.fields : undefined}
+              />
+            </div>
+          )}
+          {message.role === "assistant" && message.action === "chart" && message.chartSpec && (
+            <div style={{ marginTop: 12 }}>
+              <ChartDisplay
+                chartSpec={message.chartSpec}
+                narrative={message.narrative}
               />
             </div>
           )}
