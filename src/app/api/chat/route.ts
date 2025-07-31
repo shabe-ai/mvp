@@ -535,7 +535,7 @@ export async function POST(req: NextRequest) {
         responseMessage = await handleAddField(parsedResponse, teamId);
         break;
       case "chart":
-        const chartResult = await handleChart(parsedResponse, lastUserMessage);
+        const chartResult = await handleChart(parsedResponse, lastUserMessage, sessionFiles);
         responseMessage = chartResult.message;
         responseData = chartResult.data;
         responseAction = "chart";
@@ -1310,11 +1310,113 @@ async function handleAddField(response: CRMActionRequest, teamId: string) {
   }
 }
 
-async function handleChart(response: CRMActionRequest, userMessage: string) {
+async function handleChart(response: CRMActionRequest, userMessage: string, sessionFiles: Array<{ name: string; content: string }> = []) {
   try {
     console.log("📊 Chart request:", response);
     
-    // Call the report API to generate chart
+    // If we have session files, use them for chart generation
+    if (sessionFiles && sessionFiles.length > 0) {
+      console.log("📄 Using session files for chart generation:", sessionFiles.length, "files");
+      
+      // Parse CSV data from session files
+      const chartData = [];
+      for (const file of sessionFiles) {
+        if (file.name.toLowerCase().includes('.csv')) {
+          const lines = file.content.split('\n');
+          const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+          
+          for (let i = 1; i < lines.length; i++) {
+            if (lines[i].trim()) {
+              const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+              const row: Record<string, unknown> = {};
+              
+              headers.forEach((header, index) => {
+                let value: string | number = values[index] || '';
+                // Try to parse numbers
+                if (typeof value === 'string' && value.startsWith('$')) {
+                  const parsed = parseFloat(value.replace(/[$,]/g, ''));
+                  value = isNaN(parsed) ? value : parsed;
+                } else if (typeof value === 'string' && !isNaN(Number(value))) {
+                  value = Number(value);
+                }
+                row[header] = value;
+              });
+              
+              chartData.push(row);
+            }
+          }
+        }
+      }
+      
+      if (chartData.length > 0) {
+        console.log("📊 Parsed chart data from session files:", chartData.length, "rows");
+        
+        // Generate chart specification using OpenAI
+        const chartResponse = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo-1106",
+          messages: [
+            {
+              role: "system",
+              content: "You are a data visualization expert. Generate a Recharts chart specification based on the provided data. Return a JSON object with chartType, data, and chartConfig properties. Chart types can be: LineChart, BarChart, PieChart, AreaChart, ScatterChart. Return ONLY the JSON object, no markdown formatting."
+            },
+            {
+              role: "user",
+              content: `Generate a chart for this data: ${JSON.stringify(chartData)}. Query: ${userMessage}`
+            }
+          ],
+          stream: false,
+        });
+
+        let chartSpec;
+        try {
+          const chartContent = chartResponse.choices[0]?.message?.content || "{}";
+          const jsonMatch = chartContent.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
+          const jsonString = jsonMatch ? jsonMatch[1] : chartContent;
+          chartSpec = JSON.parse(jsonString);
+        } catch (parseError) {
+          console.error("Error parsing chart spec:", parseError);
+          // Fallback to default chart spec
+          chartSpec = {
+            chartType: "BarChart",
+            data: chartData,
+            chartConfig: {
+              width: 600,
+              height: 400,
+              margin: { top: 5, right: 30, left: 20, bottom: 5 }
+            }
+          };
+        }
+
+        // Generate narrative using OpenAI
+        const narrativeResponse = await openai.chat.completions.create({
+          model: "gpt-3.5-turbo-1106",
+          messages: [
+            {
+              role: "system",
+              content: "You are a business analyst. Generate a concise narrative (2-3 sentences) explaining the key insights from the data."
+            },
+            {
+              role: "user",
+              content: `Generate a narrative for this data: ${JSON.stringify(chartData)}. Query: ${userMessage}`
+            }
+          ],
+          stream: false,
+        });
+
+        const narrative = narrativeResponse.choices[0]?.message?.content || "No narrative generated";
+
+        return {
+          message: `📊 Chart generated from uploaded file data! ${narrative}`,
+          data: {
+            chartSpec,
+            narrative
+          }
+        };
+      }
+    }
+    
+    // Fallback to report API for non-session file charts
+    console.log("📊 Using report API for chart generation");
     const reportResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/report`, {
       method: 'POST',
       headers: {
