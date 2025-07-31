@@ -432,6 +432,8 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
           }
         }
 
+        console.log('🎯 Chat received API response:', { action: data.action, chartSpec: data.chartSpec, narrative: data.narrative });
+        
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
@@ -481,6 +483,12 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
 
   const renderMessage = (message: Message) => {
     const isUser = message.role === "user";
+    
+    // Debug chart rendering
+    if (message.role === "assistant" && message.action === "chart") {
+      console.log('🎯 Chat rendering chart:', { action: message.action, chartSpec: message.chartSpec, narrative: message.narrative });
+    }
+    
     // System messages are assistant messages that are informational (not responses to user queries)
     const isSystem = message.role === 'assistant' && (
       message.action === 'message' || 
