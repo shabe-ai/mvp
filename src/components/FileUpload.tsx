@@ -59,7 +59,7 @@ export default function FileUpload({ onFilesProcessed, maxFiles = 3 }: FileUploa
     });
   };
 
-  const processFile = async (file: File): Promise<UploadedFile> => {
+  const processFile = useCallback(async (file: File): Promise<UploadedFile> => {
     const id = Math.random().toString(36).substr(2, 9);
     const uploadedFile: UploadedFile = {
       id,
@@ -107,7 +107,7 @@ export default function FileUpload({ onFilesProcessed, maxFiles = 3 }: FileUploa
 
       throw error;
     }
-  };
+  }, []);
 
   const handleFileUpload = useCallback(async (files: FileList) => {
     const fileArray = Array.from(files);
@@ -132,7 +132,7 @@ export default function FileUpload({ onFilesProcessed, maxFiles = 3 }: FileUploa
     } catch (error) {
       console.error('Error processing files:', error);
     }
-  }, [uploadedFiles.length, maxFiles, onFilesProcessed]);
+  }, [uploadedFiles.length, maxFiles, onFilesProcessed, processFile]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
