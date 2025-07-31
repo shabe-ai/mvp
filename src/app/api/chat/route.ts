@@ -547,13 +547,15 @@ export async function POST(req: NextRequest) {
     //   },
     // });
 
-    return NextResponse.json({
+    const finalResponse = {
       message: responseMessage,
       needsClarification,
       clarificationQuestion,
       action: responseAction || parsedResponse.action,
       data: responseData || parsedResponse.data,
       ...(parsedResponse.fields ? { fields: parsedResponse.fields } : {}),
+      ...(responseData?.chartSpec ? { chartSpec: responseData.chartSpec } : {}),
+      ...(responseData?.narrative ? { narrative: responseData.narrative } : {}),
       documentContext: hasRelevantDocuments ? {
         hasRelevantDocuments: true,
         totalDocuments: documentContext.split('\n\n').length - 1, // Rough count
@@ -561,7 +563,15 @@ export async function POST(req: NextRequest) {
         hasRelevantDocuments: false,
         totalDocuments: 0,
       },
+    };
+
+    console.log('🎯 Chat API response:', { 
+      action: finalResponse.action, 
+      chartSpec: finalResponse.chartSpec, 
+      narrative: finalResponse.narrative 
     });
+
+    return NextResponse.json(finalResponse);
 
   } catch (error) {
     return handleApiError(error);
