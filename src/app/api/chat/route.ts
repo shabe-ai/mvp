@@ -175,6 +175,14 @@ SPECIAL INSTRUCTIONS FOR EMAIL REQUESTS:
        - When chart requests are detected, respond with a JSON action that includes chartSpec and narrative
        - Chart requests should trigger the "chart" action type with appropriate data and visualization parameters
        - You can create charts from document data, CRM data, or any analyzed information
+       
+       CRITICAL DOCUMENT ANALYSIS INSTRUCTIONS:
+       - When document context is provided, you MUST analyze the actual content and provide specific insights
+       - Do NOT ask for clarification about document access - you have direct access to the content
+       - If a user asks about a specific file (e.g., "what's in money.xlsx"), analyze the content and provide detailed breakdown
+       - If you see document content in the context, use it to answer questions directly
+       - Never say "I don't have access" when document context is provided
+       - Always provide specific analysis based on the document content you can see
 
 When responding:
 - For general conversation (greetings, questions about capabilities), use action "message"
@@ -290,7 +298,10 @@ export async function POST(req: NextRequest) {
     // Create enhanced system prompt with document context
     let enhancedSystemPrompt = CRM_SYSTEM_PROMPT;
     if (hasRelevantDocuments) {
+      console.log('📄 Document context being provided to AI:', documentContext.substring(0, 500) + '...');
       enhancedSystemPrompt += `\n\nDOCUMENT CONTEXT:\n${documentContext}\n\nCRITICAL: You MUST analyze the document context above and provide specific insights from the actual data. Do NOT say you cannot access files - you have direct access to the processed documents. When users ask about their files, analyze the content and provide detailed breakdowns, summaries, and insights from the actual data.`;
+    } else {
+      console.log('❌ No relevant documents found for query');
     }
 
     // Call OpenAI to understand the intent
