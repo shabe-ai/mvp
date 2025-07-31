@@ -169,6 +169,15 @@ SPECIAL INSTRUCTIONS FOR EMAIL REQUESTS:
        - NEVER say you cannot access files - you have direct access to the processed documents
        - When users ask about specific files (e.g., "breakdown the data in money.xlsx"), analyze the actual content of that file and provide detailed insights
        
+       CRITICAL INSTRUCTIONS FOR SESSION FILE ANALYSIS:
+       - When users upload files during the chat session, you have DIRECT ACCESS to the uploaded file content
+       - When users ask about uploaded files (e.g., "summarize the file i just uploaded", "analyze this file", "what's in this file"), you MUST analyze the actual content of the uploaded files
+       - Provide detailed analysis, summaries, and insights based on the uploaded file content
+       - For CSV files, analyze the data structure, provide summaries of key information, and offer insights
+       - For text files, provide summaries and key points from the content
+       - NEVER say you cannot access uploaded files - you have direct access to their content
+       - When users ask for file analysis, respond with detailed insights from the actual file content
+       
        CHART AND VISUALIZATION CAPABILITIES:
        - When users ask for charts, graphs, plots, or visualizations (e.g., "plot this on a chart", "create a graph", "show me a visualization"), you can generate charts
        - You have access to a chart generation system that can create LineChart, BarChart, PieChart, AreaChart, and ScatterChart
@@ -304,7 +313,7 @@ export async function POST(req: NextRequest) {
         `File: ${file.name}\nContent: ${file.content}`
       ).join('\n\n');
       
-      enhancedSystemPrompt += `\n\nSESSION FILES CONTEXT:\n${sessionFilesContext}\n\nCRITICAL: You have access to the following uploaded files for this session. Analyze their content and provide specific insights from the actual data. Do NOT say you cannot access files - you have direct access to the uploaded documents.`;
+      enhancedSystemPrompt += `\n\nSESSION FILES CONTEXT:\n${sessionFilesContext}\n\nCRITICAL: You have DIRECT ACCESS to the following uploaded files for this session. You MUST analyze their content and provide specific insights from the actual data. When users ask about uploaded files, provide detailed analysis, summaries, and insights based on the file content. Do NOT say you cannot access files - you have direct access to the uploaded documents.`;
       
       console.log(`📄 Session files context being provided to AI: ${sessionFiles.length} files`);
     }
