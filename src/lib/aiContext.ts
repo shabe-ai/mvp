@@ -149,8 +149,14 @@ export class AIContextService {
         if (matchingChunks.length > 0) {
           console.log(`✅ AI Context: Found ${matchingChunks.length} chunks for ${targetFileName}`);
           
-          // Return all chunks for the specific file
-          return matchingChunks.map((chunk, index) => ({
+          // For large files, limit to first few chunks to avoid token limits
+          const maxChunksForLargeFile = 5;
+          const limitedChunks = matchingChunks.slice(0, maxChunksForLargeFile);
+          
+          console.log(`📊 AI Context: Limiting to ${limitedChunks.length} chunks to avoid token limits`);
+          
+          // Return limited chunks for the specific file
+          return limitedChunks.map((chunk, index) => ({
             fileName: chunk.metadata.fileName,
             fileType: chunk.metadata.fileType,
             chunkText: chunk.text,
@@ -250,7 +256,7 @@ export class AIContextService {
       // Calculate average similarity and format context with token limit management
       let docIndex = 1;
       let totalTokens = 0;
-      const maxTokensPerContext = 4000; // Conservative limit to leave room for system prompt and messages
+      const maxTokensPerContext = 2000; // More aggressive limit to avoid token issues
       let shouldBreak = false;
       
       for (const [fileName, group] of groupedDocs) {
@@ -267,9 +273,17 @@ export class AIContextService {
           // Truncate the content to fit within limits
           const remainingTokens = maxTokensPerContext - totalTokens;
           const maxChars = remainingTokens * 4;
-          const truncatedContent = combinedContent.length > maxChars 
-            ? combinedContent.substring(0, maxChars) + '... [content truncated]'
-            : combinedContent;
+          
+          // For large files, show just a sample
+          let truncatedContent;
+          if (combinedContent.length > maxChars) {
+            // Show first 500 chars and last 200 chars with ellipsis
+            const firstPart = combinedContent.substring(0, 500);
+            const lastPart = combinedContent.substring(combinedContent.length - 200);
+            truncatedContent = `${firstPart}... [content truncated] ...${lastPart}`;
+          } else {
+            truncatedContent = combinedContent;
+          }
           
           context += `${docIndex}. **${group.fileName}** (${group.fileType}, avg similarity: ${avgSimilarity.toFixed(3)})\n`;
           context += `Content: ${truncatedContent}\n\n`;
@@ -278,7 +292,7 @@ export class AIContextService {
           
           // Add a note about truncation
           if (combinedContent.length > maxChars) {
-            context += `[Note: Some document content was truncated due to length limits. ${groupedDocs.size - docIndex + 1} more documents available.]\n\n`;
+            context += `[Note: Large file content was truncated. Full analysis available for smaller files.]\n\n`;
             shouldBreak = true;
           }
         } else {
