@@ -12,11 +12,12 @@ import {
   Plus, 
   Building, 
   MessageSquare,
-  Loader2
+  Loader2,
+  Upload
 } from "lucide-react";
 import PreviewCard from "@/components/PreviewCard";
 import ChartDisplay from "@/components/ChartDisplay";
-import FileUpload from "@/components/FileUpload";
+
 
 
 interface Message {
@@ -73,6 +74,7 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
     name: string;
     content: string;
   }>>([]);
+
 
 
   // Initialize with calendar summary if user is logged in
@@ -477,20 +479,7 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
     }
   };
 
-  const handleQuickAction = (action: string) => {
-    const actionMessages = {
-      "create_contact": "Create a new contact",
-      "create_account": "Create a new account/company",
-      "create_deal": "Create a new sales deal",
-      "create_activity": "Schedule an activity (call, meeting, email)",
-      "view_contacts": "Show me all contacts",
-      "view_accounts": "Show me all accounts",
-      "view_deals": "Show me all deals",
-      "view_activities": "Show me all activities",
-    };
 
-    setInput(actionMessages[action as keyof typeof actionMessages] || action);
-  };
 
   const renderMessage = (message: Message) => {
     const isUser = message.role === "user";
@@ -656,7 +645,7 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
           customFields: (emailDraft.activityData as Record<string, unknown>).customFields,
         }),
       });
-      const activityResult = await activityRes.json();
+      await activityRes.json();
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -833,15 +822,7 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
 
 
 
-      {/* File Upload Section */}
-      {currentTeam && (
-        <div className="px-4 mb-2">
-          <FileUpload 
-            onFilesProcessed={handleFilesProcessed}
-            maxFiles={3}
-          />
-        </div>
-      )}
+
 
       {/* Document Context Indicator */}
       {currentTeam && (
@@ -867,6 +848,62 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
           disabled={isLoading}
           className="flex-1 bg-white border border-gray-200 rounded-full px-4 py-3 text-base shadow-sm focus:ring-2 focus:ring-yellow-200"
         />
+        <input
+          type="file"
+          id="file-upload"
+          accept=".txt,.csv,.pdf,.xlsx,.xls,.doc,.docx"
+          onChange={(e) => {
+            console.log('File input changed:', e.target.files);
+            if (e.target.files && e.target.files.length > 0) {
+              const file = e.target.files[0];
+              console.log('Selected file:', file.name);
+              
+              // Handle different file types
+              if (file.type === 'application/pdf') {
+                // For PDFs, we'll need a different approach
+                console.log('PDF file detected - content extraction not available');
+                handleFilesProcessed([{
+                  id: Math.random().toString(),
+                  name: file.name,
+                  content: `[PDF file: ${file.name} - Content extraction not available in this session]`
+                }]);
+              } else if (file.type.includes('spreadsheet') || file.type.includes('excel') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                // For Excel files, we'll need a different approach
+                console.log('Excel file detected - content extraction not available');
+                handleFilesProcessed([{
+                  id: Math.random().toString(),
+                  name: file.name,
+                  content: `[Excel file: ${file.name} - Content extraction not available in this session]`
+                }]);
+              } else {
+                // For text files (txt, csv, etc.)
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                  const content = event.target?.result as string;
+                  console.log('File content loaded:', content.substring(0, 100) + '...');
+                  handleFilesProcessed([{
+                    id: Math.random().toString(),
+                    name: file.name,
+                    content: content
+                  }]);
+                };
+                reader.readAsText(file);
+              }
+            }
+          }}
+          className="hidden"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            console.log('Upload button clicked');
+            document.getElementById('file-upload')?.click();
+          }}
+          className="rounded-full bg-amber-400 hover:bg-amber-500 text-white px-3 py-3 shadow-sm"
+          style={{ width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Upload className="h-5 w-5" />
+        </button>
         <Button type="submit" disabled={isLoading} className="rounded-full bg-yellow-400 hover:bg-yellow-500 text-white px-5 py-3 shadow-sm">
           <Send className="h-5 w-5" />
         </Button>

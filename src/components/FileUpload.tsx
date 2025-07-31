@@ -17,9 +17,17 @@ interface FileUploadProps {
   maxFiles?: number;
 }
 
-export default function FileUpload({ onFilesProcessed, maxFiles = 3 }: FileUploadProps) {
+export default function FileUpload({ onFilesProcessed, maxFiles = 1 }: FileUploadProps) {
+  console.log('FileUpload component rendering');
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  const [isDragging, setIsDragging] = useState(false);
+  
+  // Make the handler available globally
+  React.useEffect(() => {
+    (window as unknown as Record<string, unknown>).handleFileUpload = onFilesProcessed;
+    return () => {
+      delete (window as unknown as Record<string, unknown>).handleFileUpload;
+    };
+  }, [onFilesProcessed]);
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -110,7 +118,9 @@ export default function FileUpload({ onFilesProcessed, maxFiles = 3 }: FileUploa
   }, []);
 
   const handleFileUpload = useCallback(async (files: FileList) => {
+    console.log('handleFileUpload called with:', files);
     const fileArray = Array.from(files);
+    console.log('File array:', fileArray);
     const validFiles = fileArray.filter(file => {
       // Check file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
@@ -119,6 +129,7 @@ export default function FileUpload({ onFilesProcessed, maxFiles = 3 }: FileUploa
       }
       return true;
     });
+    console.log('Valid files:', validFiles);
 
     // Check if adding these files would exceed the limit
     if (uploadedFiles.length + validFiles.length > maxFiles) {
@@ -134,27 +145,9 @@ export default function FileUpload({ onFilesProcessed, maxFiles = 3 }: FileUploa
     }
   }, [uploadedFiles.length, maxFiles, onFilesProcessed, processFile]);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    handleFileUpload(e.dataTransfer.files);
-  }, [handleFileUpload]);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(true);
-  }, []);
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-  }, []);
 
-  const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      handleFileUpload(e.target.files);
-    }
-  }, [handleFileUpload]);
 
   const removeFile = (id: string) => {
     setUploadedFiles(prev => prev.filter(f => f.id !== id));
@@ -189,37 +182,42 @@ export default function FileUpload({ onFilesProcessed, maxFiles = 3 }: FileUploa
   return (
     <div className="mb-6">
       {/* Upload Area */}
-      <div
-        className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
-          isDragging
-            ? 'border-amber-400 bg-amber-50'
-            : 'border-slate-300 hover:border-amber-400 hover:bg-amber-50'
-        }`}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-      >
+      <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center">
         <Upload className="w-8 h-8 text-slate-400 mx-auto mb-3" />
         <p className="text-slate-600 font-medium mb-2">
-          Drop files here or click to upload
+          Click to upload a file
         </p>
         <p className="text-slate-500 text-sm mb-4">
-          Upload up to {maxFiles} files (max 10MB each)
+          Upload a file (max 10MB)
         </p>
-        <input
-          type="file"
-          multiple
-          onChange={handleFileInput}
-          className="hidden"
-          id="file-upload"
-          accept=".txt,.csv,.pdf,.xlsx,.xls,.doc,.docx"
-        />
-        <label
-          htmlFor="file-upload"
-          className="inline-flex items-center px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 cursor-pointer transition-colors"
-        >
-          Choose Files
-        </label>
+        <div dangerouslySetInnerHTML={{
+          __html: `
+            <input 
+              type="file" 
+              accept=".txt,.csv,.pdf,.xlsx,.xls,.doc,.docx"
+              style="width: 100%; padding: 16px; border: 2px dashed #f59e0b; background: #fef3c7; border-radius: 8px; cursor: pointer; min-height: 60px; display: flex; align-items: center; justify-content: center;"
+              onchange="
+                console.log('HTML file input changed:', this.files);
+                if (this.files && this.files.length > 0) {
+                  const file = this.files[0];
+                  console.log('Selected file:', file.name);
+                  const reader = new FileReader();
+                  reader.onload = function(event) {
+                    const content = event.target.result;
+                    console.log('File content loaded:', content.substring(0, 100) + '...');
+                    window.handleFileUpload && window.handleFileUpload([{
+                      id: Math.random().toString(),
+                      name: file.name,
+                      content: content
+                    }]);
+                  };
+                  reader.readAsText(file);
+                }
+              "
+            />
+          `
+        }} />
+        <p className="text-xs text-gray-500 mt-2">Click the area above to select a file</p>
       </div>
 
       {/* Uploaded Files List */}
