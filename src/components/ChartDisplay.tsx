@@ -112,12 +112,16 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
     };
 
     const xAxisDataKey = (chartConfig?.xAxis?.dataKey as string) || defaultConfig.xAxis.dataKey;
-    const yAxisDataKey = (chartConfig?.yAxis?.dataKey as string) || defaultConfig.yAxis.dataKey;
-
-    console.log('📊 ChartDisplay rendering with:', { chartType, xAxisDataKey, yAxisDataKey, dataSample: data.slice(0, 2) });
+    
+    // For LineChart, we need to handle multiple data series
+    console.log('📊 ChartDisplay rendering with:', { chartType, xAxisDataKey, dataSample: data.slice(0, 2), chartConfig });
 
     switch (chartType) {
       case "LineChart":
+        // Check if we have multiple data series (sales, orders, etc.)
+        const dataKeys = data.length > 0 ? Object.keys(data[0]).filter(key => key !== xAxisDataKey) : [];
+        console.log('📊 Available data keys:', dataKeys);
+        
         return (
           <LineChart {...commonProps}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -139,18 +143,25 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
               }}
             />
             <Legend />
-            <Line
-              type="monotone"
-              dataKey={yAxisDataKey}
-              stroke="#f59e0b"
-              strokeWidth={3}
-              activeDot={{ r: 8, fill: '#f59e0b' }}
-              dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
-            />
+            {dataKeys.map((key, index) => (
+              <Line
+                key={key}
+                type="monotone"
+                dataKey={key}
+                stroke={index === 0 ? "#f59e0b" : "#3b82f6"}
+                strokeWidth={3}
+                activeDot={{ r: 8, fill: index === 0 ? "#f59e0b" : "#3b82f6" }}
+                dot={{ fill: index === 0 ? "#f59e0b" : "#3b82f6", strokeWidth: 2, r: 4 }}
+              />
+            ))}
           </LineChart>
         );
 
       case "BarChart":
+        // Check if we have multiple data series
+        const barDataKeys = data.length > 0 ? Object.keys(data[0]).filter(key => key !== xAxisDataKey) : [];
+        console.log('📊 BarChart data keys:', barDataKeys);
+        
         return (
           <BarChart {...commonProps}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -172,15 +183,22 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
               }}
             />
             <Legend />
-            <Bar 
-              dataKey={yAxisDataKey} 
-              fill="#f59e0b"
-              radius={[4, 4, 0, 0]}
-            />
+            {barDataKeys.map((key, index) => (
+              <Bar 
+                key={key}
+                dataKey={key} 
+                fill={index === 0 ? "#f59e0b" : "#3b82f6"}
+                radius={[4, 4, 0, 0]}
+              />
+            ))}
           </BarChart>
         );
 
       case "AreaChart":
+        // Check if we have multiple data series
+        const areaDataKeys = data.length > 0 ? Object.keys(data[0]).filter(key => key !== xAxisDataKey) : [];
+        console.log('📊 AreaChart data keys:', areaDataKeys);
+        
         return (
           <AreaChart {...commonProps}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
@@ -202,17 +220,24 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
               }}
             />
             <Legend />
-            <Area
-              type="monotone"
-              dataKey={yAxisDataKey}
-              stroke="#f59e0b"
-              fill="#f59e0b"
-              fillOpacity={0.3}
-            />
+            {areaDataKeys.map((key, index) => (
+              <Area
+                key={key}
+                type="monotone"
+                dataKey={key}
+                stroke={index === 0 ? "#f59e0b" : "#3b82f6"}
+                fill={index === 0 ? "#f59e0b" : "#3b82f6"}
+                fillOpacity={0.3}
+              />
+            ))}
           </AreaChart>
         );
 
       case "PieChart":
+        // For pie charts, we need to use the first data key that's not the x-axis
+        const pieDataKey = data.length > 0 ? Object.keys(data[0]).find(key => key !== xAxisDataKey) : 'value';
+        console.log('📊 PieChart data key:', pieDataKey);
+        
         return (
           <PieChart {...commonProps}>
             <Pie
@@ -223,7 +248,7 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
               label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
               outerRadius={80}
               fill="#f59e0b"
-              dataKey={yAxisDataKey}
+              dataKey={pieDataKey}
             />
             <Tooltip 
               contentStyle={{
@@ -237,6 +262,11 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
         );
 
       case "ScatterChart":
+        // For scatter charts, we need two data keys for x and y
+        const scatterDataKeys = data.length > 0 ? Object.keys(data[0]).filter(key => key !== xAxisDataKey) : [];
+        const scatterYKey = scatterDataKeys[0] || 'value';
+        console.log('📊 ScatterChart data keys:', { x: xAxisDataKey, y: scatterYKey });
+        
         return (
           <ScatterChart {...commonProps}>
             <CartesianGrid stroke="#e2e8f0" />
@@ -246,7 +276,7 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
               axisLine={{ stroke: '#e2e8f0' }}
             />
             <YAxis 
-              dataKey={yAxisDataKey} 
+              dataKey={scatterYKey} 
               tick={{ fontSize: 12, fill: '#64748b' }}
               axisLine={{ stroke: '#e2e8f0' }}
             />
