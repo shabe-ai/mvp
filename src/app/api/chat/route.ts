@@ -1357,11 +1357,11 @@ async function handleChart(response: CRMActionRequest, userMessage: string, sess
           messages: [
             {
               role: "system",
-              content: "You are a data visualization expert. Generate a Recharts chart specification based on the provided data. Return a JSON object with chartType, data, and chartConfig properties. Chart types can be: LineChart, BarChart, PieChart, AreaChart, ScatterChart. Return ONLY the JSON object, no markdown formatting."
+              content: "You are a data visualization expert. Generate a Recharts chart specification based on the provided data. Return a JSON object with chartType, data, and chartConfig properties. Chart types can be: LineChart, BarChart, PieChart, AreaChart, ScatterChart. The chartConfig should include xAxis and yAxis objects with dataKey properties. Return ONLY the JSON object, no markdown formatting."
             },
             {
               role: "user",
-              content: `Generate a chart for this data: ${JSON.stringify(chartData)}. Query: ${userMessage}`
+              content: `Generate a chart for this data: ${JSON.stringify(chartData)}. Query: ${userMessage}. Make sure the chartConfig includes xAxis and yAxis with dataKey properties.`
             }
           ],
           stream: false,
@@ -1373,6 +1373,17 @@ async function handleChart(response: CRMActionRequest, userMessage: string, sess
           const jsonMatch = chartContent.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
           const jsonString = jsonMatch ? jsonMatch[1] : chartContent;
           chartSpec = JSON.parse(jsonString);
+          
+          // Ensure proper chartConfig structure for Recharts
+          if (!chartSpec.chartConfig) {
+            chartSpec.chartConfig = {};
+          }
+          if (!chartSpec.chartConfig.xAxis) {
+            chartSpec.chartConfig.xAxis = { dataKey: "SKU" };
+          }
+          if (!chartSpec.chartConfig.yAxis) {
+            chartSpec.chartConfig.yAxis = { dataKey: "Price USD" };
+          }
         } catch (parseError) {
           console.error("Error parsing chart spec:", parseError);
           // Fallback to default chart spec
@@ -1382,7 +1393,9 @@ async function handleChart(response: CRMActionRequest, userMessage: string, sess
             chartConfig: {
               width: 600,
               height: 400,
-              margin: { top: 5, right: 30, left: 20, bottom: 5 }
+              margin: { top: 5, right: 30, left: 20, bottom: 5 },
+              xAxis: { dataKey: "SKU" },
+              yAxis: { dataKey: "Price USD" }
             }
           };
         }
