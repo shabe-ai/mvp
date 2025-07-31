@@ -37,6 +37,8 @@ type ChartDisplayProps = {
 };
 
 export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps) {
+  console.log('📊 ChartDisplay received:', { chartSpec, narrative });
+  
   if (!chartSpec) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -57,6 +59,28 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
 
   const { chartType, data, chartConfig } = chartSpec;
 
+  console.log('📊 ChartDisplay processing:', { chartType, dataLength: data?.length, chartConfig });
+
+  // Ensure we have valid data
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    console.error('❌ ChartDisplay: Invalid or empty data array');
+    return (
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-amber-50 to-yellow-100 px-6 py-4 border-b border-slate-200">
+          <h3 className="text-lg font-semibold text-slate-900">Chart Visualization</h3>
+        </div>
+        <div className="p-6">
+          <div className="flex items-center justify-center h-64 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+            <div className="text-center">
+              <BarChart3 className="w-12 h-12 text-slate-400 mx-auto mb-3" />
+              <p className="text-slate-500 font-medium">Invalid chart data</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const getChartIcon = (type: string) => {
     switch (type) {
       case "LineChart":
@@ -71,15 +95,26 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
   };
 
   const renderChart = () => {
-    const commonProps = {
-      data,
-      width: chartConfig.width,
-      height: chartConfig.height,
-      margin: chartConfig.margin || { top: 5, right: 30, left: 20, bottom: 5 },
+    // Provide default values for missing chartConfig properties
+    const defaultConfig = {
+      width: 600,
+      height: 400,
+      margin: { top: 5, right: 30, left: 20, bottom: 5 },
+      xAxis: { dataKey: "date" },
+      yAxis: { dataKey: "value" }
     };
 
-    const xAxisDataKey = (chartConfig.xAxis?.dataKey as string) || "date";
-    const yAxisDataKey = (chartConfig.yAxis?.dataKey as string) || "value";
+    const commonProps = {
+      data,
+      width: chartConfig?.width || defaultConfig.width,
+      height: chartConfig?.height || defaultConfig.height,
+      margin: chartConfig?.margin || defaultConfig.margin,
+    };
+
+    const xAxisDataKey = (chartConfig?.xAxis?.dataKey as string) || defaultConfig.xAxis.dataKey;
+    const yAxisDataKey = (chartConfig?.yAxis?.dataKey as string) || defaultConfig.yAxis.dataKey;
+
+    console.log('📊 ChartDisplay rendering with:', { chartType, xAxisDataKey, yAxisDataKey, dataSample: data.slice(0, 2) });
 
     switch (chartType) {
       case "LineChart":
