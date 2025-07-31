@@ -3,13 +3,6 @@ import { SignInButton, useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 import TeamManagement from "@/components/TeamManagement";
 
-interface Team {
-  id: string;
-  name: string;
-  ownerId: string;
-  members: string[];
-}
-
 function GoogleIntegrationSection() {
   const { user } = useUser();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);

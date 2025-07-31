@@ -28,9 +28,6 @@ export default function TeamManagement() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
-  const [newTeamName, setNewTeamName] = useState('');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -84,34 +81,7 @@ export default function TeamManagement() {
     }
   };
 
-  const createTeam = async () => {
-    if (!user || !newTeamName.trim()) return;
-    setLoading(true);
-    setError(null);
 
-    try {
-      const res = await fetch('/api/teams', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTeamName.trim() }),
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        setError(data.error);
-      } else {
-        setTeams(prev => [...prev, data]);
-        setSelectedTeam(data);
-        setNewTeamName('');
-        setShowCreateForm(false);
-      }
-    } catch (err) {
-      setError("Failed to create team");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const updateTeam = async (teamId: string, name: string) => {
     if (!user || !name.trim()) return;
@@ -173,35 +143,7 @@ export default function TeamManagement() {
     }
   };
 
-  const seedTeamData = async (teamId: string) => {
-    if (!user) return;
-    setSeeding(true);
-    setError(null);
 
-    try {
-      const res = await fetch('/api/seed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId }),
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        setError(data.error);
-      } else {
-        // Reload team stats after seeding
-        if (selectedTeam?._id === teamId) {
-          loadTeamStats(teamId);
-        }
-        alert(data.message || 'Sample data added successfully!');
-      }
-    } catch (err) {
-      setError("Failed to seed team data");
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
@@ -215,37 +157,9 @@ export default function TeamManagement() {
     <div className="space-y-6">
       {/* Team List */}
       <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6">
           <h3 className="text-xl font-semibold text-slate-900">Your Teams</h3>
-          <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
-          >
-            {showCreateForm ? "Cancel" : "Create Team"}
-          </button>
         </div>
-
-        {showCreateForm && (
-          <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <div className="flex items-center space-x-3">
-              <input
-                type="text"
-                value={newTeamName}
-                onChange={(e) => setNewTeamName(e.target.value)}
-                placeholder="Enter team name..."
-                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                onKeyPress={(e) => e.key === 'Enter' && createTeam()}
-              />
-              <button
-                onClick={createTeam}
-                disabled={loading || !newTeamName.trim()}
-                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? "Creating..." : "Create"}
-              </button>
-            </div>
-          </div>
-        )}
 
         {error && (
           <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
@@ -326,18 +240,9 @@ export default function TeamManagement() {
       {/* Team Details */}
       {selectedTeam && (
         <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="mb-6">
             <h3 className="text-xl font-semibold text-slate-900">Team Details</h3>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-slate-500">Last updated: {formatDate(selectedTeam.updatedAt)}</span>
-              <button
-                onClick={() => seedTeamData(selectedTeam._id)}
-                disabled={seeding}
-                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {seeding ? "Adding Sample Data..." : "Add Sample Data"}
-              </button>
-            </div>
+            <span className="text-sm text-slate-500">Last updated: {formatDate(selectedTeam.updatedAt)}</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
