@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import PreviewCard from "@/components/PreviewCard";
 import ChartDisplay from "@/components/ChartDisplay";
+import FileUpload from "@/components/FileUpload";
 
 
 interface Message {
@@ -67,6 +68,11 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
     activityData: Record<string, unknown>;
   } | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [sessionFiles, setSessionFiles] = useState<Array<{
+    id: string;
+    name: string;
+    content: string;
+  }>>([]);
 
 
   // Initialize with calendar summary if user is logged in
@@ -264,6 +270,11 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
         })),
         userId: user.id,
         teamId: currentTeam._id,
+        sessionFiles: sessionFiles.map(file => ({
+          id: file.id,
+          name: file.name,
+          content: file.content,
+        })),
       };
       
       console.log("Team ID being sent:", currentTeam._id);
@@ -670,6 +681,20 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
     setEmailDraft(null);
   };
 
+  const handleFilesProcessed = (files: Array<{
+    id: string;
+    name: string;
+    content?: string;
+  }>) => {
+    // Only include files that have content
+    const filesWithContent = files.filter(file => file.content).map(file => ({
+      id: file.id,
+      name: file.name,
+      content: file.content!,
+    }));
+    setSessionFiles(filesWithContent);
+  };
+
 
 
   // Show loading state while Clerk is determining authentication
@@ -807,6 +832,16 @@ export default function Chat({ hideTeamSelector = false }: { hideTeamSelector?: 
 
 
 
+
+      {/* File Upload Section */}
+      {currentTeam && (
+        <div className="px-4 mb-2">
+          <FileUpload 
+            onFilesProcessed={handleFilesProcessed}
+            maxFiles={3}
+          />
+        </div>
+      )}
 
       {/* Document Context Indicator */}
       {currentTeam && (

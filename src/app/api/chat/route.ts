@@ -225,7 +225,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log("Chat API received:", JSON.stringify(body, null, 2));
     
-    const { messages, userId, teamId } = body;
+    const { messages, userId, teamId, sessionFiles = [] } = body;
 
     // Support draftOnly flag for email preview
     if (body.draftOnly) {
@@ -297,6 +297,18 @@ export async function POST(req: NextRequest) {
 
     // Create enhanced system prompt with document context
     let enhancedSystemPrompt = CRM_SYSTEM_PROMPT;
+    
+    // Add session files context if available
+    if (sessionFiles && sessionFiles.length > 0) {
+      const sessionFilesContext = sessionFiles.map((file: { name: string; content: string }) => 
+        `File: ${file.name}\nContent: ${file.content}`
+      ).join('\n\n');
+      
+      enhancedSystemPrompt += `\n\nSESSION FILES CONTEXT:\n${sessionFilesContext}\n\nCRITICAL: You have access to the following uploaded files for this session. Analyze their content and provide specific insights from the actual data. Do NOT say you cannot access files - you have direct access to the uploaded documents.`;
+      
+      console.log(`📄 Session files context being provided to AI: ${sessionFiles.length} files`);
+    }
+    
     if (hasRelevantDocuments) {
       console.log('📄 Document context being provided to AI:', documentContext.substring(0, 500) + '...');
       enhancedSystemPrompt += `\n\nDOCUMENT CONTEXT:\n${documentContext}\n\nCRITICAL: You MUST analyze the document context above and provide specific insights from the actual data. Do NOT say you cannot access files - you have direct access to the processed documents. When users ask about their files, analyze the content and provide detailed breakdowns, summaries, and insights from the actual data.`;
