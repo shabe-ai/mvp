@@ -187,12 +187,26 @@ export async function POST(req: NextRequest) {
         console.log('Looking for contact with name:', potentialName);
         
         try {
+          // Get the user's team ID first
+          const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+          const teamId = teams.length > 0 ? teams[0]._id : 'default';
+          console.log('Using team ID:', teamId);
+          
           // Search for the contact in the database
-          const contacts = await convex.query(api.crm.getContactsByTeam, { teamId: 'default' });
-          const matchingContact = contacts.find(contact => 
-            contact.name?.toLowerCase().includes(potentialName.toLowerCase()) ||
-            potentialName.toLowerCase().includes(contact.name?.toLowerCase() || '')
-          );
+          const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+          console.log('Found contacts:', contacts.length);
+          
+          // More flexible name matching
+          const matchingContact = contacts.find(contact => {
+            const contactName = contact.name?.toLowerCase() || '';
+            const searchName = potentialName.toLowerCase();
+            
+            // Check if names match (including partial matches)
+            return contactName.includes(searchName) || 
+                   searchName.includes(contactName) ||
+                   contactName.split(' ').some((part: string) => searchName.includes(part)) ||
+                   searchName.split(' ').some((part: string) => contactName.includes(part));
+          });
           
           if (matchingContact) {
             recipientEmail = matchingContact.email;
@@ -200,6 +214,7 @@ export async function POST(req: NextRequest) {
             console.log('Found contact:', { name: recipientName, email: recipientEmail });
           } else {
             console.log('No matching contact found for:', potentialName);
+            console.log('Available contacts:', contacts.map(c => ({ name: c.name, email: c.email })));
           }
         } catch (error) {
           console.error('Error searching for contact:', error);
@@ -308,215 +323,94 @@ function validateStringField(value: unknown, fieldName: string, maxLength?: numb
   }
 }
 
-// Handle database operations
 async function handleDatabaseOperation(userMessage: string, userId: string) {
   try {
-    const messageLower = userMessage.toLowerCase();
-    
     // Get user's teams first
     const userTeams = await convex.query(api.crm.getTeamsByUser, { userId });
     
     if (!userTeams || userTeams.length === 0) {
       return {
-        message: "You don't have access to any teams. Please contact your administrator."
+        message: "No teams found for this user. Please set up a team first."
       };
     }
     
-    // Use the first team (or we could let user choose)
     const teamId = userTeams[0]._id;
     
-    // Determine what type of data to query
+    // Determine the type of data to query
+    let dataType = 'contacts';
+    if (userMessage.toLowerCase().includes('account')) dataType = 'accounts';
+    else if (userMessage.toLowerCase().includes('deal')) dataType = 'deals';
+    else if (userMessage.toLowerCase().includes('activity')) dataType = 'activities';
+    
+    // Get records based on type
     let records: Record<string, unknown>[] = [];
-    let dataType = '';
-    
-    if (messageLower.includes('contact')) {
+    if (dataType === 'contacts') {
       records = await convex.query(api.crm.getContactsByTeam, { teamId });
-      dataType = 'contacts';
-    } else if (messageLower.includes('account')) {
+    } else if (dataType === 'accounts') {
       records = await convex.query(api.crm.getAccountsByTeam, { teamId });
-      dataType = 'accounts';
-    } else if (messageLower.includes('deal')) {
+    } else if (dataType === 'deals') {
       records = await convex.query(api.crm.getDealsByTeam, { teamId });
-      dataType = 'deals';
-    } else if (messageLower.includes('activity')) {
+    } else if (dataType === 'activities') {
       records = await convex.query(api.crm.getActivitiesByTeam, { teamId });
-      dataType = 'activities';
-    } else {
-      // Default to contacts if no specific type mentioned
-      records = await convex.query(api.crm.getContactsByTeam, { teamId });
-      dataType = 'contacts';
     }
-
-    // Filter records based on time period if mentioned
+    
+    // Apply filtering based on user message
     let filteredRecords = records;
-    const now = new Date();
     
-    if (messageLower.includes('this week')) {
-      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      filteredRecords = records.filter((record: Record<string, unknown>) => {
-        const createdAt = new Date((record._creationTime as number));
-        return createdAt >= weekAgo;
-      });
-    } else if (messageLower.includes('this month')) {
-      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      filteredRecords = records.filter((record: Record<string, unknown>) => {
-        const createdAt = new Date((record._creationTime as number));
-        return createdAt >= monthAgo;
-      });
-    }
-
-    // Apply field-based filters
-    const fieldFilters: Record<string, string> = {};
-    
-    // Simple and reliable filter patterns
+    // Create filter patterns for different fields
     const filterPatterns = [
-      // Exact field = value patterns
-      { pattern: /title\s*=\s*(\w+)/i, field: 'title' },
-      { pattern: /status\s*=\s*(\w+)/i, field: 'status' },
-      { pattern: /type\s*=\s*(\w+)/i, field: 'type' },
-      { pattern: /company\s*=\s*(\w+)/i, field: 'company' },
-      { pattern: /email\s*=\s*(\w+)/i, field: 'email' },
-      { pattern: /phone\s*=\s*(\w+)/i, field: 'phone' },
-      { pattern: /source\s*=\s*(\w+)/i, field: 'source' },
-      { pattern: /name\s*=\s*(\w+)/i, field: 'name' },
-      { pattern: /industry\s*=\s*(\w+)/i, field: 'industry' },
-      { pattern: /size\s*=\s*(\w+)/i, field: 'size' },
-      { pattern: /stage\s*=\s*(\w+)/i, field: 'stage' },
-      { pattern: /value\s*=\s*(\w+)/i, field: 'value' },
-      { pattern: /subject\s*=\s*(\w+)/i, field: 'subject' },
-      { pattern: /dueDate\s*=\s*(\w+)/i, field: 'dueDate' },
-      
-      // Natural language patterns
-      { pattern: /with\s+title\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'title' },
-      { pattern: /with\s+status\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'status' },
-      { pattern: /with\s+type\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'type' },
-      { pattern: /with\s+company\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'company' },
-      { pattern: /with\s+email\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'email' },
-      { pattern: /with\s+phone\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'phone' },
-      { pattern: /with\s+source\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'source' },
-      { pattern: /with\s+name\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'name' },
-      { pattern: /with\s+industry\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'industry' },
-      { pattern: /with\s+size\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'size' },
-      { pattern: /with\s+stage\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'stage' },
-      { pattern: /with\s+value\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'value' },
-      { pattern: /with\s+subject\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'subject' },
-      { pattern: /with\s+dueDate\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'dueDate' },
-      
-      // "at company" patterns
-      { pattern: /at\s+(\w+(?:\s+\w+)*)/i, field: 'company' },
-      { pattern: /from\s+(\w+(?:\s+\w+)*)/i, field: 'company' },
-      { pattern: /in\s+(\w+(?:\s+\w+)*)/i, field: 'company' },
-      
-      // Direct field mentions
-      { pattern: /title\s+(\w+)/i, field: 'title' },
-      { pattern: /status\s+(\w+)/i, field: 'status' },
-      { pattern: /type\s+(\w+)/i, field: 'type' },
-      { pattern: /company\s+(\w+)/i, field: 'company' },
-      { pattern: /email\s+(\w+)/i, field: 'email' },
-      { pattern: /phone\s+(\w+)/i, field: 'phone' },
-      { pattern: /source\s+(\w+)/i, field: 'source' },
-      { pattern: /name\s+(\w+)/i, field: 'name' },
-      { pattern: /industry\s+(\w+)/i, field: 'industry' },
-      { pattern: /size\s+(\w+)/i, field: 'size' },
-      { pattern: /stage\s+(\w+)/i, field: 'stage' },
-      { pattern: /value\s+(\w+)/i, field: 'value' },
-      { pattern: /subject\s+(\w+)/i, field: 'subject' },
-      { pattern: /dueDate\s+(\w+)/i, field: 'dueDate' }
+      { pattern: /with title\s*=\s*([^,\s]+)/i, field: 'title' },
+      { pattern: /with status\s*=\s*([^,\s]+)/i, field: 'status' },
+      { pattern: /with type\s*=\s*([^,\s]+)/i, field: 'type' },
+      { pattern: /at company\s*=\s*([^,\s]+)/i, field: 'company' },
+      { pattern: /from company\s*=\s*([^,\s]+)/i, field: 'company' },
+      { pattern: /in company\s*=\s*([^,\s]+)/i, field: 'company' },
+      { pattern: /with email\s*=\s*([^,\s]+)/i, field: 'email' },
+      { pattern: /with phone\s*=\s*([^,\s]+)/i, field: 'phone' },
+      { pattern: /with source\s*=\s*([^,\s]+)/i, field: 'source' },
+      { pattern: /with name\s*=\s*([^,\s]+)/i, field: 'name' },
+      { pattern: /with industry\s*=\s*([^,\s]+)/i, field: 'industry' },
+      { pattern: /with size\s*=\s*([^,\s]+)/i, field: 'size' },
+      { pattern: /with stage\s*=\s*([^,\s]+)/i, field: 'stage' },
+      { pattern: /with value\s*=\s*([^,\s]+)/i, field: 'value' },
+      { pattern: /with subject\s*=\s*([^,\s]+)/i, field: 'subject' },
+      { pattern: /with dueDate\s*=\s*([^,\s]+)/i, field: 'dueDate' }
     ];
-
-    filterPatterns.forEach(({ pattern, field }) => {
-      const match = messageLower.match(pattern);
+    
+    // Apply filters
+    for (const { pattern, field } of filterPatterns) {
+      const match = userMessage.match(pattern);
       if (match) {
-        const value = match[1].toLowerCase();
-        fieldFilters[field] = value;
-      }
-    });
-
-    // Special handling for "at company" patterns
-    const atCompanyMatch = messageLower.match(/at\s+(\w+(?:\s+\w+)*)/i);
-    if (atCompanyMatch && !fieldFilters.company) {
-      fieldFilters.company = atCompanyMatch[1].toLowerCase();
-    }
-
-    // Apply field filters
-    if (Object.keys(fieldFilters).length > 0) {
-      filteredRecords = filteredRecords.filter((record: Record<string, unknown>) => {
-        return Object.entries(fieldFilters).every(([field, expectedValue]) => {
-          let actualValue = '';
-          
-          if (dataType === 'contacts') {
-            switch (field) {
-              case 'title':
-                actualValue = (record.title as string || '').toLowerCase();
-                break;
-              case 'status':
-                actualValue = (record.leadStatus as string || '').toLowerCase();
-                break;
-              case 'type':
-                actualValue = (record.contactType as string || '').toLowerCase();
-                break;
-              case 'company':
-                actualValue = (record.company as string || '').toLowerCase();
-                break;
-              case 'email':
-                actualValue = (record.email as string || '').toLowerCase();
-                break;
-              case 'phone':
-                actualValue = (record.phone as string || '').toLowerCase();
-                break;
-              case 'source':
-                actualValue = (record.source as string || '').toLowerCase();
-                break;
-            }
-          } else if (dataType === 'accounts') {
-            switch (field) {
-              case 'name':
-                actualValue = (record.name as string || '').toLowerCase();
-                break;
-              case 'industry':
-                actualValue = (record.industry as string || '').toLowerCase();
-                break;
-              case 'size':
-                actualValue = (record.size as string || '').toLowerCase();
-                break;
-            }
-          } else if (dataType === 'deals') {
-            switch (field) {
-              case 'name':
-                actualValue = (record.name as string || '').toLowerCase();
-                break;
-              case 'stage':
-                actualValue = (record.stage as string || '').toLowerCase();
-                break;
-              case 'value':
-                actualValue = (record.value as string || '').toLowerCase();
-                break;
-            }
-          } else if (dataType === 'activities') {
-            switch (field) {
-              case 'type':
-                actualValue = (record.type as string || '').toLowerCase();
-                break;
-              case 'status':
-                actualValue = (record.status as string || '').toLowerCase();
-                break;
-              case 'subject':
-                actualValue = (record.subject as string || '').toLowerCase();
-                break;
-            }
+        const filterValue = match[1].toLowerCase();
+        filteredRecords = filteredRecords.filter(record => {
+          const fieldValue = record[field];
+          if (typeof fieldValue === 'string') {
+            return fieldValue.toLowerCase().includes(filterValue);
           }
-          
-          return actualValue.includes(expectedValue);
+          return false;
         });
-      });
+      }
     }
-
+    
+    // Time-based filtering
+    if (userMessage.toLowerCase().includes('this week')) {
+      const oneWeekAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+      filteredRecords = filteredRecords.filter(record => 
+        (record._creationTime as number) >= oneWeekAgo
+      );
+    } else if (userMessage.toLowerCase().includes('this month')) {
+      const oneMonthAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+      filteredRecords = filteredRecords.filter(record => 
+        (record._creationTime as number) >= oneMonthAgo
+      );
+    }
+    
     if (filteredRecords.length === 0) {
       return {
         message: `No ${dataType} found for the specified criteria.`
       };
     }
-
+    
     // Format records for table display
     const formattedRecords = filteredRecords.map((record: Record<string, unknown>) => {
       if (dataType === 'contacts') {
@@ -562,7 +456,7 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
       }
       return record;
     });
-
+    
     return {
       message: `Found ${filteredRecords.length} ${dataType}:`,
       data: {
@@ -572,7 +466,7 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
         displayFormat: 'table'
       }
     };
-
+    
   } catch (error) {
     console.error('Error querying database:', error);
     return {
@@ -588,7 +482,7 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     // Parse CSV data from session files if available
     let chartData: Record<string, unknown>[] = [];
     let dataSource = '';
-
+    
     if (sessionFiles.length > 0) {
       const csvFile = sessionFiles.find(file => file.name.toLowerCase().endsWith('.csv'));
       if (csvFile) {
@@ -609,7 +503,7 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
         }
       }
     }
-
+    
     // If no file data, try to get database data for chart
     if (chartData.length === 0 && userId) {
       try {
@@ -657,13 +551,13 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
         console.error('Error getting database data for chart:', error);
       }
     }
-
+    
     if (chartData.length === 0) {
       return {
         message: "I need data to generate a chart. Please upload a CSV, Excel, or text file with your data, or ask me to show database records, then ask me to create a chart."
       };
     }
-
+    
     // Generate chart specification using OpenAI
     console.log('📊 Generating chart with data:', {
       dataLength: chartData.length,
@@ -677,27 +571,27 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
         {
           role: "system",
           content: `You are a chart generation expert. Your ONLY job is to return a valid JSON object.
-
-Available data: ${JSON.stringify(chartData.slice(0, 5))} (showing first 5 rows)
-
-CRITICAL: You must respond with ONLY a JSON object. No text, no explanations, no markdown formatting.
-
-IMPORTANT: The data contains aggregated values. For bar charts, use "company" as xAxis dataKey and "contactCount" as yAxis dataKey.
-
-Return this exact JSON structure:
-{
-  "chartType": "bar|line|pie|scatter",
-  "data": [array of data objects],
-  "chartConfig": {
-    "width": 600,
-    "height": 400,
-    "margin": { "top": 20, "right": 30, "bottom": 30, "left": 40 },
-    "xAxis": { "dataKey": "company" },
-    "yAxis": { "dataKey": "contactCount" }
-  }
-}
-
-Choose appropriate chart type and data keys based on the data structure. Return ONLY the JSON object, nothing else.`
+          
+          Available data: ${JSON.stringify(chartData.slice(0, 5))} (showing first 5 rows)
+          
+          CRITICAL: You must respond with ONLY a JSON object. No text, no explanations, no markdown formatting.
+          
+          IMPORTANT: The data contains aggregated values. For bar charts, use "company" as xAxis dataKey and "contactCount" as yAxis dataKey.
+          
+          Return this exact JSON structure:
+          {
+            "chartType": "bar|line|pie|scatter",
+            "data": [array of data objects],
+            "chartConfig": {
+              "width": 600,
+              "height": 400,
+              "margin": { "top": 20, "right": 30, "bottom": 30, "left": 40 },
+              "xAxis": { "dataKey": "company" },
+              "yAxis": { "dataKey": "contactCount" }
+            }
+          }
+          
+          Choose appropriate chart type and data keys based on the data structure. Return ONLY the JSON object, nothing else.`
         },
         {
           role: "user",
@@ -707,7 +601,7 @@ Choose appropriate chart type and data keys based on the data structure. Return 
       temperature: 0.0,
       max_tokens: 1000,
     });
-
+    
     const chartSpecText = chartCompletion.choices[0]?.message?.content || '';
     console.log('🔍 Raw chart spec response:', chartSpecText);
     
@@ -747,7 +641,7 @@ Choose appropriate chart type and data keys based on the data structure. Return 
         }
       };
     }
-
+    
     // Generate narrative about the chart
     const narrativeCompletion = await openai.chat.completions.create({
       model: "gpt-4",
@@ -764,15 +658,15 @@ Choose appropriate chart type and data keys based on the data structure. Return 
       temperature: 0.7,
       max_tokens: 300,
     });
-
+    
     const narrative = narrativeCompletion.choices[0]?.message?.content || '';
-
+    
     return {
       message: `I've generated a chart based on your request. ${dataSource}`,
       chartSpec,
       narrative
     };
-
+    
   } catch (error) {
     console.error('Error generating chart:', error);
     return {
