@@ -2,25 +2,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { auth } from '@clerk/nextjs/server';
 import { ValidationError } from '@/lib/errorHandler';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../../../convex/_generated/api';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Enhanced system prompt for V1 - focuses on file analysis with helpful database guidance
-const SYSTEM_PROMPT = `You are Shabe AI, a helpful AI assistant that specializes in analyzing uploaded files and generating insights.
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+
+// Enhanced system prompt for V1 - handles both database CRUD and file analysis
+const SYSTEM_PROMPT = `You are Shabe AI, a helpful AI assistant that can perform CRUD operations on database records and analyze uploaded files.
 
 Your capabilities:
-1. Analyze uploaded files (PDFs, Excel files, CSV files, text files)
-2. Generate charts and visualizations from data
-3. Provide insights and summaries from file content
-4. Answer questions about uploaded data
+1. CRUD operations on database records (contacts, accounts, deals, activities)
+2. Analyze uploaded files (PDFs, Excel files, CSV files, text files)
+3. Generate charts and visualizations from data
+4. Provide insights and summaries from both database and file content
 
-When users ask about database records (contacts, accounts, deals, activities), politely explain that V1 focuses on file analysis and suggest they upload relevant files for analysis.
+When users ask about database records, you can query and manipulate the database directly.
+When users upload files, you have direct access to the file content and can provide detailed analysis.
 
 For chart generation:
 - Use the handleChart function when users ask for charts or visualizations
-- Parse data from uploaded files to create meaningful charts
+- Parse data from uploaded files or database records to create meaningful charts
 - Provide insights about the data being visualized
 
 Always be helpful, accurate, and provide actionable insights from the data you analyze.`;
@@ -82,27 +87,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(chartResult);
     }
 
-    // Check if user is asking for database records
+    // Check if user is asking for database operations
     const isDatabaseQuery = lastUserMessage.toLowerCase().includes('contact') || 
                            lastUserMessage.toLowerCase().includes('account') || 
                            lastUserMessage.toLowerCase().includes('deal') || 
                            lastUserMessage.toLowerCase().includes('activity') ||
                            lastUserMessage.toLowerCase().includes('view') ||
                            lastUserMessage.toLowerCase().includes('show') ||
-                           lastUserMessage.toLowerCase().includes('list');
+                           lastUserMessage.toLowerCase().includes('list') ||
+                           lastUserMessage.toLowerCase().includes('create') ||
+                           lastUserMessage.toLowerCase().includes('add') ||
+                           lastUserMessage.toLowerCase().includes('update') ||
+                           lastUserMessage.toLowerCase().includes('edit') ||
+                           lastUserMessage.toLowerCase().includes('delete') ||
+                           lastUserMessage.toLowerCase().includes('remove');
 
-    if (isDatabaseQuery && sessionFiles.length === 0) {
-      // Provide helpful guidance for V1
-      return NextResponse.json({
-        message: `I understand you're asking about database records. In V1, I focus on analyzing uploaded files to provide insights. 
-
-To help you with this request, please:
-1. Upload a file containing the data you'd like me to analyze (CSV, Excel, or text files work well)
-2. Ask me to analyze the uploaded file
-3. I can then provide insights, generate charts, and answer questions about your data
-
-For example, if you have a CSV file with contact information, upload it and I can help you analyze it!`
-      });
+    if (isDatabaseQuery) {
+      // Handle database operations
+      const dbResult = await handleDatabaseOperation(lastUserMessage, userId);
+      return NextResponse.json(dbResult);
     }
 
     // Call OpenAI for regular conversation
@@ -161,6 +164,94 @@ function validateStringField(value: unknown, fieldName: string, maxLength?: numb
   }
 }
 
+// Handle database operations
+async function handleDatabaseOperation(userMessage: string, userId: string) {
+  try {
+    const messageLower = userMessage.toLowerCase();
+    
+    // Determine what type of data to query
+    let records: Record<string, unknown>[] = [];
+    let dataType = '';
+    
+    if (messageLower.includes('contact')) {
+      records = await convex.query(api.crm.getContactsByTeam, { teamId: 'default' });
+      dataType = 'contacts';
+    } else if (messageLower.includes('account')) {
+      records = await convex.query(api.crm.getAccountsByTeam, { teamId: 'default' });
+      dataType = 'accounts';
+    } else if (messageLower.includes('deal')) {
+      records = await convex.query(api.crm.getDealsByTeam, { teamId: 'default' });
+      dataType = 'deals';
+    } else if (messageLower.includes('activity')) {
+      records = await convex.query(api.crm.getActivitiesByTeam, { teamId: 'default' });
+      dataType = 'activities';
+    } else {
+      // Default to contacts if no specific type mentioned
+      records = await convex.query(api.crm.getContactsByTeam, { teamId: 'default' });
+      dataType = 'contacts';
+    }
+
+    // Filter records based on time period if mentioned
+    let filteredRecords = records;
+    const now = new Date();
+    
+    if (messageLower.includes('this week')) {
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      filteredRecords = records.filter((record: Record<string, unknown>) => {
+        const createdAt = new Date((record._creationTime as number));
+        return createdAt >= weekAgo;
+      });
+    } else if (messageLower.includes('this month')) {
+      const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      filteredRecords = records.filter((record: Record<string, unknown>) => {
+        const createdAt = new Date((record._creationTime as number));
+        return createdAt >= monthAgo;
+      });
+    }
+
+    if (filteredRecords.length === 0) {
+      return {
+        message: `No ${dataType} found for the specified criteria.`
+      };
+    }
+
+    // Generate summary using OpenAI
+    const summaryCompletion = await openai.chat.completions.create({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: `You are a data analyst. Provide a helpful summary of the database records. Focus on key insights, trends, and important information.`
+        },
+        {
+          role: "user",
+          content: `Analyze these ${dataType} and provide insights: ${JSON.stringify(filteredRecords.slice(0, 10))}`
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 500,
+    });
+
+    const summary = summaryCompletion.choices[0]?.message?.content || '';
+
+    return {
+      message: `Found ${filteredRecords.length} ${dataType}:\n\n${summary}`,
+      data: {
+        records: filteredRecords,
+        type: dataType,
+        count: filteredRecords.length
+      }
+    };
+
+  } catch (error) {
+    console.error('Error querying database:', error);
+    return {
+      message: "I encountered an error while querying the database. Please try again.",
+      error: true
+    };
+  }
+}
+
 // Handle chart generation
 async function handleChart(userMessage: string, sessionFiles: Array<{ name: string; content: string }>) {
   try {
@@ -189,9 +280,26 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       }
     }
 
+    // If no file data, try to get database data for chart
+    if (chartData.length === 0) {
+      try {
+        const records = await convex.query(api.crm.getContactsByTeam, { teamId: 'default' });
+        chartData = records.slice(0, 20).map((record: Record<string, unknown>) => ({
+          id: record._id,
+          name: (record.name as Record<string, unknown>)?.firstName + ' ' + (record.name as Record<string, unknown>)?.lastName,
+          email: record.email,
+          phone: record.phone,
+          created: new Date((record._creationTime as number)).toLocaleDateString()
+        }));
+        dataSource = 'Data from database contacts';
+      } catch (error) {
+        console.error('Error getting database data for chart:', error);
+      }
+    }
+
     if (chartData.length === 0) {
       return {
-        message: "I need uploaded file data to generate a chart. Please upload a CSV, Excel, or text file with your data, then ask me to create a chart."
+        message: "I need data to generate a chart. Please upload a CSV, Excel, or text file with your data, or ask me to show database records, then ask me to create a chart."
       };
     }
 
