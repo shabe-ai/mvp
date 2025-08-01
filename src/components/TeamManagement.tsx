@@ -28,9 +28,6 @@ export default function TeamManagement() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
-  const [newTeamName, setNewTeamName] = useState('');
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [seeding, setSeeding] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -84,34 +81,7 @@ export default function TeamManagement() {
     }
   };
 
-  const createTeam = async () => {
-    if (!user || !newTeamName.trim()) return;
-    setLoading(true);
-    setError(null);
 
-    try {
-      const res = await fetch('/api/teams', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTeamName.trim() }),
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        setError(data.error);
-      } else {
-        setTeams(prev => [...prev, data]);
-        setSelectedTeam(data);
-        setNewTeamName('');
-        setShowCreateForm(false);
-      }
-    } catch (err) {
-      setError("Failed to create team");
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const updateTeam = async (teamId: string, name: string) => {
     if (!user || !name.trim()) return;
@@ -173,35 +143,7 @@ export default function TeamManagement() {
     }
   };
 
-  const seedTeamData = async (teamId: string) => {
-    if (!user) return;
-    setSeeding(true);
-    setError(null);
 
-    try {
-      const res = await fetch('/api/seed', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId }),
-      });
-
-      const data = await res.json();
-
-      if (data.error) {
-        setError(data.error);
-      } else {
-        // Reload team stats after seeding
-        if (selectedTeam?._id === teamId) {
-          loadTeamStats(teamId);
-        }
-        alert(data.message || 'Sample data added successfully!');
-      }
-    } catch (err) {
-      setError("Failed to seed team data");
-    } finally {
-      setSeeding(false);
-    }
-  };
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
@@ -214,38 +156,10 @@ export default function TeamManagement() {
   return (
     <div className="space-y-6">
       {/* Team List */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-semibold text-slate-900">Your Teams</h3>
-          <button
-            onClick={() => setShowCreateForm(!showCreateForm)}
-            className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md"
-          >
-            {showCreateForm ? "Cancel" : "Create Team"}
-          </button>
+      <div className="bg-white rounded-xl shadow-sm border border-[#d9d2c7] p-6">
+        <div className="mb-6">
+          <h3 className="text-xl font-semibold text-black">Your Teams</h3>
         </div>
-
-        {showCreateForm && (
-          <div className="mb-6 p-4 bg-slate-50 rounded-lg border border-slate-200">
-            <div className="flex items-center space-x-3">
-              <input
-                type="text"
-                value={newTeamName}
-                onChange={(e) => setNewTeamName(e.target.value)}
-                placeholder="Enter team name..."
-                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                onKeyPress={(e) => e.key === 'Enter' && createTeam()}
-              />
-              <button
-                onClick={createTeam}
-                disabled={loading || !newTeamName.trim()}
-                className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? "Creating..." : "Create"}
-              </button>
-            </div>
-          </div>
-        )}
 
         {error && (
           <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
@@ -264,28 +178,28 @@ export default function TeamManagement() {
               key={team._id}
               className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
                 selectedTeam?._id === team._id
-                  ? "bg-amber-50 border-amber-200 shadow-sm"
-                  : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                  ? "bg-[#f3e89a]/10 border-[#f3e89a] shadow-sm"
+                  : "bg-[#d9d2c7]/10 border-[#d9d2c7] hover:bg-[#d9d2c7]/20"
               }`}
               onClick={() => setSelectedTeam(team)}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-slate-500 to-slate-600 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <div className="w-10 h-10 bg-gradient-to-r from-[#f3e89a] to-[#efe076] rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
                     </svg>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-slate-900">{team.name}</h4>
-                    <p className="text-sm text-slate-600">
+                    <h4 className="font-semibold text-black">{team.name}</h4>
+                    <p className="text-sm text-[#d9d2c7]">
                       {team.members.length} member{team.members.length !== 1 ? 's' : ''} • Created {formatDate(team.createdAt)}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   {team.ownerId === user?.id && (
-                    <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
+                    <span className="px-2 py-1 bg-[#f3e89a] text-black text-xs font-medium rounded-full">
                       Owner
                     </span>
                   )}
@@ -294,7 +208,7 @@ export default function TeamManagement() {
                       e.stopPropagation();
                       setEditingTeam(team);
                     }}
-                    className="text-slate-400 hover:text-slate-600 transition-colors"
+                    className="text-[#d9d2c7] hover:text-black transition-colors"
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
@@ -325,45 +239,36 @@ export default function TeamManagement() {
 
       {/* Team Details */}
       {selectedTeam && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl font-semibold text-slate-900">Team Details</h3>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-slate-500">Last updated: {formatDate(selectedTeam.updatedAt)}</span>
-              <button
-                onClick={() => seedTeamData(selectedTeam._id)}
-                disabled={seeding}
-                className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {seeding ? "Adding Sample Data..." : "Add Sample Data"}
-              </button>
-            </div>
+        <div className="bg-white rounded-xl shadow-sm border border-[#d9d2c7] p-6">
+          <div className="mb-6">
+            <h3 className="text-xl font-semibold text-black">Team Details</h3>
+            <span className="text-sm text-[#d9d2c7]">Last updated: {formatDate(selectedTeam.updatedAt)}</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Team Info */}
             <div className="space-y-4">
               <div>
-                <h4 className="text-lg font-medium text-slate-900 mb-3">Team Information</h4>
+                <h4 className="text-lg font-medium text-black mb-3">Team Information</h4>
                 {editingTeam?._id === selectedTeam._id ? (
                   <div className="space-y-3">
                     <input
                       type="text"
                       value={editingTeam.name}
                       onChange={(e) => setEditingTeam({ ...editingTeam, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-[#d9d2c7] rounded-lg focus:ring-2 focus:ring-[#f3e89a] focus:border-transparent"
                     />
                     <div className="flex space-x-2">
                       <button
                         onClick={() => updateTeam(editingTeam._id, editingTeam.name)}
                         disabled={loading}
-                        className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-3 py-1 rounded text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50"
+                        className="bg-[#f3e89a] hover:bg-[#efe076] text-black px-3 py-1 rounded text-sm font-medium transition-colors disabled:opacity-50"
                       >
                         Save
                       </button>
                       <button
                         onClick={() => setEditingTeam(null)}
-                        className="px-3 py-1 text-slate-600 hover:text-slate-800 text-sm font-medium transition-colors"
+                        className="px-3 py-1 text-[#d9d2c7] hover:text-black text-sm font-medium transition-colors"
                       >
                         Cancel
                       </button>
@@ -371,24 +276,24 @@ export default function TeamManagement() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <p className="text-slate-900 font-medium">{selectedTeam.name}</p>
-                    <p className="text-sm text-slate-600">Team ID: {selectedTeam._id}</p>
+                    <p className="text-black font-medium">{selectedTeam.name}</p>
+                    <p className="text-sm text-[#d9d2c7]">Team ID: {selectedTeam._id}</p>
                   </div>
                 )}
               </div>
 
               <div>
-                <h4 className="text-lg font-medium text-slate-900 mb-3">Members</h4>
+                <h4 className="text-lg font-medium text-black mb-3">Members</h4>
                 <div className="space-y-2">
                   {selectedTeam.members.map((memberId) => (
-                    <div key={memberId} className="flex items-center justify-between p-2 bg-slate-50 rounded">
-                      <span className="text-sm text-slate-700">{memberId}</span>
-                      {memberId === selectedTeam.ownerId && (
-                        <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
-                          Owner
-                        </span>
-                      )}
-                    </div>
+                                          <div key={memberId} className="flex items-center justify-between p-2 bg-[#d9d2c7]/10 rounded">
+                        <span className="text-sm text-black">{memberId}</span>
+                        {memberId === selectedTeam.ownerId && (
+                          <span className="px-2 py-1 bg-[#f3e89a] text-black text-xs font-medium rounded-full">
+                            Owner
+                          </span>
+                        )}
+                      </div>
                   ))}
                 </div>
               </div>
@@ -396,68 +301,68 @@ export default function TeamManagement() {
 
             {/* Team Statistics */}
             <div>
-              <h4 className="text-lg font-medium text-slate-900 mb-3">Statistics</h4>
+              <h4 className="text-lg font-medium text-black mb-3">Statistics</h4>
               {teamStats ? (
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="p-4 bg-[#f3e89a]/10 rounded-lg border border-[#f3e89a]/20">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-10 h-10 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-blue-900">{teamStats.contacts}</p>
-                        <p className="text-sm text-blue-700">Contacts</p>
+                        <p className="text-2xl font-bold text-black">{teamStats.contacts}</p>
+                        <p className="text-sm text-[#d9d2c7]">Contacts</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="p-4 bg-[#f3e89a]/10 rounded-lg border border-[#f3e89a]/20">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-10 h-10 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
                         </svg>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-green-900">{teamStats.accounts}</p>
-                        <p className="text-sm text-green-700">Accounts</p>
+                        <p className="text-2xl font-bold text-black">{teamStats.accounts}</p>
+                        <p className="text-sm text-[#d9d2c7]">Accounts</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <div className="p-4 bg-[#f3e89a]/10 rounded-lg border border-[#f3e89a]/20">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-10 h-10 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"/>
                         </svg>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-purple-900">{teamStats.activities}</p>
-                        <p className="text-sm text-purple-700">Activities</p>
+                        <p className="text-2xl font-bold text-black">{teamStats.activities}</p>
+                        <p className="text-sm text-[#d9d2c7]">Activities</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="p-4 bg-[#f3e89a]/10 rounded-lg border border-[#f3e89a]/20">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
+                      <div className="w-10 h-10 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-orange-900">{teamStats.deals}</p>
-                        <p className="text-sm text-orange-700">Deals</p>
+                        <p className="text-2xl font-bold text-black">{teamStats.deals}</p>
+                        <p className="text-sm text-[#d9d2c7]">Deals</p>
                       </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-slate-500 text-center">Loading statistics...</p>
+                <div className="p-4 bg-[#d9d2c7]/10 rounded-lg border border-[#d9d2c7]">
+                  <p className="text-[#d9d2c7] text-center">Loading statistics...</p>
                 </div>
               )}
             </div>
