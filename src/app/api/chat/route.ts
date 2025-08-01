@@ -474,13 +474,25 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
         if (userTeams && userTeams.length > 0) {
           const teamId = userTeams[0]._id;
           const records = await convex.query(api.crm.getContactsByTeam, { teamId });
-          chartData = records.slice(0, 20).map((record: Record<string, unknown>) => ({
-            id: record._id,
-            name: (record.name as Record<string, unknown>)?.firstName + ' ' + (record.name as Record<string, unknown>)?.lastName,
-            email: record.email,
-            phone: record.phone,
-            created: new Date((record._creationTime as number)).toLocaleDateString()
-          }));
+          
+          // Create simple flat objects for chart data
+          chartData = records.slice(0, 20).map((record: Record<string, unknown>) => {
+            const nameObj = record.name as Record<string, unknown>;
+            const firstName = nameObj?.firstName || '';
+            const lastName = nameObj?.lastName || '';
+            const fullName = `${firstName} ${lastName}`.trim() || 'Unknown';
+            
+            return {
+              id: record._id,
+              name: fullName,
+              email: record.email || '',
+              phone: record.phone || '',
+              company: record.company || '',
+              created: new Date((record._creationTime as number)).toLocaleDateString()
+            };
+          });
+          
+          console.log('📊 Chart data from database:', chartData.slice(0, 3));
           dataSource = 'Data from database contacts';
         }
       } catch (error) {
@@ -495,18 +507,24 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     }
 
     // Generate chart specification using OpenAI
+    console.log('📊 Generating chart with data:', {
+      dataLength: chartData.length,
+      sampleData: chartData.slice(0, 2),
+      userMessage
+    });
+    
     const chartCompletion = await openai.chat.completions.create({
       model: "gpt-4",
       messages: [
         {
           role: "system",
-          content: `You are a chart generation expert. Create a chart specification based on the user's request and available data.
+          content: `You are a chart generation expert. Your ONLY job is to return a valid JSON object.
 
 Available data: ${JSON.stringify(chartData.slice(0, 5))} (showing first 5 rows)
 
-IMPORTANT: Respond with ONLY a valid JSON object. Do not include any text before or after the JSON.
+CRITICAL: You must respond with ONLY a JSON object. No text, no explanations, no markdown formatting.
 
-Generate a chart specification with this exact structure:
+Return this exact JSON structure:
 {
   "chartType": "bar|line|pie|scatter",
   "data": [array of data objects],
@@ -519,18 +537,20 @@ Generate a chart specification with this exact structure:
   }
 }
 
-Choose appropriate chart type and data keys based on the data structure. Return ONLY the JSON object.`
+Choose appropriate chart type and data keys based on the data structure. Return ONLY the JSON object, nothing else.`
         },
         {
           role: "user",
           content: userMessage
         }
       ],
-      temperature: 0.1,
+      temperature: 0.0,
       max_tokens: 1000,
     });
 
     const chartSpecText = chartCompletion.choices[0]?.message?.content || '';
+    console.log('🔍 Raw chart spec response:', chartSpecText);
+    
     let chartSpec;
     
     try {
@@ -539,17 +559,22 @@ Choose appropriate chart type and data keys based on the data structure. Return 
       const jsonStart = cleanedText.indexOf('{');
       const jsonEnd = cleanedText.lastIndexOf('}') + 1;
       
+      console.log('🔍 JSON extraction:', { jsonStart, jsonEnd, cleanedText });
+      
       if (jsonStart !== -1 && jsonEnd > jsonStart) {
         const jsonString = cleanedText.substring(jsonStart, jsonEnd);
+        console.log('🔍 Extracted JSON string:', jsonString);
         chartSpec = JSON.parse(jsonString);
+        console.log('✅ Successfully parsed chart spec:', chartSpec);
       } else {
         throw new Error('No JSON found in response');
       }
     } catch (error) {
-      console.error('Failed to parse chart spec:', error);
-      console.error('Raw response:', chartSpecText);
+      console.error('❌ Failed to parse chart spec:', error);
+      console.error('❌ Raw response:', chartSpecText);
       
       // Fallback to a simple chart spec
+      console.log('🔄 Using fallback chart spec');
       chartSpec = {
         chartType: "bar",
         data: chartData.slice(0, 10),
