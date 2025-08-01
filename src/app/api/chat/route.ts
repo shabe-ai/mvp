@@ -22,6 +22,19 @@ You have access to the user's profile and company information to personalize you
 
 When drafting emails or communications, use the user's name, company information, and other relevant details to create personalized content.
 
+IMPORTANT: When users ask you to write or send an email, you must respond with a JSON object in this exact format:
+
+{
+  "message": "I've drafted an email for you. You can review and edit it below.",
+  "emailDraft": {
+    "to": "recipient@example.com",
+    "subject": "Email Subject",
+    "content": "Email body content here..."
+  }
+}
+
+For email drafting, always use the user's name and company information to make the email professional and personalized.
+
 Be helpful, professional, and always provide actionable insights.`;
 
 interface Message {
@@ -139,6 +152,50 @@ export async function POST(req: NextRequest) {
       // Handle database operations
       const dbResult = await handleDatabaseOperation(lastUserMessage, userId);
       return NextResponse.json(dbResult);
+    }
+
+    // Check if user is asking for email drafting
+    const isEmailRequest = lastUserMessage.toLowerCase().includes('email') || 
+                          lastUserMessage.toLowerCase().includes('send') ||
+                          lastUserMessage.toLowerCase().includes('write') ||
+                          lastUserMessage.toLowerCase().includes('draft');
+
+    if (isEmailRequest) {
+      // Handle email drafting with specific instructions
+      const emailPrompt = enhancedSystemPrompt + `\n\nUSER REQUEST: ${lastUserMessage}\n\nIMPORTANT: You must respond with ONLY a JSON object containing the email draft. Do not include any other text or explanations.`;
+      
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4",
+        messages: [
+          { role: "system", content: emailPrompt },
+          ...messages.map((msg: Message) => ({
+            role: msg.role as "user" | "assistant",
+            content: msg.content,
+          })),
+        ],
+        temperature: 0.7,
+        max_tokens: 2000,
+      });
+
+      const responseMessage = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
+      
+      try {
+        // Try to parse the response as JSON
+        const parsedResponse = JSON.parse(responseMessage);
+        if (parsedResponse.emailDraft) {
+          return NextResponse.json({
+            message: parsedResponse.message || "I've drafted an email for you. You can review and edit it below.",
+            emailDraft: parsedResponse.emailDraft,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to parse email response as JSON:', error);
+      }
+      
+      // If JSON parsing fails, return as regular message
+      return NextResponse.json({
+        message: responseMessage,
+      });
     }
 
     // Call OpenAI for regular conversation
