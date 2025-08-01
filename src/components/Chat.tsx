@@ -132,6 +132,14 @@ export default function Chat() {
     setIsLoading(true);
 
     try {
+      // Get company data from localStorage
+      const companyData = localStorage.getItem('companyData');
+      const parsedCompanyData = companyData ? JSON.parse(companyData) : {
+        name: "",
+        website: "",
+        description: ""
+      };
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -141,6 +149,7 @@ export default function Chat() {
           messages: [...messages, userMessage],
           userId: user.id,
           sessionFiles: sessionFiles,
+          companyData: parsedCompanyData,
         }),
       });
 

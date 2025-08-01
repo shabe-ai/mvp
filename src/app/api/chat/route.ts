@@ -10,34 +10,62 @@ const openai = new OpenAI({
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
-// Enhanced system prompt for V1 - handles both database CRUD and file analysis
-const SYSTEM_PROMPT = `You are Shabe AI, a helpful AI assistant that can perform CRUD operations on database records and analyze uploaded files.
+const SYSTEM_PROMPT = `You are Shabe ai, an intelligent AI assistant that helps users with their business operations. You can:
 
-Your capabilities:
-1. CRUD operations on database records (contacts, accounts, deals, activities)
-2. Analyze uploaded files (PDFs, Excel files, CSV files, text files)
-3. Generate charts and visualizations from data
-4. Provide insights and summaries from both database and file content
+1. Analyze uploaded files and provide insights
+2. Generate charts and visualizations from data
+3. Help with database operations (contacts, accounts, deals, activities)
+4. Draft emails and communications
+5. Provide business insights and recommendations
 
-When users ask about database records, you can query and manipulate the database directly.
-When users upload files, you have direct access to the file content and can provide detailed analysis.
+You have access to the user's profile and company information to personalize your responses. Use this information to make your responses more relevant and professional.
 
-For chart generation:
-- Use the handleChart function when users ask for charts or visualizations
-- Parse data from uploaded files or database records to create meaningful charts
-- Provide insights about the data being visualized
+When drafting emails or communications, use the user's name, company information, and other relevant details to create personalized content.
 
-Always be helpful, accurate, and provide actionable insights from the data you analyze.`;
+Be helpful, professional, and always provide actionable insights.`;
 
 interface Message {
   role: string;
   content: string;
 }
 
+// Function to get user profile and company data
+async function getUserContext(userId: string, companyData: Record<string, string>) {
+  try {
+    // Fetch user context from our API endpoint
+    const companyDataParam = encodeURIComponent(JSON.stringify(companyData));
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/user-context?companyData=${companyDataParam}`, {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        userProfile: data.userProfile,
+        companyData: data.companyData
+      };
+    } else {
+      console.error('Failed to fetch user context:', response.status);
+      return {
+        userProfile: { name: "User", email: "user@example.com", company: "Unknown Company" },
+        companyData: { name: "Unknown Company", website: "", description: "" }
+      };
+    }
+  } catch (error) {
+    console.error('Error getting user context:', error);
+    return {
+      userProfile: { name: "User", email: "user@example.com", company: "Unknown Company" },
+      companyData: { name: "Unknown Company", website: "", description: "" }
+    };
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { messages, userId, sessionFiles = [] } = body;
+    const { messages, userId, sessionFiles = [], companyData = {} } = body;
 
     // Validate required fields
     validateRequiredFields(body, ['userId', 'messages']);
@@ -60,8 +88,14 @@ export async function POST(req: NextRequest) {
     // Get the last user message
     const lastUserMessage = messages && messages.length > 0 ? messages[messages.length - 1].content : "";
 
+    // Get user context (profile and company data)
+    const userContext = await getUserContext(userId, companyData);
+
     // Create enhanced system prompt with context
     let enhancedSystemPrompt = SYSTEM_PROMPT;
+    
+    // Add user context
+    enhancedSystemPrompt += `\n\nUSER CONTEXT:\n- User Name: ${userContext.userProfile.name}\n- User Email: ${userContext.userProfile.email}\n- Company Name: ${userContext.companyData.name}\n- Company Website: ${userContext.companyData.website}\n- Company Description: ${userContext.companyData.description}\n\nUse this information to personalize your responses, especially when drafting emails or communications.`;
     
     // Add session files context if available
     if (sessionFiles && sessionFiles.length > 0) {
