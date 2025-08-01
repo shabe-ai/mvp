@@ -44,6 +44,7 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [emailDraft, setEmailDraft] = useState<{
     to: string;
@@ -94,6 +95,7 @@ export default function Chat() {
   useEffect(() => {
     if (user && isLoaded && messages.length === 0) {
       const initializeChat = async () => {
+        setIsInitializing(true);
         const initialContent = await getInitialMessage();
         const welcomeMessage: Message = {
           id: Date.now().toString(),
@@ -102,6 +104,7 @@ export default function Chat() {
           timestamp: new Date(),
         };
         setMessages([welcomeMessage]);
+        setIsInitializing(false);
       };
       
       initializeChat();
@@ -356,8 +359,19 @@ export default function Chat() {
   return (
     <div style={{ width: '100%', background: '#fff' }} className="flex-1 min-h-0 flex flex-col">
       <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-6 pb-4" style={{ width: '100%' }}>
-        {messages.map(renderMessage)}
-        <div ref={messagesEndRef} />
+        {isInitializing ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-[#f3e89a]" />
+              <span className="text-[#d9d2c7]">Loading your personalized experience...</span>
+            </div>
+          </div>
+        ) : (
+          <>
+            {messages.map(renderMessage)}
+            <div ref={messagesEndRef} />
+          </>
+        )}
       </div>
 
       {/* Email Preview */}
