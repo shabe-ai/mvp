@@ -244,8 +244,10 @@ export async function POST(req: NextRequest) {
     
     if (isContactCreationResponse) {
       // Extract contact details from user's response
+      // Handle format: "yes, name vigeash gobal email vigeash@shabe.ai title ceo"
       const nameMatch = lastUserMessage.match(/name\s*[=:]\s*([^\s,]+(?:\s+[^\s,]+)*)/i) || 
-                       lastUserMessage.match(/name\s+([^\s,]+(?:\s+[^\s,]+)*)/i);
+                       lastUserMessage.match(/name\s+([^\s,]+(?:\s+[^\s,]+)*)/i) ||
+                       lastUserMessage.match(/name\s+([^,\n]+?)(?:\s+email\s|$)/i);
       const emailMatch = lastUserMessage.match(/email\s*[=:]\s*([^\s@]+@[^\s@]+\.[^\s@]+)/i) || 
                         lastUserMessage.match(/email\s+([^\s@]+@[^\s@]+\.[^\s@]+)/i);
       const titleMatch = lastUserMessage.match(/title\s*[=:]\s*([^\s,]+(?:\s+[^\s,]+)*)/i) || 
@@ -318,7 +320,10 @@ export async function POST(req: NextRequest) {
       let recipientName = null;
       
       // Extract potential recipient name from the user's request
-      const emailMatch = lastUserMessage.match(/send an email to (.*?)(?: |$)/i);
+      const emailMatch = lastUserMessage.match(/send.*?email.*?to\s+(.*?)(?:\s|$)/i) || 
+                        lastUserMessage.match(/email.*?to\s+(.*?)(?:\s|$)/i) ||
+                        lastUserMessage.match(/send.*?to\s+(.*?)(?:\s|$)/i);
+      
       if (emailMatch) {
         const potentialName = emailMatch[1].trim();
         console.log('Looking for contact with name:', potentialName);
@@ -370,7 +375,7 @@ export async function POST(req: NextRequest) {
       
       // If no contact found, prompt to create a new contact
       if (!recipientEmail) {
-        const potentialName = lastUserMessage.match(/send an email to (.*?)(?: |$)/i)?.[1]?.trim();
+        const potentialName = emailMatch ? emailMatch[1].trim() : 'this person';
         
         return NextResponse.json({
           message: `I couldn't find a contact named "${potentialName}" in your database. Would you like me to help you create a new contact for this person? Please provide their email address so I can add them to your contacts and then send the email.`,
