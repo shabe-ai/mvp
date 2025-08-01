@@ -44,6 +44,7 @@ export default function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const [emailDraft, setEmailDraft] = useState<{
     to: string;
@@ -59,16 +60,54 @@ export default function Chat() {
     content: string;
   }>>([]);
 
-  // Initialize with welcome message if user is logged in
+  // Function to get initial message based on Google Workspace connection
+  const getInitialMessage = async (): Promise<string> => {
+    try {
+      // Check Google Workspace connection status
+      const response = await fetch("/api/test-token");
+      const data = await response.json();
+      
+      if (data.hasToken) {
+        // User has Google Workspace connected - get today's meetings
+        try {
+          const calendarResponse = await fetch("/api/calendar");
+          const calendarData = await calendarResponse.json();
+          
+          if (calendarData.summary && !calendarData.summary.toLowerCase().includes("insufficient authentication")) {
+            return `📅 Today's Schedule\n\n${calendarData.summary}\n\nI can help you analyze files, generate charts, and provide insights. Upload a file to get started!`;
+          } else {
+            return `Hello! I'm your AI assistant. I can see you have Google Workspace connected, but I need additional permissions to access your calendar. You can still upload files for analysis and chart generation. What would you like to do?`;
+          }
+        } catch (_error) {
+          return `Hello! I'm your AI assistant. I can see you have Google Workspace connected. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?`;
+        }
+      } else {
+        // User doesn't have Google Workspace connected - show integration instructions
+        return `👋 Welcome to Shabe AI!\n\nI'm your AI assistant that can help you analyze files, generate charts, and provide insights.\n\nTo get the most out of your experience:\n\n1. Connect Google Workspace (optional but recommended)\n   • Go to Admin → Google Workspace Integration\n   • Connect your account for calendar access\n\n2. Upload files for analysis\n   • Use the upload button to add files\n   • I can analyze PDFs, Excel files, and more\n\n3. Ask me anything about your data\n   • Generate charts and insights\n   • Get summaries and recommendations\n\nWhat would you like to do first?`;
+      }
+    } catch (_error) {
+      // Fallback message if connection check fails
+      return "Hello! I'm your AI assistant. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?";
+    }
+  };
+
+  // Initialize with dynamic welcome message if user is logged in
   useEffect(() => {
     if (user && isLoaded && messages.length === 0) {
-      const welcomeMessage: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: "Hello! I'm your AI assistant. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?",
-        timestamp: new Date(),
+      const initializeChat = async () => {
+        setIsInitializing(true);
+        const initialContent = await getInitialMessage();
+        const welcomeMessage: Message = {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: initialContent,
+          timestamp: new Date(),
+        };
+        setMessages([welcomeMessage]);
+        setIsInitializing(false);
       };
-      setMessages([welcomeMessage]);
+      
+      initializeChat();
     }
   }, [user, isLoaded, messages.length]);
 
@@ -172,18 +211,25 @@ export default function Chat() {
         >
           <div className="whitespace-pre-wrap">{message.content}</div>
           
-                     {/* Render chart if present */}
-           {message.chartSpec && (
-             <div className="mt-4">
-               <ChartDisplay
-                 chartSpec={message.chartSpec}
-                 narrative={message.narrative}
-               />
-             </div>
-           )}
+          {/* Render chart if present */}
+          {message.chartSpec && (
+            <div className="mt-4">
+              <ChartDisplay
+                chartSpec={message.chartSpec}
+                narrative={message.narrative}
+              />
+            </div>
+          )}
           
-          {/* Render data table if present */}
-          {message.data && Array.isArray(message.data) && message.data.length > 0 && (
+          {/* Render database table if present */}
+          {message.data && message.data.displayFormat === 'table' && Array.isArray(message.data.records) && (
+            <div className="mt-4">
+              <DataTable data={message.data.records} fields={Object.keys(message.data.records[0] || {}).filter(key => key !== 'id')} />
+            </div>
+          )}
+          
+          {/* Render data table if present (legacy format) */}
+          {message.data && Array.isArray(message.data) && message.data.length > 0 && !message.data.displayFormat && (
             <div className="mt-4">
               <DataTable data={message.data} fields={message.fields} />
             </div>
@@ -320,8 +366,19 @@ export default function Chat() {
   return (
     <div style={{ width: '100%', background: '#fff' }} className="flex-1 min-h-0 flex flex-col">
       <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-6 pb-4" style={{ width: '100%' }}>
-        {messages.map(renderMessage)}
-        <div ref={messagesEndRef} />
+        {isInitializing ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="flex items-center gap-2">
+              <Loader2 className="h-5 w-5 animate-spin text-[#f3e89a]" />
+              <span className="text-[#d9d2c7]">Loading your personalized experience...</span>
+            </div>
+          </div>
+        ) : (
+          <>
+            {messages.map(renderMessage)}
+            <div ref={messagesEndRef} />
+          </>
+        )}
       </div>
 
       {/* Email Preview */}

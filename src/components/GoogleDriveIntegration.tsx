@@ -46,7 +46,8 @@ export default function GoogleDriveIntegration({
       const res = await fetch("/api/test-token");
       const data = await res.json();
       setIsConnected(!!data.hasToken);
-    } catch (err) {
+    } catch (error) {
+      console.error('Error checking connection:', error);
       setIsConnected(false);
     } finally {
       setLoading(false);
@@ -61,7 +62,8 @@ export default function GoogleDriveIntegration({
       if (data.authUrl) {
         window.location.href = data.authUrl;
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Error connecting Google account:', error);
       setError("Failed to connect Google account");
     } finally {
       setLoading(false);
@@ -82,9 +84,8 @@ export default function GoogleDriveIntegration({
       } else {
         setFolders(data.folders || []);
       }
-    } catch (err) {
-      setError("Failed to load folders");
-    } finally {
+    } catch (error) {
+      console.error('Error loading folders:', error);
       setLoading(false);
     }
   };
@@ -104,7 +105,8 @@ export default function GoogleDriveIntegration({
         setFiles(data.contents || []);
         setSelectedFolder(folderId);
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Error loading folder contents:', error);
       setError("Failed to load folder contents");
     } finally {
       setLoading(false);
@@ -192,7 +194,8 @@ export default function GoogleDriveIntegration({
           } else {
             setProcessingStatus(prev => ({ ...prev, [file.id]: 'failed' }));
           }
-        } catch (err) {
+        } catch (error) {
+          console.error('Error processing file:', file.name, error);
           setProcessingStatus(prev => ({ ...prev, [file.id]: 'failed' }));
         }
       }
@@ -201,7 +204,8 @@ export default function GoogleDriveIntegration({
         onDocumentsProcessed?.(processedCount);
       }
 
-    } catch (err) {
+    } catch (error) {
+      console.error('Error processing documents:', error);
       setError("Failed to process documents");
     } finally {
       setLoading(false);

@@ -115,7 +115,6 @@ export class AIContextService {
         
         // Extract potential filename from query
         const fileExtensions = ['.xlsx', '.csv', '.pdf', '.docx'];
-        let targetFileName = '';
         
         for (const ext of fileExtensions) {
           if (queryLower.includes(ext)) {
@@ -123,7 +122,32 @@ export class AIContextService {
             const words = queryLower.split(/\s+/);
             for (let i = 0; i < words.length; i++) {
               if (words[i].includes(ext)) {
-                targetFileName = words[i];
+                const targetFileName = words[i];
+                console.log(`🔍 AI Context: Looking for file containing: ${targetFileName}`);
+                
+                // Find chunks that match the target filename
+                const matchingChunks = chunks.filter(chunk => 
+                  chunk.metadata.fileName.toLowerCase().includes(targetFileName.toLowerCase())
+                );
+                
+                if (matchingChunks.length > 0) {
+                  console.log(`✅ AI Context: Found ${matchingChunks.length} chunks for ${targetFileName}`);
+                  
+                  // For large files, limit to first few chunks to avoid token limits
+                  const maxChunksForLargeFile = 5;
+                  const limitedChunks = matchingChunks.slice(0, maxChunksForLargeFile);
+                  
+                  console.log(`📊 AI Context: Limiting to ${limitedChunks.length} chunks to avoid token limits`);
+                  
+                  // Return limited chunks for the specific file
+                  return limitedChunks.map((chunk, index) => ({
+                    fileName: chunk.metadata.fileName,
+                    fileType: chunk.metadata.fileType,
+                    chunkText: chunk.text,
+                    similarity: 1.0, // High similarity for exact file matches
+                    chunkIndex: index,
+                  }));
+                }
                 break;
               }
             }
@@ -132,37 +156,42 @@ export class AIContextService {
         }
         
         // If no extension found, look for common file keywords
-        if (!targetFileName) {
-          if (queryLower.includes('money')) targetFileName = 'money.xlsx';
-          else if (queryLower.includes('transactions')) targetFileName = 'transactions';
-          else if (queryLower.includes('sales')) targetFileName = 'sales';
-          else if (queryLower.includes('invoice')) targetFileName = 'invoice';
-        }
+        const commonFileKeywords = [
+          { keyword: 'money', fileName: 'money.xlsx' },
+          { keyword: 'transactions', fileName: 'transactions' },
+          { keyword: 'sales', fileName: 'sales' },
+          { keyword: 'invoice', fileName: 'invoice' }
+        ];
         
-        console.log(`🔍 AI Context: Looking for file containing: ${targetFileName}`);
-        
-        // Find chunks that match the target filename
-        const matchingChunks = chunks.filter(chunk => 
-          chunk.metadata.fileName.toLowerCase().includes(targetFileName.toLowerCase())
-        );
-        
-        if (matchingChunks.length > 0) {
-          console.log(`✅ AI Context: Found ${matchingChunks.length} chunks for ${targetFileName}`);
-          
-          // For large files, limit to first few chunks to avoid token limits
-          const maxChunksForLargeFile = 5;
-          const limitedChunks = matchingChunks.slice(0, maxChunksForLargeFile);
-          
-          console.log(`📊 AI Context: Limiting to ${limitedChunks.length} chunks to avoid token limits`);
-          
-          // Return limited chunks for the specific file
-          return limitedChunks.map((chunk, index) => ({
-            fileName: chunk.metadata.fileName,
-            fileType: chunk.metadata.fileType,
-            chunkText: chunk.text,
-            similarity: 1.0, // High similarity for exact file matches
-            chunkIndex: index,
-          }));
+        for (const { keyword, fileName: targetFileName } of commonFileKeywords) {
+          if (queryLower.includes(keyword)) {
+            console.log(`🔍 AI Context: Looking for file containing: ${targetFileName}`);
+            
+            // Find chunks that match the target filename
+            const matchingChunks = chunks.filter(chunk => 
+              chunk.metadata.fileName.toLowerCase().includes(targetFileName.toLowerCase())
+            );
+            
+            if (matchingChunks.length > 0) {
+              console.log(`✅ AI Context: Found ${matchingChunks.length} chunks for ${targetFileName}`);
+              
+              // For large files, limit to first few chunks to avoid token limits
+              const maxChunksForLargeFile = 5;
+              const limitedChunks = matchingChunks.slice(0, maxChunksForLargeFile);
+              
+              console.log(`📊 AI Context: Limiting to ${limitedChunks.length} chunks to avoid token limits`);
+              
+              // Return limited chunks for the specific file
+              return limitedChunks.map((chunk, index) => ({
+                fileName: chunk.metadata.fileName,
+                fileType: chunk.metadata.fileType,
+                chunkText: chunk.text,
+                similarity: 1.0, // High similarity for exact file matches
+                chunkIndex: index,
+              }));
+            }
+            break;
+          }
         }
       }
 
@@ -259,7 +288,7 @@ export class AIContextService {
       const maxTokensPerContext = 2000; // More aggressive limit to avoid token issues
       let shouldBreak = false;
       
-      for (const [fileName, group] of groupedDocs) {
+      for (const [_fileName, group] of groupedDocs) {
         if (shouldBreak) break;
         
         const avgSimilarity = group.avgSimilarity / group.chunks.length;

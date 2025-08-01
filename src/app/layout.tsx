@@ -11,6 +11,7 @@ import {
 
 import "./globals.css";
 import Link from "next/link";
+import Image from 'next/image';
 
 export const metadata: Metadata = {
   title: "Shabe - Conversational Workspace",
@@ -33,7 +34,7 @@ export default function RootLayout({
                 <div className="flex items-center space-x-3">
                   {/* Logo */}
                   <div className="flex items-center space-x-2">
-                    <img src="/logo.png" alt="Shabe Logo" className="h-10 w-10" />
+                    <Image src="/logo.png" alt="Shabe Logo" width={40} height={40} />
                     <h1 className="text-xl font-medium text-black">
                       Shabe ai
                     </h1>

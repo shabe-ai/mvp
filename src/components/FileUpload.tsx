@@ -1,5 +1,4 @@
-import React, { useState, useCallback } from 'react';
-import { Upload, X, FileText, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
 
 interface UploadedFile {
   id: string;
@@ -17,17 +16,81 @@ interface FileUploadProps {
   maxFiles?: number;
 }
 
-export default function FileUpload({ onFilesProcessed, maxFiles = 1 }: FileUploadProps) {
-  console.log('FileUpload component rendering');
+export default function FileUpload({ onFilesProcessed, maxFiles = 3 }: FileUploadProps) {
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
-  
-  // Make the handler available globally
-  React.useEffect(() => {
-    (window as unknown as Record<string, unknown>).handleFileUpload = onFilesProcessed;
-    return () => {
-      delete (window as unknown as Record<string, unknown>).handleFileUpload;
-    };
-  }, [onFilesProcessed]);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleFileUpload = async (files: FileList) => {
+    const fileArray = Array.from(files);
+    const validFiles = fileArray.filter(file => {
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`File ${file.name} is too large. Maximum size is 10MB.`);
+        return false;
+      }
+      return true;
+    });
+
+    if (uploadedFiles.length + validFiles.length > maxFiles) {
+      alert(`You can only upload up to ${maxFiles} files.`);
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      const processedFiles = await Promise.all(validFiles.map(async (file) => {
+        const id = Math.random().toString(36).substr(2, 9);
+        const uploadedFile: UploadedFile = {
+          id,
+          file,
+          name: file.name,
+          size: formatFileSize(file.size),
+          type: file.type,
+          status: 'uploading'
+        };
+
+        setUploadedFiles(prev => [...prev, uploadedFile]);
+
+        try {
+          setUploadedFiles(prev => 
+            prev.map(f => f.id === id ? { ...f, status: 'processing' } : f)
+          );
+
+          const content = await extractTextFromFile(file);
+          
+          const processedFile: UploadedFile = {
+            ...uploadedFile,
+            status: 'success',
+            content
+          };
+
+          setUploadedFiles(prev => 
+            prev.map(f => f.id === id ? processedFile : f)
+          );
+
+          return processedFile;
+        } catch (error) {
+          const errorFile: UploadedFile = {
+            ...uploadedFile,
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Failed to process file'
+          };
+
+          setUploadedFiles(prev => 
+            prev.map(f => f.id === id ? errorFile : f)
+          );
+
+          throw error;
+        }
+      }));
+
+      onFilesProcessed(processedFiles.filter(f => f.status === 'success'));
+    } catch (error) {
+      console.error('Error processing files:', error);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const formatFileSize = (bytes: number): string => {
     if (bytes === 0) return '0 Bytes';
@@ -40,222 +103,94 @@ export default function FileUpload({ onFilesProcessed, maxFiles = 1 }: FileUploa
   const extractTextFromFile = async (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-      
-      reader.onload = async (e) => {
-        try {
-          const content = e.target?.result as string;
-          
-          if (file.type === 'text/plain' || file.type === 'text/csv') {
-            resolve(content);
-          } else if (file.type.includes('spreadsheet') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-            // For Excel files, we'll extract what we can from the content
-            // In a real implementation, you'd use a library like xlsx
-            resolve(`Excel file: ${file.name} - Content extraction available`);
-          } else if (file.type === 'application/pdf') {
-            // For PDF files, we'll note that extraction is available
-            resolve(`PDF file: ${file.name} - Content extraction available`);
-          } else {
-            resolve(`File: ${file.name} - Content type: ${file.type}`);
-          }
-        } catch (error) {
-          reject(error);
-        }
+      reader.onload = (e) => {
+        const content = e.target?.result as string;
+        resolve(content);
       };
-      
       reader.onerror = () => reject(new Error('Failed to read file'));
       reader.readAsText(file);
     });
   };
 
-  const processFile = useCallback(async (file: File): Promise<UploadedFile> => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const uploadedFile: UploadedFile = {
-      id,
-      file,
-      name: file.name,
-      size: formatFileSize(file.size),
-      type: file.type,
-      status: 'uploading'
-    };
-
-    setUploadedFiles(prev => [...prev, uploadedFile]);
-
-    try {
-      // Update status to processing
-      setUploadedFiles(prev => 
-        prev.map(f => f.id === id ? { ...f, status: 'processing' } : f)
-      );
-
-      // Extract text content
-      const content = await extractTextFromFile(file);
-      
-      // Update with success
-      const processedFile: UploadedFile = {
-        ...uploadedFile,
-        status: 'success',
-        content
-      };
-
-      setUploadedFiles(prev => 
-        prev.map(f => f.id === id ? processedFile : f)
-      );
-
-      return processedFile;
-    } catch (error) {
-      // Update with error
-      const errorFile: UploadedFile = {
-        ...uploadedFile,
-        status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to process file'
-      };
-
-      setUploadedFiles(prev => 
-        prev.map(f => f.id === id ? errorFile : f)
-      );
-
-      throw error;
-    }
-  }, []);
-
-  const handleFileUpload = useCallback(async (files: FileList) => {
-    console.log('handleFileUpload called with:', files);
-    const fileArray = Array.from(files);
-    console.log('File array:', fileArray);
-    const validFiles = fileArray.filter(file => {
-      // Check file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`File ${file.name} is too large. Maximum size is 10MB.`);
-        return false;
-      }
-      return true;
-    });
-    console.log('Valid files:', validFiles);
-
-    // Check if adding these files would exceed the limit
-    if (uploadedFiles.length + validFiles.length > maxFiles) {
-      alert(`You can only upload up to ${maxFiles} files.`);
-      return;
-    }
-
-    try {
-      const processedFiles = await Promise.all(validFiles.map(processFile));
-      onFilesProcessed(processedFiles.filter(f => f.status === 'success'));
-    } catch (error) {
-      console.error('Error processing files:', error);
-    }
-  }, [uploadedFiles.length, maxFiles, onFilesProcessed, processFile]);
-
-
-
-
-
-  const removeFile = (id: string) => {
-    setUploadedFiles(prev => prev.filter(f => f.id !== id));
-  };
-
-  const getStatusIcon = (status: UploadedFile['status']) => {
-    switch (status) {
-      case 'uploading':
-        return <Loader2 className="w-4 h-4 animate-spin text-blue-500" />;
-      case 'processing':
-        return <Loader2 className="w-4 h-4 animate-spin text-yellow-500" />;
-      case 'success':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'error':
-        return <AlertCircle className="w-4 h-4 text-red-500" />;
-    }
-  };
-
-  const getStatusText = (status: UploadedFile['status']) => {
-    switch (status) {
-      case 'uploading':
-        return 'Uploading...';
-      case 'processing':
-        return 'Processing...';
-      case 'success':
-        return 'Ready';
-      case 'error':
-        return 'Error';
-    }
+  const removeFile = (fileId: string) => {
+    setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
   };
 
   return (
-    <div className="mb-6">
-      {/* Upload Area */}
-      <div className="border-2 border-dashed border-slate-300 rounded-lg p-6 text-center">
-        <Upload className="w-8 h-8 text-slate-400 mx-auto mb-3" />
-        <p className="text-slate-600 font-medium mb-2">
-          Click to upload a file
-        </p>
-        <p className="text-slate-500 text-sm mb-4">
-          Upload a file (max 10MB)
-        </p>
-        <div dangerouslySetInnerHTML={{
-          __html: `
-            <input 
-              type="file" 
-              accept=".txt,.csv,.pdf,.xlsx,.xls,.doc,.docx"
-              style="width: 100%; padding: 16px; border: 2px dashed #f59e0b; background: #fef3c7; border-radius: 8px; cursor: pointer; min-height: 60px; display: flex; align-items: center; justify-content: center;"
-              onchange="
-                console.log('HTML file input changed:', this.files);
-                if (this.files && this.files.length > 0) {
-                  const file = this.files[0];
-                  console.log('Selected file:', file.name);
-                  const reader = new FileReader();
-                  reader.onload = function(event) {
-                    const content = event.target.result;
-                    console.log('File content loaded:', content.substring(0, 100) + '...');
-                    window.handleFileUpload && window.handleFileUpload([{
-                      id: Math.random().toString(),
-                      name: file.name,
-                      content: content
-                    }]);
-                  };
-                  reader.readAsText(file);
-                }
-              "
-            />
-          `
-        }} />
-        <p className="text-xs text-gray-500 mt-2">Click the area above to select a file</p>
+    <div className="space-y-4">
+      <div className="flex items-center space-x-4">
+        <input
+          type="file"
+          multiple
+          accept=".pdf,.doc,.docx,.txt,.csv,.xlsx,.xls"
+          onChange={(e) => {
+            if (e.target.files) {
+              handleFileUpload(e.target.files);
+            }
+          }}
+          className="hidden"
+          id="file-upload"
+        />
+        <label
+          htmlFor="file-upload"
+          className="cursor-pointer bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+        >
+          {isUploading ? 'Uploading...' : 'Choose Files'}
+        </label>
+        <span className="text-sm text-gray-600">
+          {uploadedFiles.length}/{maxFiles} files uploaded
+        </span>
       </div>
 
-      {/* Uploaded Files List */}
       {uploadedFiles.length > 0 && (
-        <div className="mt-4">
-          <h3 className="text-sm font-medium text-slate-700 mb-3">
-            Uploaded Files ({uploadedFiles.length}/{maxFiles})
-          </h3>
-          <div className="space-y-2">
-            {uploadedFiles.map((file) => (
-              <div
-                key={file.id}
-                className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg"
-              >
-                <div className="flex items-center space-x-3">
-                  <FileText className="w-5 h-5 text-slate-400" />
-                  <div>
-                    <p className="text-sm font-medium text-slate-900">{file.name}</p>
-                    <p className="text-xs text-slate-500">{file.size}</p>
-                  </div>
+        <div className="space-y-2">
+          {uploadedFiles.map((file) => (
+            <div
+              key={file.id}
+              className={`flex items-center justify-between p-3 rounded-lg border ${
+                file.status === 'success'
+                  ? 'bg-green-50 border-green-200'
+                  : file.status === 'error'
+                  ? 'bg-red-50 border-red-200'
+                  : 'bg-gray-50 border-gray-200'
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                <div className="flex-shrink-0">
+                  {file.status === 'success' && (
+                    <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  {file.status === 'error' && (
+                    <svg className="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  )}
+                  {(file.status === 'uploading' || file.status === 'processing') && (
+                    <svg className="w-5 h-5 text-blue-500 animate-spin" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                    </svg>
+                  )}
                 </div>
-                <div className="flex items-center space-x-2">
-                  <div className="flex items-center space-x-1">
-                    {getStatusIcon(file.status)}
-                    <span className="text-xs text-slate-600">
-                      {getStatusText(file.status)}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => removeFile(file.id)}
-                    className="p-1 hover:bg-slate-100 rounded"
-                  >
-                    <X className="w-4 h-4 text-slate-400" />
-                  </button>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                  <p className="text-xs text-gray-500">{file.size}</p>
+                  {file.error && (
+                    <p className="text-xs text-red-600">{file.error}</p>
+                  )}
                 </div>
               </div>
-            ))}
-          </div>
+              <button
+                onClick={() => removeFile(file.id)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>
