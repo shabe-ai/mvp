@@ -103,12 +103,15 @@ export async function POST(req: NextRequest) {
 
     // Get user context (profile and company data)
     const userContext = await getUserContext(userId, companyData);
+    console.log('Chat API received user context:', userContext);
 
     // Create enhanced system prompt with context
     let enhancedSystemPrompt = SYSTEM_PROMPT;
     
     // Add user context
     enhancedSystemPrompt += `\n\nUSER CONTEXT:\n- User Name: ${userContext.userProfile.name}\n- User Email: ${userContext.userProfile.email}\n- Company Name: ${userContext.companyData.name}\n- Company Website: ${userContext.companyData.website}\n- Company Description: ${userContext.companyData.description}\n\nUse this information to personalize your responses, especially when drafting emails or communications.`;
+    
+    console.log('Enhanced system prompt for email:', enhancedSystemPrompt);
     
     // Add session files context if available
     if (sessionFiles && sessionFiles.length > 0) {
@@ -162,7 +165,9 @@ export async function POST(req: NextRequest) {
 
     if (isEmailRequest) {
       // Handle email drafting with specific instructions
-      const emailPrompt = enhancedSystemPrompt + `\n\nUSER REQUEST: ${lastUserMessage}\n\nCRITICAL: Use the user's actual name (${userContext.userProfile.name}) and company information (${userContext.companyData.name}) in the email. Do NOT use generic placeholders like "User" or "Unknown Company".\n\nIMPORTANT: You must respond with ONLY a JSON object containing the email draft. Do not include any other text or explanations.`;
+      const emailPrompt = enhancedSystemPrompt + `\n\nUSER REQUEST: ${lastUserMessage}\n\nCRITICAL EMAIL INSTRUCTIONS:\n- Use the user's actual name: "${userContext.userProfile.name}"\n- Use the user's actual email: "${userContext.userProfile.email}"\n- Use the company name: "${userContext.companyData.name}"\n- Use the company website: "${userContext.companyData.website}"\n- Do NOT use generic placeholders like "User", "user@example.com", or "Unknown Company"\n- Make the email professional and personalized with the user's real information\n\nIMPORTANT: You must respond with ONLY a JSON object containing the email draft. Do not include any other text or explanations.`;
+      
+      console.log('Email prompt with user context:', emailPrompt);
       
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
@@ -178,11 +183,13 @@ export async function POST(req: NextRequest) {
       });
 
       const responseMessage = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
+      console.log('AI email response:', responseMessage);
       
       try {
         // Try to parse the response as JSON
         const parsedResponse = JSON.parse(responseMessage);
         if (parsedResponse.emailDraft) {
+          console.log('Successfully parsed email draft:', parsedResponse.emailDraft);
           return NextResponse.json({
             message: parsedResponse.message || "I've drafted an email for you. You can review and edit it below.",
             emailDraft: parsedResponse.emailDraft,

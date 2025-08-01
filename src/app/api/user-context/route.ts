@@ -14,10 +14,11 @@ export async function GET(req: NextRequest) {
       // Internal API call - use the provided userId
       userId = userIdParam;
       // For now, we'll use placeholder data since we can't fetch Clerk user data without auth
+      // In a real implementation, you'd store user data in a database
       user = {
-        firstName: "User",
-        lastName: "",
-        emailAddresses: [{ emailAddress: "user@example.com" }]
+        firstName: "John",
+        lastName: "Doe",
+        emailAddresses: [{ emailAddress: "john.doe@shabe.ai" }]
       };
     } else {
       // External call - use Clerk auth
@@ -38,25 +39,30 @@ export async function GET(req: NextRequest) {
         ? `${user.firstName} ${user.lastName}`
         : user.emailAddresses[0]?.emailAddress || "User",
       email: user.emailAddresses[0]?.emailAddress || "",
-      company: "Unknown Company" // This would come from company settings
+      company: "Shabe ai" // Default company name
     };
 
     // Get company data from request query params (passed from frontend)
     const companyDataParam = url.searchParams.get('companyData');
     
     let companyData = {
-      name: "",
-      website: "",
-      description: ""
+      name: "Shabe ai",
+      website: "www.shabe.ai",
+      description: "Shabe AI is a chat-first revenue platform that turns every CRM, email, and calendar task into a single natural-language request"
     };
 
     if (companyDataParam) {
       try {
-        companyData = JSON.parse(decodeURIComponent(companyDataParam));
+        const parsedCompanyData = JSON.parse(decodeURIComponent(companyDataParam));
+        if (parsedCompanyData.name) {
+          companyData = parsedCompanyData;
+        }
       } catch (error) {
         console.error('Error parsing company data:', error);
       }
     }
+
+    console.log('User context API returning:', { userProfile, companyData });
 
     return NextResponse.json({
       userProfile,
