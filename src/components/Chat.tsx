@@ -361,14 +361,7 @@ export default function Chat() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex gap-2 w-full px-4 pb-6 mt-auto">
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask me anything about your uploaded files..."
-          disabled={isLoading}
-          className="flex-1 bg-white border border-gray-200 rounded-full px-4 py-3 text-base shadow-sm focus:ring-2 focus:ring-yellow-200"
-        />
+      <form onSubmit={handleSubmit} className="flex w-full px-4 pb-6 mt-auto">
         <input
           type="file"
           id="file-upload"
@@ -412,20 +405,29 @@ export default function Chat() {
           }}
           className="hidden"
         />
-        <button
-          type="button"
-          onClick={() => {
-            console.log('Upload button clicked');
-            document.getElementById('file-upload')?.click();
-          }}
-          className="rounded-full bg-amber-400 hover:bg-amber-500 text-white px-3 py-3 shadow-sm"
-          style={{ width: '44px', height: '44px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-        >
-          <Upload className="h-5 w-5" />
-        </button>
-        <Button type="submit" disabled={isLoading} className="rounded-full bg-yellow-400 hover:bg-yellow-500 text-white px-5 py-3 shadow-sm">
-          <Send className="h-5 w-5" />
-        </Button>
+        <div className="flex w-full bg-white border border-gray-200 rounded-full shadow-sm focus-within:ring-2 focus-within:ring-yellow-200">
+          <button
+            type="button"
+            onClick={() => {
+              console.log('Upload button clicked');
+              document.getElementById('file-upload')?.click();
+            }}
+            className="bg-white border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-50 rounded-l-full px-3 flex items-center justify-center"
+            style={{ width: '48px' }}
+          >
+            <Upload className="h-5 w-5" />
+          </button>
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask me anything about your uploaded files..."
+            disabled={isLoading}
+            className="flex-1 border-0 focus:ring-0 px-4 py-3 text-base"
+          />
+          <Button type="submit" disabled={isLoading} className="bg-yellow-400 hover:bg-yellow-500 text-white rounded-r-full px-3 flex items-center justify-center" style={{ width: '48px' }}>
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
       </form>
     </div>
   );
