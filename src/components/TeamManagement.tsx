@@ -301,68 +301,68 @@ export default function TeamManagement() {
 
             {/* Team Statistics */}
             <div>
-              <h4 className="text-lg font-medium text-slate-900 mb-3">Statistics</h4>
+              <h4 className="text-lg font-medium text-black mb-3">Statistics</h4>
               {teamStats ? (
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                  <div className="p-4 bg-[#f3e89a]/10 rounded-lg border border-[#f3e89a]/20">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-8 h-8 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-blue-900">{teamStats.contacts}</p>
-                        <p className="text-sm text-blue-700">Contacts</p>
+                        <p className="text-2xl font-bold text-black">{teamStats.contacts}</p>
+                        <p className="text-sm text-[#d9d2c7]">Contacts</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <div className="p-4 bg-[#f3e89a]/10 rounded-lg border border-[#f3e89a]/20">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-8 h-8 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
                         </svg>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-green-900">{teamStats.accounts}</p>
-                        <p className="text-sm text-green-700">Accounts</p>
+                        <p className="text-2xl font-bold text-black">{teamStats.accounts}</p>
+                        <p className="text-sm text-[#d9d2c7]">Accounts</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                  <div className="p-4 bg-[#f3e89a]/10 rounded-lg border border-[#f3e89a]/20">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-8 h-8 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"/>
                         </svg>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-purple-900">{teamStats.activities}</p>
-                        <p className="text-sm text-purple-700">Activities</p>
+                        <p className="text-2xl font-bold text-black">{teamStats.activities}</p>
+                        <p className="text-sm text-[#d9d2c7]">Activities</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                  <div className="p-4 bg-[#f3e89a]/10 rounded-lg border border-[#f3e89a]/20">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-8 h-8 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
                         </svg>
                       </div>
                       <div>
-                        <p className="text-2xl font-bold text-orange-900">{teamStats.deals}</p>
-                        <p className="text-sm text-orange-700">Deals</p>
+                        <p className="text-2xl font-bold text-black">{teamStats.deals}</p>
+                        <p className="text-sm text-[#d9d2c7]">Deals</p>
                       </div>
                     </div>
                   </div>
                 </div>
               ) : (
-                <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                  <p className="text-slate-500 text-center">Loading statistics...</p>
+                <div className="p-4 bg-[#d9d2c7]/10 rounded-lg border border-[#d9d2c7]">
+                  <p className="text-[#d9d2c7] text-center">Loading statistics...</p>
                 </div>
               )}
             </div>
