@@ -476,7 +476,7 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
           const records = await convex.query(api.crm.getContactsByTeam, { teamId });
           
           // Create simple flat objects for chart data
-          chartData = records.slice(0, 20).map((record: Record<string, unknown>) => {
+          const rawData = records.slice(0, 20).map((record: Record<string, unknown>) => {
             const nameObj = record.name as Record<string, unknown>;
             const firstName = nameObj?.firstName || '';
             const lastName = nameObj?.lastName || '';
@@ -492,7 +492,20 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
             };
           });
           
-          console.log('📊 Chart data from database:', chartData.slice(0, 3));
+          // Aggregate contacts by company for chart data
+          const companyCounts: { [key: string]: number } = {};
+          rawData.forEach(contact => {
+            const company = (contact.company as string) || 'Unknown';
+            companyCounts[company] = (companyCounts[company] || 0) + 1;
+          });
+          
+          // Convert to chart data format
+          chartData = Object.entries(companyCounts).map(([company, count]) => ({
+            company,
+            contactCount: count
+          }));
+          
+          console.log('📊 Chart data from database:', chartData);
           dataSource = 'Data from database contacts';
         }
       } catch (error) {
@@ -524,6 +537,8 @@ Available data: ${JSON.stringify(chartData.slice(0, 5))} (showing first 5 rows)
 
 CRITICAL: You must respond with ONLY a JSON object. No text, no explanations, no markdown formatting.
 
+IMPORTANT: The data contains aggregated values. For bar charts, use "company" as xAxis dataKey and "contactCount" as yAxis dataKey.
+
 Return this exact JSON structure:
 {
   "chartType": "bar|line|pie|scatter",
@@ -532,8 +547,8 @@ Return this exact JSON structure:
     "width": 600,
     "height": 400,
     "margin": { "top": 20, "right": 30, "bottom": 30, "left": 40 },
-    "xAxis": { "dataKey": "column_name" },
-    "yAxis": { "dataKey": "column_name" }
+    "xAxis": { "dataKey": "company" },
+    "yAxis": { "dataKey": "contactCount" }
   }
 }
 
