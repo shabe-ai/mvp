@@ -412,7 +412,7 @@ export default function Chat() {
               console.log('Upload button clicked');
               document.getElementById('file-upload')?.click();
             }}
-            className="bg-white border-2 border-[#f3e89a] text-[#f3e89a] hover:bg-[#f3e89a]/10 rounded-l-full px-3 flex items-center justify-center"
+            className="bg-[#f3e89a] hover:bg-[#efe076] text-black rounded-l-full px-3 flex items-center justify-center"
             style={{ width: '48px' }}
           >
             <Upload className="h-5 w-5" />
