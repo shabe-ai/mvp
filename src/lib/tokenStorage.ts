@@ -51,20 +51,21 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
       refresh_token: refreshToken
     });
 
-    const { credentials } = await oauth2Client.refreshAccessToken();
+    const credentials = await oauth2Client.refreshAccessToken();
+    const newAccessToken = (credentials as { credentials: { access_token?: string } }).credentials.access_token;
     
-    if (credentials.access_token) {
+    if (newAccessToken) {
       // Update stored tokens with new access token
       const tokens = loadTokens();
       const tokenData = tokens[userId];
       
       if (tokenData) {
-        tokenData.accessToken = credentials.access_token;
+        tokenData.accessToken = newAccessToken;
         tokenData.expiresAt = Date.now() + (((credentials as any).expires_in || 3600) * 1000);
         saveTokens(tokens);
         
         console.log('🔄 Access token refreshed for user:', userId);
-        return credentials.access_token;
+        return newAccessToken;
       }
     }
   } catch (error) {

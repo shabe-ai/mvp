@@ -30,8 +30,9 @@ export default function TeamManagement() {
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
 
   useEffect(() => {
-    if (!user) return;
-    loadTeams();
+    if (user) {
+      loadTeams();
+    }
   }, [user]);
 
   useEffect(() => {
@@ -57,61 +58,39 @@ export default function TeamManagement() {
           setSelectedTeam(data[0]);
         }
       }
-    } catch (err) {
-      setError("Failed to load teams");
+    } catch (error) {
+      console.error('Error loading teams:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const loadTeamStats = async (teamId: string) => {
-    if (!user) return;
-
     try {
-      const res = await fetch(`/api/teams/stats?teamId=${teamId}`);
-      const data = await res.json();
-
-      if (data.error) {
-        console.error('Failed to load team stats:', data.error);
-      } else {
-        setTeamStats(data);
+      const response = await fetch(`/api/teams/stats?teamId=${teamId}`);
+      const data = await response.json();
+      if (data.success) {
+        setTeamStats(data.stats);
       }
-    } catch (err) {
-      console.error('Error loading team stats:', err);
+    } catch (error) {
+      console.error('Error loading team stats:', error);
     }
   };
 
-
-
-  const updateTeam = async (teamId: string, name: string) => {
-    if (!user || !name.trim()) return;
-    setLoading(true);
-    setError(null);
-
+  const updateTeamName = async (teamId: string, newName: string) => {
     try {
-      const res = await fetch('/api/teams', {
+      const response = await fetch('/api/teams', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ teamId, name: name.trim() }),
+        body: JSON.stringify({ teamId, name: newName })
       });
-
-      const data = await res.json();
-
-      if (data.error) {
-        setError(data.error);
-      } else {
-        setTeams(prev => prev.map(team => 
-          team._id === teamId ? { ...team, name: name.trim() } : team
-        ));
-        if (selectedTeam?._id === teamId) {
-          setSelectedTeam(prev => prev ? { ...prev, name: name.trim() } : null);
-        }
+      
+      if (response.ok) {
+        await loadTeams();
         setEditingTeam(null);
       }
-    } catch (err) {
-      setError("Failed to update team");
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Error updating team name:', error);
     }
   };
 
@@ -260,7 +239,7 @@ export default function TeamManagement() {
                     />
                     <div className="flex space-x-2">
                       <button
-                        onClick={() => updateTeam(editingTeam._id, editingTeam.name)}
+                        onClick={() => updateTeamName(editingTeam._id, editingTeam.name)}
                         disabled={loading}
                         className="bg-[#f3e89a] hover:bg-[#efe076] text-black px-3 py-1 rounded text-sm font-medium transition-colors disabled:opacity-50"
                       >

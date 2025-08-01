@@ -34,10 +34,10 @@ function GoogleIntegrationSection() {
       setIsConnected(!!data.hasToken);
       setIsPersistent(!!data.persistentConnection);
       setLoading(false);
-    } catch (err) {
+    } catch (error) {
+      console.error('Error checking connection:', error);
       setIsConnected(false);
       setIsPersistent(false);
-      setLoading(false);
     }
   };
 

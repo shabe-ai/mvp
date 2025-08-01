@@ -117,33 +117,13 @@ export default function FileUpload({ onFilesProcessed, maxFiles = 1 }: FileUploa
     }
   }, []);
 
-  const handleFileUpload = useCallback(async (files: FileList) => {
-    console.log('handleFileUpload called with:', files);
-    const fileArray = Array.from(files);
-    console.log('File array:', fileArray);
-    const validFiles = fileArray.filter(file => {
-      // Check file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        alert(`File ${file.name} is too large. Maximum size is 10MB.`);
-        return false;
-      }
-      return true;
-    });
-    console.log('Valid files:', validFiles);
-
-    // Check if adding these files would exceed the limit
-    if (uploadedFiles.length + validFiles.length > maxFiles) {
-      alert(`You can only upload up to ${maxFiles} files.`);
-      return;
+  const handleFileInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const fileList = Array.from(files);
+      setSelectedFiles(fileList);
     }
-
-    try {
-      const processedFiles = await Promise.all(validFiles.map(processFile));
-      onFilesProcessed(processedFiles.filter(f => f.status === 'success'));
-    } catch (error) {
-      console.error('Error processing files:', error);
-    }
-  }, [uploadedFiles.length, maxFiles, onFilesProcessed, processFile]);
+  };
 
 
 

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { auth } from '@clerk/nextjs/server';
-import { ValidationError } from '@/lib/errorHandler';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../convex/_generated/api';
+import { ValidationError } from '@/lib/errorHandler';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

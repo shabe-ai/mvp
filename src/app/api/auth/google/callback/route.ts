@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Store both access and refresh tokens with longer expiration
-    const expiresIn = (tokens as any).expires_in || 3600; // Use Google's provided expiration
+    const expiresIn = (tokens as { expires_in?: number }).expires_in || 3600; // Use Google's provided expiration
     TokenStorage.setToken(
       userId, 
       tokens.access_token, 
