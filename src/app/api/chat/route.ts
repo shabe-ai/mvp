@@ -47,7 +47,7 @@ async function getUserContext(userId: string, companyData: Record<string, string
   try {
     // Fetch user context from our API endpoint
     const companyDataParam = encodeURIComponent(JSON.stringify(companyData));
-    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/user-context?companyData=${companyDataParam}`, {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/user-context?userId=${userId}&companyData=${companyDataParam}`, {
       headers: {
         'Content-Type': 'application/json',
       },
@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
 
     if (isEmailRequest) {
       // Handle email drafting with specific instructions
-      const emailPrompt = enhancedSystemPrompt + `\n\nUSER REQUEST: ${lastUserMessage}\n\nIMPORTANT: You must respond with ONLY a JSON object containing the email draft. Do not include any other text or explanations.`;
+      const emailPrompt = enhancedSystemPrompt + `\n\nUSER REQUEST: ${lastUserMessage}\n\nCRITICAL: Use the user's actual name (${userContext.userProfile.name}) and company information (${userContext.companyData.name}) in the email. Do NOT use generic placeholders like "User" or "Unknown Company".\n\nIMPORTANT: You must respond with ONLY a JSON object containing the email draft. Do not include any other text or explanations.`;
       
       const completion = await openai.chat.completions.create({
         model: "gpt-4",

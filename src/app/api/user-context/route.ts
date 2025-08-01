@@ -3,11 +3,33 @@ import { auth, currentUser } from "@clerk/nextjs/server";
 
 export async function GET(req: NextRequest) {
   try {
-    const { userId } = await auth();
-    const user = await currentUser();
+    // For internal API calls, we'll accept a userId parameter
+    const url = new URL(req.url);
+    const userIdParam = url.searchParams.get('userId');
     
-    if (!userId || !user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    let user = null;
+    let userId = null;
+
+    if (userIdParam) {
+      // Internal API call - use the provided userId
+      userId = userIdParam;
+      // For now, we'll use placeholder data since we can't fetch Clerk user data without auth
+      user = {
+        firstName: "User",
+        lastName: "",
+        emailAddresses: [{ emailAddress: "user@example.com" }]
+      };
+    } else {
+      // External call - use Clerk auth
+      const authResult = await auth();
+      const currentUserResult = await currentUser();
+      
+      if (!authResult.userId || !currentUserResult) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
+      
+      userId = authResult.userId;
+      user = currentUserResult;
     }
 
     // Get user profile from Clerk
@@ -20,7 +42,6 @@ export async function GET(req: NextRequest) {
     };
 
     // Get company data from request query params (passed from frontend)
-    const url = new URL(req.url);
     const companyDataParam = url.searchParams.get('companyData');
     
     let companyData = {
