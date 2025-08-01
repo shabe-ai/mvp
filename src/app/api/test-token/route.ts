@@ -14,15 +14,19 @@ export async function GET() {
       );
     }
 
-    // Test token storage
-    const hasToken = TokenStorage.hasValidToken(userId);
-    const token = TokenStorage.getToken(userId);
+    // Test token storage with async methods
+    const hasToken = await TokenStorage.hasValidToken(userId);
+    const token = await TokenStorage.getToken(userId);
+    const hasRefreshToken = !!TokenStorage.getRefreshToken(userId);
 
     return NextResponse.json({
       userId,
       hasToken,
+      hasRefreshToken,
       tokenExists: !!token,
-      tokenPreview: token ? `${token.substring(0, 10)}...` : null
+      tokenPreview: token ? `${token.substring(0, 10)}...` : null,
+      connectionStatus: hasToken ? 'connected' : 'disconnected',
+      persistentConnection: hasToken && hasRefreshToken
     });
 
   } catch (error) {

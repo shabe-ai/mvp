@@ -40,18 +40,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=not_authenticated`);
     }
 
-    // Store the access token with default expiration (1 hour)
-    const expiresIn = 3600; // Default to 1 hour
-    TokenStorage.setToken(userId, tokens.access_token, expiresIn);
+    // Store both access and refresh tokens with longer expiration
+    const expiresIn = (tokens as any).expires_in || 3600; // Use Google's provided expiration
+    TokenStorage.setToken(
+      userId, 
+      tokens.access_token, 
+      tokens.refresh_token || undefined, // Store refresh token for persistent connections
+      expiresIn
+    );
     
     console.log('✅ Google OAuth successful for user:', userId);
     console.log('Access token stored:', tokens.access_token ? 'Yes' : 'No');
+    console.log('Refresh token stored:', tokens.refresh_token ? 'Yes' : 'No');
+    console.log('Token expires in:', expiresIn, 'seconds');
 
     // Redirect back to the app with success
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?success=google_connected`);
 
   } catch (error) {
     console.error('❌ Google OAuth callback error:', error);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=oauth_failed`);
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=callback_error`);
   }
 } 

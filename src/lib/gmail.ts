@@ -158,8 +158,8 @@ export async function getUserGoogleToken(): Promise<string | null> {
       throw new Error('User not authenticated');
     }
 
-    // Get token from storage
-    const accessToken = TokenStorage.getToken(userId);
+    // Get token from storage (now async)
+    const accessToken = await TokenStorage.getToken(userId);
     
     if (!accessToken) {
       console.log('🔑 No Google access token found for user:', userId);

@@ -6,19 +6,13 @@ import TeamManagement from "@/components/TeamManagement";
 function GoogleIntegrationSection() {
   const { user } = useUser();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
+  const [isPersistent, setIsPersistent] = useState<boolean>(false);
   const [loading, setLoading] = useState(false);
   const [calendarError, setCalendarError] = useState(false);
 
   useEffect(() => {
     if (!user) return;
-    setLoading(true);
-    fetch("/api/test-token")
-      .then(res => res.json())
-      .then(data => {
-        setIsConnected(!!data.hasToken);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+    checkConnection();
     // Test calendar access
     fetch("/api/calendar")
       .then(res => res.json())
@@ -30,8 +24,22 @@ function GoogleIntegrationSection() {
         }
       })
       .catch(() => setCalendarError(true));
-    
   }, [user]);
+
+  const checkConnection = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/test-token");
+      const data = await res.json();
+      setIsConnected(!!data.hasToken);
+      setIsPersistent(!!data.persistentConnection);
+      setLoading(false);
+    } catch (err) {
+      setIsConnected(false);
+      setIsPersistent(false);
+      setLoading(false);
+    }
+  };
 
   const handleConnect = async () => {
     setLoading(true);
@@ -60,7 +68,14 @@ function GoogleIntegrationSection() {
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
               <div className="w-2 h-2 bg-[#f3e89a] rounded-full"></div>
-              <span className="text-sm text-black">Connected to Google Workspace</span>
+              <span className="text-sm text-black">
+                Connected to Google Workspace
+                {isPersistent && (
+                  <span className="ml-2 text-xs bg-[#f3e89a]/20 text-black px-2 py-1 rounded">
+                    Persistent
+                  </span>
+                )}
+              </span>
             </div>
             {calendarError && (
               <div className="bg-[#f3e89a]/10 border border-[#f3e89a]/20 rounded-lg p-3">
