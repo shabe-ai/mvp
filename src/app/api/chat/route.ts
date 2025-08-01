@@ -504,7 +504,9 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
 
 Available data: ${JSON.stringify(chartData.slice(0, 5))} (showing first 5 rows)
 
-Generate a chart specification with this structure:
+IMPORTANT: Respond with ONLY a valid JSON object. Do not include any text before or after the JSON.
+
+Generate a chart specification with this exact structure:
 {
   "chartType": "bar|line|pie|scatter",
   "data": [array of data objects],
@@ -517,14 +519,14 @@ Generate a chart specification with this structure:
   }
 }
 
-Choose appropriate chart type and data keys based on the data structure.`
+Choose appropriate chart type and data keys based on the data structure. Return ONLY the JSON object.`
         },
         {
           role: "user",
           content: userMessage
         }
       ],
-      temperature: 0.3,
+      temperature: 0.1,
       max_tokens: 1000,
     });
 
@@ -532,9 +534,22 @@ Choose appropriate chart type and data keys based on the data structure.`
     let chartSpec;
     
     try {
-      chartSpec = JSON.parse(chartSpecText);
+      // Clean the response to extract only JSON
+      const cleanedText = chartSpecText.trim();
+      const jsonStart = cleanedText.indexOf('{');
+      const jsonEnd = cleanedText.lastIndexOf('}') + 1;
+      
+      if (jsonStart !== -1 && jsonEnd > jsonStart) {
+        const jsonString = cleanedText.substring(jsonStart, jsonEnd);
+        chartSpec = JSON.parse(jsonString);
+      } else {
+        throw new Error('No JSON found in response');
+      }
     } catch (error) {
       console.error('Failed to parse chart spec:', error);
+      console.error('Raw response:', chartSpecText);
+      
+      // Fallback to a simple chart spec
       chartSpec = {
         chartType: "bar",
         data: chartData.slice(0, 10),

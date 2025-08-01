@@ -61,6 +61,9 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
 
   console.log('📊 ChartDisplay processing:', { chartType, dataLength: data?.length, chartConfig });
 
+  // Normalize chart type to handle both short and full names
+  const normalizedChartType = chartType.toLowerCase();
+
   // Ensure we have valid data
   if (!data || !Array.isArray(data) || data.length === 0) {
     console.error('❌ ChartDisplay: Invalid or empty data array');
@@ -82,13 +85,25 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
   }
 
   const getChartIcon = (type: string) => {
-    switch (type) {
-      case "LineChart":
+    // Normalize chart type to handle both short and full names
+    const normalizedType = type.toLowerCase();
+    
+    switch (normalizedType) {
+      case "line":
+      case "linechart":
         return <TrendingUp className="w-5 h-5" />;
-      case "BarChart":
+      case "bar":
+      case "barchart":
         return <BarChart3 className="w-5 h-5" />;
-      case "PieChart":
+      case "pie":
+      case "piechart":
         return <PieChartIcon className="w-5 h-5" />;
+      case "area":
+      case "areachart":
+        return <TrendingUp className="w-5 h-5" />;
+      case "scatter":
+      case "scatterchart":
+        return <BarChart3 className="w-5 h-5" />;
       default:
         return <BarChart3 className="w-5 h-5" />;
     }
@@ -114,10 +129,11 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
     const xAxisDataKey = (chartConfig?.xAxis?.dataKey as string) || defaultConfig.xAxis.dataKey;
     
     // For LineChart, we need to handle multiple data series
-    console.log('📊 ChartDisplay rendering with:', { chartType, xAxisDataKey, dataSample: data.slice(0, 2), chartConfig });
+    console.log('📊 ChartDisplay rendering with:', { chartType: normalizedChartType, xAxisDataKey, dataSample: data.slice(0, 2), chartConfig });
 
-    switch (chartType) {
-      case "LineChart":
+    switch (normalizedChartType) {
+      case "line":
+      case "linechart":
         // Check if we have multiple data series (sales, orders, etc.)
         const dataKeys = data.length > 0 ? Object.keys(data[0]).filter(key => key !== xAxisDataKey) : [];
         console.log('📊 Available data keys:', dataKeys);
@@ -157,7 +173,8 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
           </LineChart>
         );
 
-      case "BarChart":
+      case "bar":
+      case "barchart":
         // Check if we have multiple data series
         const barDataKeys = data.length > 0 ? Object.keys(data[0]).filter(key => key !== xAxisDataKey) : [];
         console.log('📊 BarChart data keys:', barDataKeys);
@@ -194,7 +211,8 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
           </BarChart>
         );
 
-      case "AreaChart":
+      case "area":
+      case "areachart":
         // Check if we have multiple data series
         const areaDataKeys = data.length > 0 ? Object.keys(data[0]).filter(key => key !== xAxisDataKey) : [];
         console.log('📊 AreaChart data keys:', areaDataKeys);
@@ -233,7 +251,8 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
           </AreaChart>
         );
 
-      case "PieChart":
+      case "pie":
+      case "piechart":
         // For pie charts, we need to use the first data key that's not the x-axis
         const pieDataKey = data.length > 0 ? Object.keys(data[0]).find(key => key !== xAxisDataKey) : 'value';
         console.log('📊 PieChart data key:', pieDataKey);
@@ -261,7 +280,8 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
           </PieChart>
         );
 
-      case "ScatterChart":
+      case "scatter":
+      case "scatterchart":
         // For scatter charts, we need two data keys for x and y
         const scatterDataKeys = data.length > 0 ? Object.keys(data[0]).filter(key => key !== xAxisDataKey) : [];
         const scatterYKey = scatterDataKeys[0] || 'value';
@@ -313,13 +333,13 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-[#f3e89a] to-[#efe076] rounded-lg">
-              {getChartIcon(chartType)}
+              {getChartIcon(normalizedChartType)}
             </div>
             <h3 className="text-lg font-semibold text-black">Chart Visualization</h3>
           </div>
           <div className="flex items-center space-x-4 text-sm text-[#d9d2c7]">
             <span className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7]">
-              {chartType}
+              {normalizedChartType}
             </span>
             <span className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7]">
               {data.length} data points
