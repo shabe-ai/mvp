@@ -78,14 +78,14 @@ export default function Chat() {
           } else {
             return `Hello! I'm your AI assistant. I can see you have Google Workspace connected, but I need additional permissions to access your calendar. You can still upload files for analysis and chart generation. What would you like to do?`;
           }
-        } catch (error) {
+        } catch (_error) {
           return `Hello! I'm your AI assistant. I can see you have Google Workspace connected. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?`;
         }
       } else {
         // User doesn't have Google Workspace connected - show integration instructions
         return `👋 Welcome to Shabe AI!\n\nI'm your AI assistant that can help you analyze files, generate charts, and provide insights.\n\nTo get the most out of your experience:\n\n1. Connect Google Workspace (optional but recommended)\n   • Go to Admin → Google Workspace Integration\n   • Connect your account for calendar access\n\n2. Upload files for analysis\n   • Use the upload button to add files\n   • I can analyze PDFs, Excel files, and more\n\n3. Ask me anything about your data\n   • Generate charts and insights\n   • Get summaries and recommendations\n\nWhat would you like to do first?`;
       }
-    } catch (error) {
+    } catch (_error) {
       // Fallback message if connection check fails
       return "Hello! I'm your AI assistant. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?";
     }

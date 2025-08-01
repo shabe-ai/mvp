@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 
 interface Team {
@@ -41,21 +41,19 @@ export default function TeamManagement() {
     }
   }, [selectedTeam]);
 
-  const loadTeams = async () => {
+  const loadTeams = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     setError(null);
-
+    
     try {
-      const res = await fetch('/api/teams');
-      const data = await res.json();
-
-      if (data.error) {
-        setError(data.error);
-      } else {
-        setTeams(data);
-        if (data.length > 0 && !selectedTeam) {
-          setSelectedTeam(data[0]);
+      const response = await fetch('/api/teams');
+      const data = await response.json();
+      
+      if (data.success) {
+        setTeams(data.teams || []);
+        if (data.teams && data.teams.length > 0 && !selectedTeam) {
+          setSelectedTeam(data.teams[0]);
         }
       }
     } catch (error) {
@@ -63,9 +61,9 @@ export default function TeamManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, selectedTeam]);
 
-  const loadTeamStats = async (teamId: string) => {
+  const loadTeamStats = useCallback(async (teamId: string) => {
     try {
       const response = await fetch(`/api/teams/stats?teamId=${teamId}`);
       const data = await response.json();
@@ -75,9 +73,9 @@ export default function TeamManagement() {
     } catch (error) {
       console.error('Error loading team stats:', error);
     }
-  };
+  }, []);
 
-  const updateTeamName = async (teamId: string, newName: string) => {
+  const updateTeamName = useCallback(async (teamId: string, newName: string) => {
     try {
       const response = await fetch('/api/teams', {
         method: 'PUT',
@@ -92,7 +90,7 @@ export default function TeamManagement() {
     } catch (error) {
       console.error('Error updating team name:', error);
     }
-  };
+  }, [loadTeams]);
 
   const deleteTeam = async (teamId: string) => {
     if (!user) return;
