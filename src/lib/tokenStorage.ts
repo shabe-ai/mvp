@@ -61,7 +61,7 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
       
       if (tokenData) {
         tokenData.accessToken = newAccessToken;
-        tokenData.expiresAt = Date.now() + (((credentials as any).expires_in || 3600) * 1000);
+        tokenData.expiresAt = Date.now() + (((credentials as { credentials: { expires_in?: number } }).credentials.expires_in || 3600) * 1000);
         saveTokens(tokens);
         
         console.log('🔄 Access token refreshed for user:', userId);

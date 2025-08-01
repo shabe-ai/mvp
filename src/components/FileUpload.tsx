@@ -67,57 +67,7 @@ export default function FileUpload({ onFilesProcessed, maxFiles = 1 }: FileUploa
     });
   };
 
-  const processFile = useCallback(async (file: File): Promise<UploadedFile> => {
-    const id = Math.random().toString(36).substr(2, 9);
-    const uploadedFile: UploadedFile = {
-      id,
-      file,
-      name: file.name,
-      size: formatFileSize(file.size),
-      type: file.type,
-      status: 'uploading'
-    };
-
-    setUploadedFiles(prev => [...prev, uploadedFile]);
-
-    try {
-      // Update status to processing
-      setUploadedFiles(prev => 
-        prev.map(f => f.id === id ? { ...f, status: 'processing' } : f)
-      );
-
-      // Extract text content
-      const content = await extractTextFromFile(file);
-      
-      // Update with success
-      const processedFile: UploadedFile = {
-        ...uploadedFile,
-        status: 'success',
-        content
-      };
-
-      setUploadedFiles(prev => 
-        prev.map(f => f.id === id ? processedFile : f)
-      );
-
-      return processedFile;
-    } catch (error) {
-      // Update with error
-      const errorFile: UploadedFile = {
-        ...uploadedFile,
-        status: 'error',
-        error: error instanceof Error ? error.message : 'Failed to process file'
-      };
-
-      setUploadedFiles(prev => 
-        prev.map(f => f.id === id ? errorFile : f)
-      );
-
-      throw error;
-    }
-  }, []);
-
-  const handleFileInput = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (files && files.length > 0) {
       const fileList = Array.from(files);

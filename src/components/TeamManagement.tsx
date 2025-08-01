@@ -115,7 +115,8 @@ export default function TeamManagement() {
           setSelectedTeam(teams.find(team => team._id !== teamId) || null);
         }
       }
-    } catch (err) {
+    } catch (error) {
+      console.error('Error deleting team:', error);
       setError("Failed to delete team");
     } finally {
       setLoading(false);

@@ -46,7 +46,8 @@ export default function GoogleDriveIntegration({
       const res = await fetch("/api/test-token");
       const data = await res.json();
       setIsConnected(!!data.hasToken);
-    } catch (err) {
+    } catch (error) {
+      console.error('Error checking connection:', error);
       setIsConnected(false);
     } finally {
       setLoading(false);
