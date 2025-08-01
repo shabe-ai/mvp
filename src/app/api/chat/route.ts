@@ -204,6 +204,8 @@ export async function POST(req: NextRequest) {
               : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
             const searchName = potentialName.toLowerCase();
             
+            console.log(`Comparing: "${searchName}" with "${contactName}"`);
+            
             // Check if names match (including partial matches)
             return contactName.includes(searchName) || 
                    searchName.includes(contactName) ||
