@@ -77,15 +77,15 @@ export default function PreviewCard({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl border border-[#d9d2c7] shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-amber-50 to-yellow-100 px-6 py-4 border-b border-slate-200">
+      <div className="bg-gradient-to-r from-[#f3e89a]/20 to-[#efe076]/20 px-6 py-4 border-b border-[#d9d2c7]">
         <div className="flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+          <h3 className="text-lg font-semibold text-black">{title}</h3>
           {isEditable && !isEditing && (
             <button
               onClick={handleEdit}
-              className="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-all duration-200"
+              className="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-[#d9d2c7] hover:text-black bg-white border border-[#d9d2c7] rounded-lg hover:bg-[#d9d2c7]/10 transition-colors"
             >
               <Edit className="w-4 h-4" />
               <span>Edit</span>
@@ -99,16 +99,16 @@ export default function PreviewCard({
         <form onSubmit={handleSubmit(isEditing ? handleSaveEdit : handleSend)}>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-black mb-2">
                 Title
               </label>
               <input
                 {...register("title")}
                 disabled={!isEditing}
-                className={`w-full px-3 py-2 border rounded-lg text-sm transition-all duration-200 ${
+                className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${
                   !isEditing 
-                    ? "bg-slate-50 text-slate-600 border-slate-200" 
-                    : "bg-white text-slate-900 border-slate-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    ? "bg-[#d9d2c7]/10 text-[#d9d2c7] border-[#d9d2c7]" 
+                    : "bg-white text-black border-[#d9d2c7] focus:border-[#f3e89a] focus:ring-2 focus:ring-[#f3e89a]/20"
                 }`}
               />
               {errors.title && (
@@ -118,16 +118,16 @@ export default function PreviewCard({
 
             {watchedValues.subject && (
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2">
+                <label className="block text-sm font-medium text-black mb-2">
                   Subject
                 </label>
                 <input
                   {...register("subject")}
                   disabled={!isEditing}
-                  className={`w-full px-3 py-2 border rounded-lg text-sm transition-all duration-200 ${
+                  className={`w-full px-3 py-2 border rounded-lg text-sm transition-colors ${
                     !isEditing 
-                      ? "bg-slate-50 text-slate-600 border-slate-200" 
-                      : "bg-white text-slate-900 border-slate-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                      ? "bg-[#d9d2c7]/10 text-[#d9d2c7] border-[#d9d2c7]" 
+                      : "bg-white text-black border-[#d9d2c7] focus:border-[#f3e89a] focus:ring-2 focus:ring-[#f3e89a]/20"
                   }`}
                 />
                 {errors.subject && (
@@ -137,17 +137,17 @@ export default function PreviewCard({
             )}
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+              <label className="block text-sm font-medium text-black mb-2">
                 Content
               </label>
               <textarea
                 {...register("content")}
                 disabled={!isEditing}
                 rows={4}
-                className={`w-full px-3 py-2 border rounded-lg text-sm resize-none transition-all duration-200 ${
+                className={`w-full px-3 py-2 border rounded-lg text-sm resize-none transition-colors ${
                   !isEditing 
-                    ? "bg-slate-50 text-slate-600 border-slate-200" 
-                    : "bg-white text-slate-900 border-slate-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20"
+                    ? "bg-[#d9d2c7]/10 text-[#d9d2c7] border-[#d9d2c7]" 
+                    : "bg-white text-black border-[#d9d2c7] focus:border-[#f3e89a] focus:ring-2 focus:ring-[#f3e89a]/20"
                 }`}
               />
               {errors.content && (
@@ -161,7 +161,7 @@ export default function PreviewCard({
                 <button
                   type="submit"
                   disabled={!isValid}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center space-x-2 px-4 py-2 bg-[#f3e89a] hover:bg-[#efe076] text-black rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Check className="w-4 h-4" />
                   <span>Save</span>
@@ -169,7 +169,7 @@ export default function PreviewCard({
                 <button
                   type="button"
                   onClick={handleCancel}
-                  className="flex items-center space-x-2 px-4 py-2 text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg font-medium transition-all duration-200 hover:bg-slate-50"
+                  className="flex items-center space-x-2 px-4 py-2 text-[#d9d2c7] hover:text-black bg-white border border-[#d9d2c7] rounded-lg font-medium transition-colors hover:bg-[#d9d2c7]/10"
                 >
                   <X className="w-4 h-4" />
                   <span>Cancel</span>
@@ -180,7 +180,7 @@ export default function PreviewCard({
                 <button
                   type="submit"
                   disabled={!isValid}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex items-center space-x-2 px-4 py-2 bg-[#f3e89a] hover:bg-[#efe076] text-black rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-4 h-4" />
                   <span>Send</span>

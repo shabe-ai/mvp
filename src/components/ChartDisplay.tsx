@@ -41,15 +41,15 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
   
   if (!chartSpec) {
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="bg-gradient-to-r from-amber-50 to-yellow-100 px-6 py-4 border-b border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-900">Chart Visualization</h3>
+      <div className="bg-white rounded-xl border border-[#d9d2c7] shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-[#f3e89a]/20 to-[#efe076]/20 px-6 py-4 border-b border-[#d9d2c7]">
+          <h3 className="text-lg font-semibold text-black">Chart Visualization</h3>
         </div>
         <div className="p-6">
-          <div className="flex items-center justify-center h-64 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+          <div className="flex items-center justify-center h-64 bg-[#d9d2c7]/10 rounded-lg border-2 border-dashed border-[#d9d2c7]">
             <div className="text-center">
-              <BarChart3 className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-              <p className="text-slate-500 font-medium">No chart data available</p>
+              <BarChart3 className="w-12 h-12 text-[#d9d2c7] mx-auto mb-3" />
+              <p className="text-[#d9d2c7] font-medium">No chart data available</p>
             </div>
           </div>
         </div>
@@ -65,15 +65,15 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
   if (!data || !Array.isArray(data) || data.length === 0) {
     console.error('❌ ChartDisplay: Invalid or empty data array');
     return (
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-        <div className="bg-gradient-to-r from-amber-50 to-yellow-100 px-6 py-4 border-b border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-900">Chart Visualization</h3>
+      <div className="bg-white rounded-xl border border-[#d9d2c7] shadow-sm overflow-hidden">
+        <div className="bg-gradient-to-r from-[#f3e89a]/20 to-[#efe076]/20 px-6 py-4 border-b border-[#d9d2c7]">
+          <h3 className="text-lg font-semibold text-black">Chart Visualization</h3>
         </div>
         <div className="p-6">
-          <div className="flex items-center justify-center h-64 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+          <div className="flex items-center justify-center h-64 bg-[#d9d2c7]/10 rounded-lg border-2 border-dashed border-[#d9d2c7]">
             <div className="text-center">
-              <BarChart3 className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-              <p className="text-slate-500 font-medium">Invalid chart data</p>
+              <BarChart3 className="w-12 h-12 text-[#d9d2c7] mx-auto mb-3" />
+              <p className="text-[#d9d2c7] font-medium">Invalid chart data</p>
             </div>
           </div>
         </div>
@@ -296,10 +296,10 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
 
       default:
         return (
-          <div className="flex items-center justify-center h-64 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+          <div className="flex items-center justify-center h-64 bg-[#d9d2c7]/10 rounded-lg border-2 border-dashed border-[#d9d2c7]">
             <div className="text-center">
-              <BarChart3 className="w-12 h-12 text-slate-400 mx-auto mb-3" />
-              <p className="text-slate-500 font-medium">Chart type &quot;{chartType}&quot; not supported</p>
+              <BarChart3 className="w-12 h-12 text-[#d9d2c7] mx-auto mb-3" />
+              <p className="text-[#d9d2c7] font-medium">Chart type &quot;{chartType}&quot; not supported</p>
             </div>
           </div>
         );
@@ -307,21 +307,21 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
   };
 
   return (
-    <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl border border-[#d9d2c7] shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="bg-gradient-to-r from-amber-50 to-yellow-100 px-6 py-4 border-b border-slate-200">
+      <div className="bg-gradient-to-r from-[#f3e89a]/20 to-[#efe076]/20 px-6 py-4 border-b border-[#d9d2c7]">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-amber-500 to-yellow-600 rounded-lg">
+            <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-[#f3e89a] to-[#efe076] rounded-lg">
               {getChartIcon(chartType)}
             </div>
-            <h3 className="text-lg font-semibold text-slate-900">Chart Visualization</h3>
+            <h3 className="text-lg font-semibold text-black">Chart Visualization</h3>
           </div>
-          <div className="flex items-center space-x-4 text-sm text-slate-600">
-            <span className="bg-white px-3 py-1 rounded-full border border-slate-200">
+          <div className="flex items-center space-x-4 text-sm text-[#d9d2c7]">
+            <span className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7]">
               {chartType}
             </span>
-            <span className="bg-white px-3 py-1 rounded-full border border-slate-200">
+            <span className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7]">
               {data.length} data points
             </span>
           </div>
@@ -338,12 +338,12 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
 
         {/* Insights */}
         {narrative && (
-          <div className="bg-gradient-to-r from-amber-50 to-yellow-100 border border-amber-200 rounded-xl p-4">
-            <h4 className="font-semibold text-amber-900 mb-2 flex items-center">
-              <TrendingUp className="w-4 h-4 mr-2" />
+          <div className="bg-gradient-to-r from-[#f3e89a]/10 to-[#efe076]/10 border border-[#f3e89a]/20 rounded-xl p-4">
+            <h4 className="font-semibold text-black mb-2 flex items-center">
+              <TrendingUp className="w-4 h-4 mr-2 text-[#f3e89a]" />
               Insights
             </h4>
-            <p className="text-amber-800 text-sm leading-relaxed">{narrative}</p>
+            <p className="text-black text-sm leading-relaxed">{narrative}</p>
           </div>
         )}
       </div>

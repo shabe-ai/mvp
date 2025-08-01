@@ -27,14 +27,14 @@ export default function RootLayout({
       <html lang="en" className="h-screen w-screen" style={{ maxWidth: '100vw', maxHeight: '100vh' }}>
         <body className="bg-white min-h-screen flex flex-col font-['Inter']" style={{ maxWidth: '100vw', maxHeight: '100vh' }}>
           {/* Modern Header */}
-          <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
+          <header className="bg-white/80 backdrop-blur-md border-b border-[#d9d2c7] sticky top-0 z-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
               <div className="flex justify-between items-center h-16">
                 <div className="flex items-center space-x-3">
                   {/* Logo */}
                   <div className="flex items-center space-x-2">
                     <img src="/logo.png" alt="Shabe Logo" className="h-10 w-10" />
-                    <h1 className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                    <h1 className="text-xl font-bold bg-gradient-to-r from-[#f3e89a] to-[#efe076] bg-clip-text text-transparent">
                       Shabe
                     </h1>
                   </div>
@@ -43,21 +43,21 @@ export default function RootLayout({
                 {/* Auth Buttons and Admin Tab */}
                 <div className="flex items-center space-x-3">
                   <SignedIn>
-                    <Link href="/" className="text-slate-500 hover:text-slate-900 px-4 py-2 text-sm font-medium transition-colors">
+                    <Link href="/" className="text-[#d9d2c7] hover:text-black px-4 py-2 text-sm font-medium transition-colors">
                       Home
                     </Link>
-                    <Link href="/admin" className="text-slate-600 hover:text-slate-900 px-4 py-2 text-sm font-medium transition-colors">
+                    <Link href="/admin" className="text-[#d9d2c7] hover:text-black px-4 py-2 text-sm font-medium transition-colors">
                       Admin
                     </Link>
                   </SignedIn>
                   <SignedOut>
                     <SignInButton mode="modal">
-                      <button className="text-slate-600 hover:text-slate-900 px-4 py-2 text-sm font-medium transition-colors">
+                      <button className="text-[#d9d2c7] hover:text-black px-4 py-2 text-sm font-medium transition-colors">
                         Sign In
                       </button>
                     </SignInButton>
                     <SignUpButton mode="modal">
-                      <button className="bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md">
+                      <button className="bg-[#f3e89a] hover:bg-[#efe076] text-black px-4 py-2 rounded-lg text-sm font-medium transition-colors">
                         Get Started
                       </button>
                     </SignUpButton>
@@ -67,7 +67,7 @@ export default function RootLayout({
                       appearance={{
                         elements: {
                           avatarBox: "w-8 h-8",
-                          userButtonPopoverCard: "shadow-xl border border-slate-200",
+                          userButtonPopoverCard: "shadow-xl border border-[#d9d2c7]",
                         }
                       }}
                     />

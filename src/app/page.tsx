@@ -11,10 +11,10 @@ export default async function Home() {
           <Chat />
         ) : (
           <div className="text-center py-12 w-full max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-4">
+            <h2 className="text-3xl font-bold text-black mb-4">
               Welcome to Shabe AI
             </h2>
-            <p className="text-lg text-slate-600 dark:text-slate-400 mb-8">
+            <p className="text-lg text-[#d9d2c7] mb-8">
               Upload files and chat with AI to analyze your data, generate charts, and get insights.
             </p>
           </div>

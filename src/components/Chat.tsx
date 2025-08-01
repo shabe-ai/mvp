@@ -166,8 +166,8 @@ export default function Chat() {
         <div
           className={`max-w-[80%] rounded-lg px-4 py-2 ${
             isUser
-              ? "bg-yellow-400 text-white"
-              : "bg-gray-100 text-gray-900"
+              ? "bg-[#f3e89a] text-black"
+              : "bg-[#d9d2c7]/10 text-black"
           }`}
         >
           <div className="whitespace-pre-wrap">{message.content}</div>
@@ -191,9 +191,9 @@ export default function Chat() {
           
           {/* Render clarification question if present */}
           {message.needsClarification && message.clarificationQuestion && (
-            <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <p className="text-yellow-800 text-sm font-medium mb-2">🤔 I need clarification:</p>
-              <p className="text-yellow-700 text-sm">{message.clarificationQuestion}</p>
+            <div className="mt-3 p-3 bg-[#f3e89a]/10 border border-[#f3e89a]/20 rounded-lg">
+              <p className="text-black text-sm font-medium mb-2">🤔 I need clarification:</p>
+              <p className="text-black text-sm">{message.clarificationQuestion}</p>
             </div>
           )}
         </div>
@@ -301,15 +301,15 @@ export default function Chat() {
   // Show sign-in prompt if user is not authenticated
   if (!user) {
     return (
-      <Card className="w-full max-w-4xl mx-auto">
+      <Card className="w-full max-w-4xl mx-auto border border-[#d9d2c7]">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-black">
+            <MessageSquare className="h-5 w-5 text-[#f3e89a]" />
             AI Assistant
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-center text-gray-500">
+          <p className="text-center text-[#d9d2c7]">
             Please sign in to access the AI assistant.
           </p>
         </CardContent>
@@ -348,12 +348,12 @@ export default function Chat() {
       {/* Session Files Indicator */}
       {sessionFiles.length > 0 && (
         <div className="px-4 mb-2">
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+          <div className="bg-[#f3e89a]/10 border border-[#f3e89a]/20 rounded-lg p-3">
             <div className="flex items-center">
-              <svg className="w-4 h-4 text-green-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+              <svg className="w-4 h-4 text-[#f3e89a] mr-2" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
               </svg>
-              <span className="text-sm text-green-800">
+              <span className="text-sm text-black">
                 📄 {sessionFiles.length} file{sessionFiles.length > 1 ? 's' : ''} uploaded for this session
               </span>
             </div>
@@ -405,14 +405,14 @@ export default function Chat() {
           }}
           className="hidden"
         />
-        <div className="flex w-full bg-white border border-gray-200 rounded-full shadow-sm focus-within:ring-2 focus-within:ring-yellow-200">
+        <div className="flex w-full bg-white border border-[#d9d2c7] rounded-full shadow-sm focus-within:ring-2 focus-within:ring-[#f3e89a]">
           <button
             type="button"
             onClick={() => {
               console.log('Upload button clicked');
               document.getElementById('file-upload')?.click();
             }}
-            className="bg-white border-2 border-yellow-400 text-yellow-400 hover:bg-yellow-50 rounded-l-full px-3 flex items-center justify-center"
+            className="bg-white border-2 border-[#f3e89a] text-[#f3e89a] hover:bg-[#f3e89a]/10 rounded-l-full px-3 flex items-center justify-center"
             style={{ width: '48px' }}
           >
             <Upload className="h-5 w-5" />
@@ -424,7 +424,7 @@ export default function Chat() {
             disabled={isLoading}
             className="flex-1 border-0 focus:ring-0 px-4 py-3 text-base"
           />
-          <Button type="submit" disabled={isLoading} className="bg-yellow-400 hover:bg-yellow-500 text-white rounded-r-full px-3 flex items-center justify-center" style={{ width: '48px' }}>
+          <Button type="submit" disabled={isLoading} className="bg-[#f3e89a] hover:bg-[#efe076] text-black rounded-r-full px-3 flex items-center justify-center" style={{ width: '48px' }}>
             <Send className="h-4 w-4" />
           </Button>
         </div>
@@ -456,12 +456,12 @@ function DataTable({ data, fields }: { data: Record<string, unknown>[]; fields?:
   return (
     <div
       style={{
-        background: "#f9fafb",
+        background: "white",
         borderRadius: 16,
         padding: 16,
         overflowX: "auto",
         maxWidth: "100%",
-        border: "1px solid #e5e7eb",
+        border: "1px solid #d9d2c7",
         boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
         marginTop: 8,
       }}
@@ -475,9 +475,9 @@ function DataTable({ data, fields }: { data: Record<string, unknown>[]; fields?:
                 style={{
                   padding: "12px",
                   textAlign: "left",
-                  borderBottom: "2px solid #e5e7eb",
+                  borderBottom: "2px solid #d9d2c7",
                   fontWeight: 600,
-                  color: "#374151",
+                  color: "black",
                   fontSize: "14px",
                 }}
               >
@@ -494,9 +494,9 @@ function DataTable({ data, fields }: { data: Record<string, unknown>[]; fields?:
                   key={column}
                   style={{
                     padding: "12px",
-                    borderBottom: "1px solid #f3f4f6",
+                    borderBottom: "1px solid #d9d2c7",
                     fontSize: "14px",
-                    color: "#6b7280",
+                    color: "#d9d2c7",
                   }}
                 >
                   {formatCellValue(row[column])}
