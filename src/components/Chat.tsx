@@ -73,7 +73,7 @@ export default function Chat() {
           const calendarData = await calendarResponse.json();
           
           if (calendarData.summary && !calendarData.summary.toLowerCase().includes("insufficient authentication")) {
-            return `📅 **Today's Schedule**\n\n${calendarData.summary}\n\nI can help you analyze files, generate charts, and provide insights. Upload a file to get started!`;
+            return `📅 Today's Schedule\n\n${calendarData.summary}\n\nI can help you analyze files, generate charts, and provide insights. Upload a file to get started!`;
           } else {
             return `Hello! I'm your AI assistant. I can see you have Google Workspace connected, but I need additional permissions to access your calendar. You can still upload files for analysis and chart generation. What would you like to do?`;
           }
@@ -82,7 +82,7 @@ export default function Chat() {
         }
       } else {
         // User doesn't have Google Workspace connected - show integration instructions
-        return `👋 **Welcome to Shabe AI!**\n\nI'm your AI assistant that can help you analyze files, generate charts, and provide insights.\n\n**To get the most out of your experience:**\n\n1. **Connect Google Workspace** (optional but recommended)\n   - Go to Admin → Google Workspace Integration\n   - Connect your account for calendar access\n\n2. **Upload files** for analysis\n   - Use the upload button to add files\n   - I can analyze PDFs, Excel files, and more\n\n3. **Ask me anything** about your data\n   - Generate charts and insights\n   - Get summaries and recommendations\n\nWhat would you like to do first?`;
+        return `👋 Welcome to Shabe AI!\n\nI'm your AI assistant that can help you analyze files, generate charts, and provide insights.\n\nTo get the most out of your experience:\n\n1. Connect Google Workspace (optional but recommended)\n   • Go to Admin → Google Workspace Integration\n   • Connect your account for calendar access\n\n2. Upload files for analysis\n   • Use the upload button to add files\n   • I can analyze PDFs, Excel files, and more\n\n3. Ask me anything about your data\n   • Generate charts and insights\n   • Get summaries and recommendations\n\nWhat would you like to do first?`;
       }
     } catch (error) {
       // Fallback message if connection check fails
