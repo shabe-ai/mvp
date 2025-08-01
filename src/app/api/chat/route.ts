@@ -176,8 +176,38 @@ export async function POST(req: NextRequest) {
                           lastUserMessage.toLowerCase().includes('draft');
 
     if (isEmailRequest) {
+      // First, try to find the recipient's email from the database
+      let recipientEmail = null;
+      let recipientName = null;
+      
+      // Extract potential recipient name from the user's request
+      const emailMatch = lastUserMessage.match(/send an email to (.*?)(?: |$)/i);
+      if (emailMatch) {
+        const potentialName = emailMatch[1].trim();
+        console.log('Looking for contact with name:', potentialName);
+        
+        try {
+          // Search for the contact in the database
+          const contacts = await convex.query(api.crm.getContactsByTeam, { teamId: 'default' });
+          const matchingContact = contacts.find(contact => 
+            contact.name?.toLowerCase().includes(potentialName.toLowerCase()) ||
+            potentialName.toLowerCase().includes(contact.name?.toLowerCase() || '')
+          );
+          
+          if (matchingContact) {
+            recipientEmail = matchingContact.email;
+            recipientName = matchingContact.name;
+            console.log('Found contact:', { name: recipientName, email: recipientEmail });
+          } else {
+            console.log('No matching contact found for:', potentialName);
+          }
+        } catch (error) {
+          console.error('Error searching for contact:', error);
+        }
+      }
+      
       // Handle email drafting with specific instructions
-      const emailPrompt = enhancedSystemPrompt + `\n\nUSER REQUEST: ${lastUserMessage}\n\nCRITICAL EMAIL INSTRUCTIONS:\n- The user is asking to send an email TO someone else, not to themselves\n- Extract the recipient's name and email from the user's request\n- Use the user's actual name: "${userContext.userProfile.name}" as the sender\n- Use the user's actual email: "${userContext.userProfile.email}" as the sender's email\n- Use the company name: "${userContext.companyData.name}"\n- Use the company website: "${userContext.companyData.website}"\n- Do NOT use generic placeholders like "User", "user@example.com", or "Unknown Company"\n- Make the email professional and personalized with the user's real information\n- The "to" field should be the recipient's email, not the sender's email\n\nIMPORTANT: You must respond with ONLY a JSON object containing the email draft. Do not include any other text or explanations.`;
+      const emailPrompt = enhancedSystemPrompt + `\n\nUSER REQUEST: ${lastUserMessage}\n\nCRITICAL EMAIL INSTRUCTIONS:\n- The user is asking to send an email TO someone else, not to themselves\n- Extract the recipient's name and email from the user's request\n- Use the user's actual name: "${userContext.userProfile.name}" as the sender\n- Use the user's actual email: "${userContext.userProfile.email}" as the sender's email\n- Use the company name: "${userContext.companyData.name}"\n- Use the company website: "${userContext.companyData.website}"\n- Do NOT use generic placeholders like "User", "user@example.com", or "Unknown Company"\n- Make the email professional and personalized with the user's real information\n- The "to" field should be the recipient's email, not the sender's email${recipientEmail ? `\n- RECIPIENT FOUND: ${recipientName} (${recipientEmail})` : '\n- NO RECIPIENT EMAIL FOUND: Use a placeholder email like "recipient@example.com" and ask the user to update it'}\n\nIMPORTANT: You must respond with ONLY a JSON object containing the email draft. Do not include any other text or explanations.`;
       
       console.log('Email prompt with user context:', emailPrompt);
       
@@ -201,6 +231,11 @@ export async function POST(req: NextRequest) {
         // Try to parse the response as JSON
         const parsedResponse = JSON.parse(responseMessage);
         if (parsedResponse.emailDraft) {
+          // Update the recipient email if we found it in the database
+          if (recipientEmail) {
+            parsedResponse.emailDraft.to = recipientEmail;
+          }
+          
           console.log('Successfully parsed email draft:', parsedResponse.emailDraft);
           return NextResponse.json({
             message: parsedResponse.message || "I've drafted an email for you. You can review and edit it below.",
