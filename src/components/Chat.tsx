@@ -211,18 +211,25 @@ export default function Chat() {
         >
           <div className="whitespace-pre-wrap">{message.content}</div>
           
-                     {/* Render chart if present */}
-           {message.chartSpec && (
-             <div className="mt-4">
-               <ChartDisplay
-                 chartSpec={message.chartSpec}
-                 narrative={message.narrative}
-               />
-             </div>
-           )}
+          {/* Render chart if present */}
+          {message.chartSpec && (
+            <div className="mt-4">
+              <ChartDisplay
+                chartSpec={message.chartSpec}
+                narrative={message.narrative}
+              />
+            </div>
+          )}
           
-          {/* Render data table if present */}
-          {message.data && Array.isArray(message.data) && message.data.length > 0 && (
+          {/* Render database table if present */}
+          {message.data && message.data.displayFormat === 'table' && Array.isArray(message.data.records) && (
+            <div className="mt-4">
+              <DataTable data={message.data.records} fields={Object.keys(message.data.records[0] || {}).filter(key => key !== 'id')} />
+            </div>
+          )}
+          
+          {/* Render data table if present (legacy format) */}
+          {message.data && Array.isArray(message.data) && message.data.length > 0 && !message.data.displayFormat && (
             <div className="mt-4">
               <DataTable data={message.data} fields={message.fields} />
             </div>

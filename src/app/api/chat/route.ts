@@ -227,31 +227,59 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
       };
     }
 
-    // Generate summary using OpenAI
-    const summaryCompletion = await openai.chat.completions.create({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: `You are a data analyst. Provide a helpful summary of the database records. Focus on key insights, trends, and important information.`
-        },
-        {
-          role: "user",
-          content: `Analyze these ${dataType} and provide insights: ${JSON.stringify(filteredRecords.slice(0, 10))}`
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 500,
+    // Format records for table display
+    const formattedRecords = filteredRecords.map((record: Record<string, unknown>) => {
+      if (dataType === 'contacts') {
+        return {
+          id: record._id,
+          name: `${(record.firstName as string) || ''} ${(record.lastName as string) || ''}`.trim(),
+          email: record.email as string,
+          phone: record.phone as string,
+          company: record.company as string,
+          title: record.title as string,
+          status: record.leadStatus as string,
+          type: record.contactType as string,
+          source: record.source as string,
+          created: new Date((record._creationTime as number)).toLocaleDateString()
+        };
+      } else if (dataType === 'accounts') {
+        return {
+          id: record._id,
+          name: record.name as string,
+          industry: record.industry as string,
+          size: record.size as string,
+          website: record.website as string,
+          created: new Date((record._creationTime as number)).toLocaleDateString()
+        };
+      } else if (dataType === 'deals') {
+        return {
+          id: record._id,
+          name: record.name as string,
+          value: record.value as string,
+          stage: record.stage as string,
+          probability: record.probability as string,
+          created: new Date((record._creationTime as number)).toLocaleDateString()
+        };
+      } else if (dataType === 'activities') {
+        return {
+          id: record._id,
+          type: record.type as string,
+          subject: record.subject as string,
+          status: record.status as string,
+          dueDate: record.dueDate ? new Date((record.dueDate as number)).toLocaleDateString() : '',
+          created: new Date((record._creationTime as number)).toLocaleDateString()
+        };
+      }
+      return record;
     });
 
-    const summary = summaryCompletion.choices[0]?.message?.content || '';
-
     return {
-      message: `Found ${filteredRecords.length} ${dataType}:\n\n${summary}`,
+      message: `Found ${filteredRecords.length} ${dataType}:`,
       data: {
-        records: filteredRecords,
+        records: formattedRecords,
         type: dataType,
-        count: filteredRecords.length
+        count: filteredRecords.length,
+        displayFormat: 'table'
       }
     };
 
