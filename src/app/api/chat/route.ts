@@ -221,6 +221,102 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
       });
     }
 
+    // Apply field-based filters
+    const fieldFilters: Record<string, string> = {};
+    
+    // Extract field filters from the message
+    const filterPatterns = [
+      /title\s*=\s*(\w+)/i,
+      /status\s*=\s*(\w+)/i,
+      /type\s*=\s*(\w+)/i,
+      /company\s*=\s*(\w+)/i,
+      /email\s*=\s*(\w+)/i,
+      /phone\s*=\s*(\w+)/i,
+      /source\s*=\s*(\w+)/i
+    ];
+
+    filterPatterns.forEach(pattern => {
+      const match = messageLower.match(pattern);
+      if (match) {
+        const field = pattern.source.split('\\s*=\\s*')[0];
+        const value = match[1].toLowerCase();
+        fieldFilters[field] = value;
+      }
+    });
+
+    // Apply field filters
+    if (Object.keys(fieldFilters).length > 0) {
+      filteredRecords = filteredRecords.filter((record: Record<string, unknown>) => {
+        return Object.entries(fieldFilters).every(([field, expectedValue]) => {
+          let actualValue = '';
+          
+          if (dataType === 'contacts') {
+            switch (field) {
+              case 'title':
+                actualValue = (record.title as string || '').toLowerCase();
+                break;
+              case 'status':
+                actualValue = (record.leadStatus as string || '').toLowerCase();
+                break;
+              case 'type':
+                actualValue = (record.contactType as string || '').toLowerCase();
+                break;
+              case 'company':
+                actualValue = (record.company as string || '').toLowerCase();
+                break;
+              case 'email':
+                actualValue = (record.email as string || '').toLowerCase();
+                break;
+              case 'phone':
+                actualValue = (record.phone as string || '').toLowerCase();
+                break;
+              case 'source':
+                actualValue = (record.source as string || '').toLowerCase();
+                break;
+            }
+          } else if (dataType === 'accounts') {
+            switch (field) {
+              case 'name':
+                actualValue = (record.name as string || '').toLowerCase();
+                break;
+              case 'industry':
+                actualValue = (record.industry as string || '').toLowerCase();
+                break;
+              case 'size':
+                actualValue = (record.size as string || '').toLowerCase();
+                break;
+            }
+          } else if (dataType === 'deals') {
+            switch (field) {
+              case 'name':
+                actualValue = (record.name as string || '').toLowerCase();
+                break;
+              case 'stage':
+                actualValue = (record.stage as string || '').toLowerCase();
+                break;
+              case 'value':
+                actualValue = (record.value as string || '').toLowerCase();
+                break;
+            }
+          } else if (dataType === 'activities') {
+            switch (field) {
+              case 'type':
+                actualValue = (record.type as string || '').toLowerCase();
+                break;
+              case 'status':
+                actualValue = (record.status as string || '').toLowerCase();
+                break;
+              case 'subject':
+                actualValue = (record.subject as string || '').toLowerCase();
+                break;
+            }
+          }
+          
+          return actualValue.includes(expectedValue);
+        });
+      });
+    }
+
     if (filteredRecords.length === 0) {
       return {
         message: `No ${dataType} found for the specified criteria.`
