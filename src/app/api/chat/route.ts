@@ -420,8 +420,17 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
       };
     }
     
+    // Apply filtering based on user message
+    const filteredRecords = applyFilters(records, userMessage, dataType);
+    
+    if (filteredRecords.length === 0) {
+      return {
+        message: `No ${dataType} found matching your filter criteria.`
+      };
+    }
+    
     // Format records for table display
-    const formattedRecords = records.map((record: any) => {
+    const formattedRecords = filteredRecords.map((record: any) => {
       if (dataType === 'contacts') {
         return {
           id: record._id,
@@ -466,8 +475,13 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
       return record;
     });
     
+    const filterInfo = getFilterInfo(userMessage, dataType);
+    const message = filterInfo ? 
+      `Found ${formattedRecords.length} ${dataType} matching "${filterInfo}":` :
+      `Found ${formattedRecords.length} ${dataType}:`;
+    
     return {
-      message: `Found ${formattedRecords.length} ${dataType}:`,
+      message: message,
       data: {
         records: formattedRecords,
         type: dataType,
@@ -482,6 +496,93 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
       error: true
     };
   }
+}
+
+// Helper function to apply filters based on user message
+function applyFilters(records: any[], userMessage: string, dataType: string): any[] {
+  const message = userMessage.toLowerCase();
+  
+  // Extract filter terms from the message
+  const filterTerms = extractFilterTerms(message);
+  
+  if (filterTerms.length === 0) {
+    return records; // No filters, return all records
+  }
+  
+  return records.filter((record: any) => {
+    if (dataType === 'contacts') {
+      return filterTerms.some(term => {
+        const name = `${record.firstName || ''} ${record.lastName || ''}`.toLowerCase();
+        const email = (record.email || '').toLowerCase();
+        const company = (record.company || '').toLowerCase();
+        const title = (record.title || '').toLowerCase();
+        
+        return name.includes(term) || 
+               email.includes(term) || 
+               company.includes(term) || 
+               title.includes(term);
+      });
+    } else if (dataType === 'accounts') {
+      return filterTerms.some(term => {
+        const name = (record.name || '').toLowerCase();
+        const industry = (record.industry || '').toLowerCase();
+        const website = (record.website || '').toLowerCase();
+        
+        return name.includes(term) || 
+               industry.includes(term) || 
+               website.includes(term);
+      });
+    } else if (dataType === 'deals') {
+      return filterTerms.some(term => {
+        const name = (record.name || '').toLowerCase();
+        const stage = (record.stage || '').toLowerCase();
+        const value = (record.value || '').toLowerCase();
+        
+        return name.includes(term) || 
+               stage.includes(term) || 
+               value.includes(term);
+      });
+    } else if (dataType === 'activities') {
+      return filterTerms.some(term => {
+        const type = (record.type || '').toLowerCase();
+        const subject = (record.subject || '').toLowerCase();
+        const status = (record.status || '').toLowerCase();
+        
+        return type.includes(term) || 
+               subject.includes(term) || 
+               status.includes(term);
+      });
+    }
+    
+    return true; // Default to include if unknown data type
+  });
+}
+
+// Helper function to extract filter terms from user message
+function extractFilterTerms(message: string): string[] {
+  // Remove common query words
+  const queryWords = ['view', 'show', 'list', 'all', 'contacts', 'accounts', 'deals', 'activities', 'at', 'in', 'with'];
+  let filteredMessage = message;
+  
+  queryWords.forEach(word => {
+    filteredMessage = filteredMessage.replace(new RegExp(`\\b${word}\\b`, 'gi'), '');
+  });
+  
+  // Split by common separators and clean up
+  const terms = filteredMessage
+    .split(/[\s,]+/)
+    .map(term => term.trim())
+    .filter(term => term.length > 0 && term.length < 50); // Reasonable length limits
+  
+  return terms;
+}
+
+// Helper function to get filter info for display
+function getFilterInfo(userMessage: string, dataType: string): string | null {
+  const terms = extractFilterTerms(userMessage.toLowerCase());
+  if (terms.length === 0) return null;
+  
+  return terms.join(', ');
 }
 
 // Chart generation handler (existing logic)
