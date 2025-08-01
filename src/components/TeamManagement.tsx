@@ -306,8 +306,8 @@ export default function TeamManagement() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 bg-[#f3e89a]/10 rounded-lg border border-[#f3e89a]/20">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-10 h-10 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                       </div>
@@ -320,8 +320,8 @@ export default function TeamManagement() {
 
                   <div className="p-4 bg-[#f3e89a]/10 rounded-lg border border-[#f3e89a]/20">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-10 h-10 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z"/>
                         </svg>
                       </div>
@@ -334,8 +334,8 @@ export default function TeamManagement() {
 
                   <div className="p-4 bg-[#f3e89a]/10 rounded-lg border border-[#f3e89a]/20">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-10 h-10 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"/>
                         </svg>
                       </div>
@@ -348,8 +348,8 @@ export default function TeamManagement() {
 
                   <div className="p-4 bg-[#f3e89a]/10 rounded-lg border border-[#f3e89a]/20">
                     <div className="flex items-center">
-                      <div className="w-8 h-8 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
-                        <svg className="w-4 h-4 text-black" fill="currentColor" viewBox="0 0 20 20">
+                      <div className="w-10 h-10 bg-[#f3e89a] rounded-lg flex items-center justify-center mr-3">
+                        <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z"/>
                         </svg>
                       </div>
