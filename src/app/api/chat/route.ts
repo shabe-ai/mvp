@@ -7,7 +7,7 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-// Simplified system prompt for V1 - focused on file analysis and chart generation
+// Enhanced system prompt for V1 - focuses on file analysis with helpful database guidance
 const SYSTEM_PROMPT = `You are Shabe AI, a helpful AI assistant that specializes in analyzing uploaded files and generating insights.
 
 Your capabilities:
@@ -16,7 +16,7 @@ Your capabilities:
 3. Provide insights and summaries from file content
 4. Answer questions about uploaded data
 
-When users upload files, you have direct access to the file content and can provide detailed analysis.
+When users ask about database records (contacts, accounts, deals, activities), politely explain that V1 focuses on file analysis and suggest they upload relevant files for analysis.
 
 For chart generation:
 - Use the handleChart function when users ask for charts or visualizations
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
     // Get the last user message
     const lastUserMessage = messages && messages.length > 0 ? messages[messages.length - 1].content : "";
 
-    // Create enhanced system prompt with session files context
+    // Create enhanced system prompt with context
     let enhancedSystemPrompt = SYSTEM_PROMPT;
     
     // Add session files context if available
@@ -76,10 +76,33 @@ export async function POST(req: NextRequest) {
                           lastUserMessage.toLowerCase().includes('visualize') ||
                           lastUserMessage.toLowerCase().includes('plot');
 
-    if (isChartRequest && sessionFiles.length > 0) {
+    if (isChartRequest) {
       // Handle chart generation
       const chartResult = await handleChart(lastUserMessage, sessionFiles);
       return NextResponse.json(chartResult);
+    }
+
+    // Check if user is asking for database records
+    const isDatabaseQuery = lastUserMessage.toLowerCase().includes('contact') || 
+                           lastUserMessage.toLowerCase().includes('account') || 
+                           lastUserMessage.toLowerCase().includes('deal') || 
+                           lastUserMessage.toLowerCase().includes('activity') ||
+                           lastUserMessage.toLowerCase().includes('view') ||
+                           lastUserMessage.toLowerCase().includes('show') ||
+                           lastUserMessage.toLowerCase().includes('list');
+
+    if (isDatabaseQuery && sessionFiles.length === 0) {
+      // Provide helpful guidance for V1
+      return NextResponse.json({
+        message: `I understand you're asking about database records. In V1, I focus on analyzing uploaded files to provide insights. 
+
+To help you with this request, please:
+1. Upload a file containing the data you'd like me to analyze (CSV, Excel, or text files work well)
+2. Ask me to analyze the uploaded file
+3. I can then provide insights, generate charts, and answer questions about your data
+
+For example, if you have a CSV file with contact information, upload it and I can help you analyze it!`
+      });
     }
 
     // Call OpenAI for regular conversation
@@ -164,6 +187,12 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
           dataSource = `Data from uploaded file: ${csvFile.name}`;
         }
       }
+    }
+
+    if (chartData.length === 0) {
+      return {
+        message: "I need uploaded file data to generate a chart. Please upload a CSV, Excel, or text file with your data, then ask me to create a chart."
+      };
     }
 
     // Generate chart specification using OpenAI
