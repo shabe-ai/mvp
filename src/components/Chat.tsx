@@ -387,7 +387,7 @@ export default function Chat() {
                       <div className="w-2 h-2 bg-[#f3e89a] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
                       <div className="w-2 h-2 bg-[#f3e89a] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
                     </div>
-                    <span className="text-sm text-[#d9d2c7]">AI is thinking...</span>
+                    <span className="text-sm text-[#d9d2c7]">Shabe ai is thinking...</span>
                   </div>
                 </div>
               </div>
@@ -494,7 +494,7 @@ export default function Chat() {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={isLoading ? "AI is thinking..." : "Ask me anything about your uploaded files..."}
+            placeholder={isLoading ? "Shabe ai is thinking..." : "Ask me anything about your uploaded files..."}
             disabled={isLoading}
             className="flex-1 border-0 focus:ring-0 px-4 py-3 text-base"
           />
