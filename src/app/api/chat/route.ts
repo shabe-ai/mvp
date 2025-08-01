@@ -567,6 +567,7 @@ export async function POST(req: NextRequest) {
         return await handleContactCreation(lastUserMessage, intent.entities || {}, userId);
         
       case 'queryDatabase':
+      case 'viewData':
         return await handleDatabaseQuery(lastUserMessage, intent.entities || {}, userId);
         
       case 'generateChart':
