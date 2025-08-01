@@ -34,8 +34,8 @@ export default function RootLayout({
                   {/* Logo */}
                   <div className="flex items-center space-x-2">
                     <img src="/logo.png" alt="Shabe Logo" className="h-10 w-10" />
-                    <h1 className="text-xl font-bold text-black">
-                      Shabe AI
+                    <h1 className="text-xl font-medium text-black">
+                      Shabe ai
                     </h1>
                   </div>
                 </div>
