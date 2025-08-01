@@ -2,6 +2,180 @@
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
 
+function ProfileSection() {
+  const { user } = useUser();
+
+  if (!user) return null;
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-[#d9d2c7] p-6">
+      <h3 className="text-lg font-semibold text-black mb-4">Profile</h3>
+      <div className="space-y-4">
+        <div className="flex items-center space-x-4">
+          <div className="w-12 h-12 bg-[#f3e89a] rounded-full flex items-center justify-center">
+            <span className="text-black font-semibold text-lg">
+              {user.firstName?.charAt(0) || user.emailAddresses[0]?.emailAddress.charAt(0) || 'U'}
+            </span>
+          </div>
+          <div>
+            <h4 className="text-black font-medium">
+              {user.firstName && user.lastName 
+                ? `${user.firstName} ${user.lastName}`
+                : user.emailAddresses[0]?.emailAddress || 'User'
+              }
+            </h4>
+            <p className="text-sm text-[#d9d2c7]">
+              {user.emailAddresses[0]?.emailAddress}
+            </p>
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
+          <div>
+            <label className="block text-sm font-medium text-black mb-1">First Name</label>
+            <p className="text-sm text-[#d9d2c7]">{user.firstName || 'Not provided'}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-black mb-1">Last Name</label>
+            <p className="text-sm text-[#d9d2c7]">{user.lastName || 'Not provided'}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-black mb-1">Email</label>
+            <p className="text-sm text-[#d9d2c7]">{user.emailAddresses[0]?.emailAddress}</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-black mb-1">Member Since</label>
+            <p className="text-sm text-[#d9d2c7]">
+              {new Date(user.createdAt).toLocaleDateString()}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompanySection() {
+  const [companyData, setCompanyData] = useState({
+    name: '',
+    website: '',
+    description: ''
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load company data from localStorage on component mount
+  useEffect(() => {
+    const saved = localStorage.getItem('companyData');
+    if (saved) {
+      setCompanyData(JSON.parse(saved));
+    }
+  }, []);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    // Simulate API call
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    localStorage.setItem('companyData', JSON.stringify(companyData));
+    setIsSaving(false);
+    setIsEditing(false);
+  };
+
+  const handleCancel = () => {
+    // Reset to saved data
+    const saved = localStorage.getItem('companyData');
+    if (saved) {
+      setCompanyData(JSON.parse(saved));
+    }
+    setIsEditing(false);
+  };
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-[#d9d2c7] p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-black">Company</h3>
+        {!isEditing ? (
+          <button
+            onClick={() => setIsEditing(true)}
+            className="text-sm text-[#f3e89a] hover:text-[#efe076] underline"
+          >
+            Edit
+          </button>
+        ) : (
+          <div className="flex space-x-2">
+            <button
+              onClick={handleCancel}
+              className="text-sm text-[#d9d2c7] hover:text-black"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="text-sm bg-[#f3e89a] hover:bg-[#efe076] text-black px-3 py-1 rounded disabled:opacity-50"
+            >
+              {isSaving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-black mb-1">Company Name</label>
+          {isEditing ? (
+            <input
+              type="text"
+              value={companyData.name}
+              onChange={(e) => setCompanyData(prev => ({ ...prev, name: e.target.value }))}
+              className="w-full px-3 py-2 border border-[#d9d2c7] rounded-lg focus:ring-2 focus:ring-[#f3e89a] focus:border-transparent"
+              placeholder="Enter company name"
+            />
+          ) : (
+            <p className="text-sm text-[#d9d2c7]">{companyData.name || 'Not provided'}</p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-black mb-1">Website</label>
+          {isEditing ? (
+            <input
+              type="url"
+              value={companyData.website}
+              onChange={(e) => setCompanyData(prev => ({ ...prev, website: e.target.value }))}
+              className="w-full px-3 py-2 border border-[#d9d2c7] rounded-lg focus:ring-2 focus:ring-[#f3e89a] focus:border-transparent"
+              placeholder="https://example.com"
+            />
+          ) : (
+            <p className="text-sm text-[#d9d2c7]">
+              {companyData.website ? (
+                <a href={companyData.website} target="_blank" rel="noopener noreferrer" className="text-[#f3e89a] hover:text-[#efe076]">
+                  {companyData.website}
+                </a>
+              ) : 'Not provided'}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-black mb-1">Description</label>
+          {isEditing ? (
+            <textarea
+              value={companyData.description}
+              onChange={(e) => setCompanyData(prev => ({ ...prev, description: e.target.value }))}
+              rows={4}
+              className="w-full px-3 py-2 border border-[#d9d2c7] rounded-lg focus:ring-2 focus:ring-[#f3e89a] focus:border-transparent"
+              placeholder="Describe your company..."
+            />
+          ) : (
+            <p className="text-sm text-[#d9d2c7]">{companyData.description || 'Not provided'}</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GoogleIntegrationSection() {
   const { user } = useUser();
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
@@ -130,14 +304,21 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-screen bg-[#d9d2c7]/20">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-black">Admin Dashboard</h1>
           <p className="text-[#d9d2c7] mt-2">Manage your workspace and integrations</p>
         </div>
 
-        <div className="max-w-2xl">
-          <GoogleIntegrationSection />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="space-y-8">
+            <ProfileSection />
+            <CompanySection />
+          </div>
+          
+          <div>
+            <GoogleIntegrationSection />
+          </div>
         </div>
       </div>
     </div>
