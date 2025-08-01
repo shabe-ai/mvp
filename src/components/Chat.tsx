@@ -376,6 +376,23 @@ export default function Chat() {
         ) : (
           <>
             {messages.map(renderMessage)}
+            
+            {/* Loading indicator when preparing response */}
+            {isLoading && (
+              <div className="flex justify-start mb-4">
+                <div className="max-w-[80%] rounded-lg px-4 py-2 bg-[#d9d2c7]/10 text-black">
+                  <div className="flex items-center gap-2">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-[#f3e89a] rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-[#f3e89a] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-[#f3e89a] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                    <span className="text-sm text-[#d9d2c7]">AI is thinking...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div ref={messagesEndRef} />
           </>
         )}
@@ -477,12 +494,16 @@ export default function Chat() {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask me anything about your uploaded files..."
+            placeholder={isLoading ? "AI is thinking..." : "Ask me anything about your uploaded files..."}
             disabled={isLoading}
             className="flex-1 border-0 focus:ring-0 px-4 py-3 text-base"
           />
           <Button type="submit" disabled={isLoading} className="bg-[#f3e89a] hover:bg-[#efe076] text-black rounded-r-full px-3 flex items-center justify-center" style={{ width: '48px' }}>
-            <Send className="h-4 w-4" />
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
           </Button>
         </div>
       </form>
