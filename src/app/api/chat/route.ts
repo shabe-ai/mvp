@@ -322,12 +322,14 @@ async function handleContactCreation(message: string, entities: any, userId: str
 
 async function handleDatabaseQuery(message: string, entities: any, userId: string) {
   // Use existing database operation logic
-  return await handleDatabaseOperation(message, userId);
+  const result = await handleDatabaseOperation(message, userId);
+  return NextResponse.json(result);
 }
 
 async function handleChartGeneration(message: string, entities: any, sessionFiles: any[], userId: string) {
   // Use existing chart generation logic
-  return await handleChart(message, sessionFiles, userId);
+  const result = await handleChart(message, sessionFiles, userId);
+  return NextResponse.json(result);
 }
 
 async function handleGeneralConversation(message: string, messages: any[], context: any) {
