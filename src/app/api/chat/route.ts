@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     if (isChartRequest) {
       // Handle chart generation
-      const chartResult = await handleChart(lastUserMessage, sessionFiles);
+      const chartResult = await handleChart(lastUserMessage, sessionFiles, userId);
       return NextResponse.json(chartResult);
     }
 
@@ -169,25 +169,37 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
   try {
     const messageLower = userMessage.toLowerCase();
     
+    // Get user's teams first
+    const userTeams = await convex.query(api.crm.getTeamsByUser, { userId });
+    
+    if (!userTeams || userTeams.length === 0) {
+      return {
+        message: "You don't have access to any teams. Please contact your administrator."
+      };
+    }
+    
+    // Use the first team (or we could let user choose)
+    const teamId = userTeams[0]._id;
+    
     // Determine what type of data to query
     let records: Record<string, unknown>[] = [];
     let dataType = '';
     
     if (messageLower.includes('contact')) {
-      records = await convex.query(api.crm.getContactsByTeam, { teamId: 'default' });
+      records = await convex.query(api.crm.getContactsByTeam, { teamId });
       dataType = 'contacts';
     } else if (messageLower.includes('account')) {
-      records = await convex.query(api.crm.getAccountsByTeam, { teamId: 'default' });
+      records = await convex.query(api.crm.getAccountsByTeam, { teamId });
       dataType = 'accounts';
     } else if (messageLower.includes('deal')) {
-      records = await convex.query(api.crm.getDealsByTeam, { teamId: 'default' });
+      records = await convex.query(api.crm.getDealsByTeam, { teamId });
       dataType = 'deals';
     } else if (messageLower.includes('activity')) {
-      records = await convex.query(api.crm.getActivitiesByTeam, { teamId: 'default' });
+      records = await convex.query(api.crm.getActivitiesByTeam, { teamId });
       dataType = 'activities';
     } else {
       // Default to contacts if no specific type mentioned
-      records = await convex.query(api.crm.getContactsByTeam, { teamId: 'default' });
+      records = await convex.query(api.crm.getContactsByTeam, { teamId });
       dataType = 'contacts';
     }
 
@@ -253,7 +265,7 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
 }
 
 // Handle chart generation
-async function handleChart(userMessage: string, sessionFiles: Array<{ name: string; content: string }>) {
+async function handleChart(userMessage: string, sessionFiles: Array<{ name: string; content: string }>, userId?: string) {
   try {
     // Parse CSV data from session files if available
     let chartData: Record<string, unknown>[] = [];
@@ -281,17 +293,23 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     }
 
     // If no file data, try to get database data for chart
-    if (chartData.length === 0) {
+    if (chartData.length === 0 && userId) {
       try {
-        const records = await convex.query(api.crm.getContactsByTeam, { teamId: 'default' });
-        chartData = records.slice(0, 20).map((record: Record<string, unknown>) => ({
-          id: record._id,
-          name: (record.name as Record<string, unknown>)?.firstName + ' ' + (record.name as Record<string, unknown>)?.lastName,
-          email: record.email,
-          phone: record.phone,
-          created: new Date((record._creationTime as number)).toLocaleDateString()
-        }));
-        dataSource = 'Data from database contacts';
+        // Get user's teams first
+        const userTeams = await convex.query(api.crm.getTeamsByUser, { userId });
+        
+        if (userTeams && userTeams.length > 0) {
+          const teamId = userTeams[0]._id;
+          const records = await convex.query(api.crm.getContactsByTeam, { teamId });
+          chartData = records.slice(0, 20).map((record: Record<string, unknown>) => ({
+            id: record._id,
+            name: (record.name as Record<string, unknown>)?.firstName + ' ' + (record.name as Record<string, unknown>)?.lastName,
+            email: record.email,
+            phone: record.phone,
+            created: new Date((record._creationTime as number)).toLocaleDateString()
+          }));
+          dataSource = 'Data from database contacts';
+        }
       } catch (error) {
         console.error('Error getting database data for chart:', error);
       }
