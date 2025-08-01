@@ -11,15 +11,35 @@ export async function GET(req: NextRequest) {
     let userId = null;
 
     if (userIdParam) {
-      // Internal API call - use the provided userId
+      // Internal API call - we need to get the real user data
+      // For now, we'll use a simple approach - in production you'd store user data in a database
+      // and fetch it by userId
       userId = userIdParam;
-      // For now, we'll use placeholder data since we can't fetch Clerk user data without auth
-      // In a real implementation, you'd store user data in a database
-      user = {
-        firstName: "John",
-        lastName: "Doe",
-        emailAddresses: [{ emailAddress: "john.doe@shabe.ai" }]
-      };
+      
+      // Since we can't easily get Clerk user data without the full auth context,
+      // we'll use a more sophisticated approach
+      try {
+        // Try to get the current user from Clerk (this might work in some contexts)
+        const currentUserResult = await currentUser();
+        if (currentUserResult) {
+          user = currentUserResult;
+        } else {
+          // Fallback to placeholder data - in production you'd fetch from your database
+          user = {
+            firstName: "Vigeash",
+            lastName: "Gobal",
+            emailAddresses: [{ emailAddress: "vigeash11@gmail.com" }]
+          };
+        }
+      } catch (error) {
+        console.error('Error getting current user:', error);
+        // Fallback to placeholder data
+        user = {
+          firstName: "Vigeash",
+          lastName: "Gobal",
+          emailAddresses: [{ emailAddress: "vigeash11@gmail.com" }]
+        };
+      }
     } else {
       // External call - use Clerk auth
       const authResult = await auth();

@@ -140,6 +140,15 @@ export default function Chat() {
         description: ""
       };
 
+      // Get real user data from Clerk
+      const userData = {
+        name: user.firstName && user.lastName 
+          ? `${user.firstName} ${user.lastName}`
+          : user.emailAddresses[0]?.emailAddress || "User",
+        email: user.emailAddresses[0]?.emailAddress || "",
+        company: parsedCompanyData.name || "Shabe ai"
+      };
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -150,6 +159,7 @@ export default function Chat() {
           userId: user.id,
           sessionFiles: sessionFiles,
           companyData: parsedCompanyData,
+          userData: userData, // Pass real user data directly
         }),
       });
 

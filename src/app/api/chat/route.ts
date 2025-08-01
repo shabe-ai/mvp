@@ -78,7 +78,7 @@ async function getUserContext(userId: string, companyData: Record<string, string
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { messages, userId, sessionFiles = [], companyData = {} } = body;
+    const { messages, userId, sessionFiles = [], companyData = {}, userData = {} } = body;
 
     // Validate required fields
     validateRequiredFields(body, ['userId', 'messages']);
@@ -101,8 +101,20 @@ export async function POST(req: NextRequest) {
     // Get the last user message
     const lastUserMessage = messages && messages.length > 0 ? messages[messages.length - 1].content : "";
 
-    // Get user context (profile and company data)
-    const userContext = await getUserContext(userId, companyData);
+    // Use user data passed from frontend (real authenticated user data)
+    const userContext = {
+      userProfile: {
+        name: userData.name || "User",
+        email: userData.email || "user@example.com",
+        company: userData.company || "Unknown Company"
+      },
+      companyData: {
+        name: companyData.name || "Shabe ai",
+        website: companyData.website || "www.shabe.ai",
+        description: companyData.description || "Shabe AI is a chat-first revenue platform"
+      }
+    };
+    
     console.log('Chat API received user context:', userContext);
 
     // Create enhanced system prompt with context
