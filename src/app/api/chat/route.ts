@@ -174,7 +174,104 @@ export async function POST(req: NextRequest) {
                           lastUserMessage.toLowerCase().includes('send') ||
                           lastUserMessage.toLowerCase().includes('write') ||
                           lastUserMessage.toLowerCase().includes('draft');
+    
+    // Check if this is a contact creation response
+    const isContactCreationResponse = lastUserMessage.toLowerCase().includes('name') && 
+                                    lastUserMessage.toLowerCase().includes('email') &&
+                                    messages.length > 1 && 
+                                    messages[messages.length - 2]?.content?.includes('create a new contact');
+    
+    if (isContactCreationResponse) {
+      // Extract contact details from user's response
+      const nameMatch = lastUserMessage.match(/name\s+([^\s]+(?:\s+[^\s]+)*)/i);
+      const emailMatch = lastUserMessage.match(/email\s+([^\s@]+@[^\s@]+\.[^\s@]+)/i);
+      const titleMatch = lastUserMessage.match(/title\s+([^\s]+(?:\s+[^\s]+)*)/i);
+      
+      if (nameMatch && emailMatch) {
+        const fullName = nameMatch[1].trim();
+        const email = emailMatch[1].trim();
+        const title = titleMatch ? titleMatch[1].trim() : '';
+        
+        // Split full name into first and last name
+        const nameParts = fullName.split(' ');
+        const firstName = nameParts[0];
+        const lastName = nameParts.slice(1).join(' ') || '';
+        
+        try {
+          // Get user's team ID
+          const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+          const teamId = teams.length > 0 ? teams[0]._id : 'default';
+          
+          // Create the contact
+          const contactId = await convex.mutation(api.crm.createContact, {
+            teamId,
+            createdBy: userId,
+            firstName,
+            lastName,
+            email,
+            title: title || undefined,
+            leadStatus: "new",
+            contactType: "contact",
+            source: "email_creation"
+          });
+          
+          console.log('Created new contact:', { contactId, firstName, lastName, email });
+          
+          // Now draft the email with the new contact
+          const emailPrompt = enhancedSystemPrompt + `\n\nUSER REQUEST: send an email to ${fullName} thanking them for their time yesterday\n\nCRITICAL EMAIL INSTRUCTIONS:\n- The user is asking to send an email TO someone else, not to themselves\n- Use the user's actual name: "${userContext.userProfile.name}" as the sender\n- Use the user's actual email: "${userContext.userProfile.email}" as the sender's email\n- Use the company name: "${userContext.companyData.name}"\n- Use the company website: "${userContext.companyData.website}"\n- The recipient is: ${fullName} (${email})\n- Make the email professional and personalized\n\nIMPORTANT: You must respond with ONLY a JSON object containing the email draft.`;
+          
+          const completion = await openai.chat.completions.create({
+            model: "gpt-4",
+            messages: [
+              { role: "system", content: emailPrompt },
+              ...messages.map((msg: Message) => ({
+                role: msg.role as "user" | "assistant",
+                content: msg.content,
+              })),
+            ],
+            temperature: 0.7,
+            max_tokens: 2000,
+          });
 
+          const responseMessage = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
+          
+          try {
+            const parsedResponse = JSON.parse(responseMessage);
+            if (parsedResponse.emailDraft) {
+              parsedResponse.emailDraft.to = email;
+              return NextResponse.json({
+                message: `Great! I've created a new contact for ${fullName} and drafted an email for you.`,
+                emailDraft: parsedResponse.emailDraft,
+              });
+            }
+          } catch (error) {
+            console.error('Failed to parse email response as JSON:', error);
+          }
+          
+          return NextResponse.json({
+            message: `I've successfully created a new contact for ${fullName} (${email}) and drafted an email. You can review and send it below.`,
+            emailDraft: {
+              to: email,
+              subject: "Thank You for Your Time",
+              content: `Dear ${fullName},\n\nI hope this message finds you well. I wanted to take a moment to thank you for your time yesterday. Your insights and contributions are greatly appreciated.\n\nLooking forward to our continued collaboration.\n\nBest regards,\n\n${userContext.userProfile.name}\n${userContext.companyData.name}\n${userContext.companyData.website}`
+            }
+          });
+          
+        } catch (error) {
+          console.error('Error creating contact:', error);
+          return NextResponse.json({
+            message: "I encountered an error while creating the contact. Please try again.",
+            error: true
+          });
+        }
+      } else {
+        return NextResponse.json({
+          message: "I couldn't parse the contact details. Please provide the information in this format: 'name [full name] email [email address] title [optional title]'",
+          error: true
+        });
+      }
+    }
+    
     if (isEmailRequest) {
       // First, try to find the recipient's email from the database
       let recipientEmail = null;
