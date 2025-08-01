@@ -156,9 +156,9 @@ export default function TeamManagement() {
   return (
     <div className="space-y-6">
       {/* Team List */}
-      <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+      <div className="bg-white rounded-xl shadow-sm border border-[#d9d2c7] p-6">
         <div className="mb-6">
-          <h3 className="text-xl font-semibold text-slate-900">Your Teams</h3>
+          <h3 className="text-xl font-semibold text-black">Your Teams</h3>
         </div>
 
         {error && (
@@ -178,28 +178,28 @@ export default function TeamManagement() {
               key={team._id}
               className={`p-4 rounded-lg border cursor-pointer transition-all duration-200 ${
                 selectedTeam?._id === team._id
-                  ? "bg-amber-50 border-amber-200 shadow-sm"
-                  : "bg-slate-50 border-slate-200 hover:bg-slate-100"
+                  ? "bg-[#f3e89a]/10 border-[#f3e89a] shadow-sm"
+                  : "bg-[#d9d2c7]/10 border-[#d9d2c7] hover:bg-[#d9d2c7]/20"
               }`}
               onClick={() => setSelectedTeam(team)}
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-gradient-to-r from-slate-500 to-slate-600 rounded-lg flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                  <div className="w-10 h-10 bg-gradient-to-r from-[#f3e89a] to-[#efe076] rounded-lg flex items-center justify-center">
+                    <svg className="w-5 h-5 text-black" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"/>
                     </svg>
                   </div>
                   <div>
-                    <h4 className="font-semibold text-slate-900">{team.name}</h4>
-                    <p className="text-sm text-slate-600">
+                    <h4 className="font-semibold text-black">{team.name}</h4>
+                    <p className="text-sm text-[#d9d2c7]">
                       {team.members.length} member{team.members.length !== 1 ? 's' : ''} • Created {formatDate(team.createdAt)}
                     </p>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   {team.ownerId === user?.id && (
-                    <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
+                    <span className="px-2 py-1 bg-[#f3e89a] text-black text-xs font-medium rounded-full">
                       Owner
                     </span>
                   )}
@@ -208,7 +208,7 @@ export default function TeamManagement() {
                       e.stopPropagation();
                       setEditingTeam(team);
                     }}
-                    className="text-slate-400 hover:text-slate-600 transition-colors"
+                    className="text-[#d9d2c7] hover:text-black transition-colors"
                   >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
@@ -239,36 +239,36 @@ export default function TeamManagement() {
 
       {/* Team Details */}
       {selectedTeam && (
-        <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-[#d9d2c7] p-6">
           <div className="mb-6">
-            <h3 className="text-xl font-semibold text-slate-900">Team Details</h3>
-            <span className="text-sm text-slate-500">Last updated: {formatDate(selectedTeam.updatedAt)}</span>
+            <h3 className="text-xl font-semibold text-black">Team Details</h3>
+            <span className="text-sm text-[#d9d2c7]">Last updated: {formatDate(selectedTeam.updatedAt)}</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Team Info */}
             <div className="space-y-4">
               <div>
-                <h4 className="text-lg font-medium text-slate-900 mb-3">Team Information</h4>
+                <h4 className="text-lg font-medium text-black mb-3">Team Information</h4>
                 {editingTeam?._id === selectedTeam._id ? (
                   <div className="space-y-3">
                     <input
                       type="text"
                       value={editingTeam.name}
                       onChange={(e) => setEditingTeam({ ...editingTeam, name: e.target.value })}
-                      className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-[#d9d2c7] rounded-lg focus:ring-2 focus:ring-[#f3e89a] focus:border-transparent"
                     />
                     <div className="flex space-x-2">
                       <button
                         onClick={() => updateTeam(editingTeam._id, editingTeam.name)}
                         disabled={loading}
-                        className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white px-3 py-1 rounded text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50"
+                        className="bg-[#f3e89a] hover:bg-[#efe076] text-black px-3 py-1 rounded text-sm font-medium transition-colors disabled:opacity-50"
                       >
                         Save
                       </button>
                       <button
                         onClick={() => setEditingTeam(null)}
-                        className="px-3 py-1 text-slate-600 hover:text-slate-800 text-sm font-medium transition-colors"
+                        className="px-3 py-1 text-[#d9d2c7] hover:text-black text-sm font-medium transition-colors"
                       >
                         Cancel
                       </button>
@@ -276,24 +276,24 @@ export default function TeamManagement() {
                   </div>
                 ) : (
                   <div className="space-y-2">
-                    <p className="text-slate-900 font-medium">{selectedTeam.name}</p>
-                    <p className="text-sm text-slate-600">Team ID: {selectedTeam._id}</p>
+                    <p className="text-black font-medium">{selectedTeam.name}</p>
+                    <p className="text-sm text-[#d9d2c7]">Team ID: {selectedTeam._id}</p>
                   </div>
                 )}
               </div>
 
               <div>
-                <h4 className="text-lg font-medium text-slate-900 mb-3">Members</h4>
+                <h4 className="text-lg font-medium text-black mb-3">Members</h4>
                 <div className="space-y-2">
                   {selectedTeam.members.map((memberId) => (
-                    <div key={memberId} className="flex items-center justify-between p-2 bg-slate-50 rounded">
-                      <span className="text-sm text-slate-700">{memberId}</span>
-                      {memberId === selectedTeam.ownerId && (
-                        <span className="px-2 py-1 bg-amber-100 text-amber-800 text-xs font-medium rounded-full">
-                          Owner
-                        </span>
-                      )}
-                    </div>
+                                          <div key={memberId} className="flex items-center justify-between p-2 bg-[#d9d2c7]/10 rounded">
+                        <span className="text-sm text-black">{memberId}</span>
+                        {memberId === selectedTeam.ownerId && (
+                          <span className="px-2 py-1 bg-[#f3e89a] text-black text-xs font-medium rounded-full">
+                            Owner
+                          </span>
+                        )}
+                      </div>
                   ))}
                 </div>
               </div>

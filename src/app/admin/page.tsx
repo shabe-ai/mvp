@@ -45,33 +45,33 @@ function GoogleIntegrationSection() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Google Workspace Integration</h3>
-        <p className="text-sm text-gray-600 mb-4">
+      <div className="bg-white rounded-xl shadow-sm border border-[#d9d2c7] p-6">
+        <h3 className="text-lg font-semibold text-black mb-4">Google Workspace Integration</h3>
+        <p className="text-sm text-[#d9d2c7] mb-4">
           Connect your Google account to enable calendar integration and team features.
         </p>
         
         {loading ? (
-          <div className="flex items-center space-x-2 text-sm text-gray-600">
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+          <div className="flex items-center space-x-2 text-sm text-[#d9d2c7]">
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#f3e89a]"></div>
             <span>Checking connection...</span>
           </div>
         ) : isConnected ? (
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
-              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-green-700">Connected to Google Workspace</span>
+              <div className="w-2 h-2 bg-[#f3e89a] rounded-full"></div>
+              <span className="text-sm text-black">Connected to Google Workspace</span>
             </div>
             {calendarError && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-                <p className="text-sm text-yellow-800">
+              <div className="bg-[#f3e89a]/10 border border-[#f3e89a]/20 rounded-lg p-3">
+                <p className="text-sm text-black">
                   Calendar access requires additional permissions. Please reconnect your account.
                 </p>
               </div>
             )}
             <button
               onClick={handleConnect}
-              className="text-sm text-blue-600 hover:text-blue-800 underline"
+              className="text-sm text-[#f3e89a] hover:text-[#efe076] underline"
             >
               Reconnect Account
             </button>
@@ -79,7 +79,7 @@ function GoogleIntegrationSection() {
         ) : (
           <button
             onClick={handleConnect}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+            className="bg-[#f3e89a] hover:bg-[#efe076] text-black px-4 py-2 rounded-lg text-sm font-medium transition-colors"
           >
             Connect Google Workspace
           </button>
@@ -94,20 +94,20 @@ export default function AdminPage() {
 
   if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      <div className="min-h-screen bg-[#d9d2c7]/20 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#f3e89a]"></div>
       </div>
     );
   }
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#d9d2c7]/20 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Admin Access Required</h1>
-          <p className="text-gray-600 mb-6">Please sign in to access the admin panel.</p>
+          <h1 className="text-2xl font-bold text-black mb-4">Admin Access Required</h1>
+          <p className="text-[#d9d2c7] mb-6">Please sign in to access the admin panel.</p>
           <SignInButton>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium">
+            <button className="bg-[#f3e89a] hover:bg-[#efe076] text-black px-6 py-2 rounded-lg font-medium transition-colors">
               Sign In
             </button>
           </SignInButton>
@@ -117,11 +117,11 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#d9d2c7]/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-2">Manage your workspace and integrations</p>
+          <h1 className="text-3xl font-bold text-black">Admin Dashboard</h1>
+          <p className="text-[#d9d2c7] mt-2">Manage your workspace and integrations</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
