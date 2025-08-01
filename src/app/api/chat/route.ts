@@ -181,6 +181,67 @@ export async function POST(req: NextRequest) {
                                     messages.length > 1 && 
                                     messages[messages.length - 2]?.content?.includes('create a new contact');
     
+    // Check if this is an email drafting request after contact creation
+    const isEmailDraftingAfterContact = messages.length > 2 && 
+                                       messages[messages.length - 3]?.content?.includes('create a new contact') &&
+                                       messages[messages.length - 2]?.content?.includes('successfully created a new contact') &&
+                                       (lastUserMessage.toLowerCase().includes('draft') || 
+                                        lastUserMessage.toLowerCase().includes('email') ||
+                                        lastUserMessage.toLowerCase().includes('send'));
+    
+    if (isEmailDraftingAfterContact) {
+      // Extract contact info from the previous success message
+      const previousMessage = messages[messages.length - 2]?.content || '';
+      const contactNameMatch = previousMessage.match(/contact for ([^(]+)/);
+      const contactEmailMatch = previousMessage.match(/\(([^)]+)\)/);
+      
+      if (contactNameMatch && contactEmailMatch) {
+        const contactName = contactNameMatch[1].trim();
+        const contactEmail = contactEmailMatch[1].trim();
+        
+        // Draft the email with the new contact
+        const emailPrompt = enhancedSystemPrompt + `\n\nUSER REQUEST: send an email to ${contactName} thanking them for their time yesterday\n\nCRITICAL EMAIL INSTRUCTIONS:\n- The user is asking to send an email TO someone else, not to themselves\n- Use the user's actual name: "${userContext.userProfile.name}" as the sender\n- Use the user's actual email: "${userContext.userProfile.email}" as the sender's email\n- Use the company name: "${userContext.companyData.name}"\n- Use the company website: "${userContext.companyData.website}"\n- The recipient is: ${contactName} (${contactEmail})\n- Make the email professional and personalized\n\nIMPORTANT: You must respond with ONLY a JSON object containing the email draft.`;
+        
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4",
+          messages: [
+            { role: "system", content: emailPrompt },
+            ...messages.map((msg: Message) => ({
+              role: msg.role as "user" | "assistant",
+              content: msg.content,
+            })),
+          ],
+          temperature: 0.7,
+          max_tokens: 2000,
+        });
+
+        const responseMessage = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
+        
+        try {
+          const parsedResponse = JSON.parse(responseMessage);
+          if (parsedResponse.emailDraft) {
+            parsedResponse.emailDraft.to = contactEmail;
+            return NextResponse.json({
+              message: `Perfect! I've drafted an email for ${contactName}. You can review and send it below.`,
+              emailDraft: parsedResponse.emailDraft,
+            });
+          }
+        } catch (error) {
+          console.error('Failed to parse email response as JSON:', error);
+        }
+        
+        // Fallback email draft
+        return NextResponse.json({
+          message: `I've drafted an email for ${contactName}. You can review and send it below.`,
+          emailDraft: {
+            to: contactEmail,
+            subject: "Thank You for Your Time",
+            content: `Dear ${contactName},\n\nI hope this message finds you well. I wanted to take a moment to thank you for your time yesterday. Your insights and contributions are greatly appreciated.\n\nLooking forward to our continued collaboration.\n\nBest regards,\n\n${userContext.userProfile.name}\n${userContext.companyData.name}\n${userContext.companyData.website}`
+          }
+        });
+      }
+    }
+    
     if (isContactCreationResponse) {
       // Extract contact details from user's response
       const nameMatch = lastUserMessage.match(/name\s*[=:]\s*([^\s,]+(?:\s+[^\s,]+)*)/i) || 
@@ -227,44 +288,12 @@ export async function POST(req: NextRequest) {
           
           console.log('Created new contact:', { contactId, firstName, lastName, email });
           
-          // Now draft the email with the new contact
-          const emailPrompt = enhancedSystemPrompt + `\n\nUSER REQUEST: send an email to ${fullName} thanking them for their time yesterday\n\nCRITICAL EMAIL INSTRUCTIONS:\n- The user is asking to send an email TO someone else, not to themselves\n- Use the user's actual name: "${userContext.userProfile.name}" as the sender\n- Use the user's actual email: "${userContext.userProfile.email}" as the sender's email\n- Use the company name: "${userContext.companyData.name}"\n- Use the company website: "${userContext.companyData.website}"\n- The recipient is: ${fullName} (${email})\n- Make the email professional and personalized\n\nIMPORTANT: You must respond with ONLY a JSON object containing the email draft.`;
-          
-          const completion = await openai.chat.completions.create({
-            model: "gpt-4",
-            messages: [
-              { role: "system", content: emailPrompt },
-              ...messages.map((msg: Message) => ({
-                role: msg.role as "user" | "assistant",
-                content: msg.content,
-              })),
-            ],
-            temperature: 0.7,
-            max_tokens: 2000,
-          });
-
-          const responseMessage = completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
-          
-          try {
-            const parsedResponse = JSON.parse(responseMessage);
-            if (parsedResponse.emailDraft) {
-              parsedResponse.emailDraft.to = email;
-              return NextResponse.json({
-                message: `Great! I've created a new contact for ${fullName} and drafted an email for you.`,
-                emailDraft: parsedResponse.emailDraft,
-              });
-            }
-          } catch (error) {
-            console.error('Failed to parse email response as JSON:', error);
-          }
-          
+          // Return success message and prompt for email drafting
           return NextResponse.json({
-            message: `I've successfully created a new contact for ${fullName} (${email}) and drafted an email. You can review and send it below.`,
-            emailDraft: {
-              to: email,
-              subject: "Thank You for Your Time",
-              content: `Dear ${fullName},\n\nI hope this message finds you well. I wanted to take a moment to thank you for your time yesterday. Your insights and contributions are greatly appreciated.\n\nLooking forward to our continued collaboration.\n\nBest regards,\n\n${userContext.userProfile.name}\n${userContext.companyData.name}\n${userContext.companyData.website}`
-            }
+            message: `Great! I've successfully created a new contact for ${fullName} (${email}) in your database. Now let me draft an email for you.`,
+            action: "draft_email",
+            contactName: fullName,
+            contactEmail: email
           });
           
         } catch (error) {
