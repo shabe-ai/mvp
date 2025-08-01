@@ -322,7 +322,9 @@ export async function POST(req: NextRequest) {
       // Extract potential recipient name from the user's request
       const emailMatch = lastUserMessage.match(/send.*?email.*?to\s+(.*?)(?:\s|$)/i) || 
                         lastUserMessage.match(/email.*?to\s+(.*?)(?:\s|$)/i) ||
-                        lastUserMessage.match(/send.*?to\s+(.*?)(?:\s|$)/i);
+                        lastUserMessage.match(/send.*?to\s+(.*?)(?:\s|$)/i) ||
+                        lastUserMessage.match(/send\s+(.*?)\s+an?\s+email/i) ||
+                        lastUserMessage.match(/send\s+(.*?)\s+email/i);
       
       if (emailMatch) {
         const potentialName = emailMatch[1].trim();
