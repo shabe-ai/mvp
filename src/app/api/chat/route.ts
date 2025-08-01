@@ -406,10 +406,60 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
       };
     }
     
+    // Format records for table display
+    const formattedRecords = records.map((record: any) => {
+      if (dataType === 'contacts') {
+        return {
+          id: record._id,
+          name: `${record.firstName || ''} ${record.lastName || ''}`.trim(),
+          email: record.email || '',
+          phone: record.phone || '',
+          company: record.company || '',
+          title: record.title || '',
+          status: record.leadStatus || '',
+          type: record.contactType || '',
+          source: record.source || '',
+          created: new Date(record._creationTime).toLocaleDateString()
+        };
+      } else if (dataType === 'accounts') {
+        return {
+          id: record._id,
+          name: record.name || '',
+          industry: record.industry || '',
+          size: record.size || '',
+          website: record.website || '',
+          created: new Date(record._creationTime).toLocaleDateString()
+        };
+      } else if (dataType === 'deals') {
+        return {
+          id: record._id,
+          name: record.name || '',
+          value: record.value || '',
+          stage: record.stage || '',
+          probability: record.probability || '',
+          created: new Date(record._creationTime).toLocaleDateString()
+        };
+      } else if (dataType === 'activities') {
+        return {
+          id: record._id,
+          type: record.type || '',
+          subject: record.subject || '',
+          status: record.status || '',
+          dueDate: record.dueDate ? new Date(record.dueDate).toLocaleDateString() : '',
+          created: new Date(record._creationTime).toLocaleDateString()
+        };
+      }
+      return record;
+    });
+    
     return {
-      message: `Found ${records.length} ${dataType}.`,
-      data: records,
-      dataType: dataType
+      message: `Found ${formattedRecords.length} ${dataType}:`,
+      data: {
+        records: formattedRecords,
+        type: dataType,
+        count: formattedRecords.length,
+        displayFormat: 'table'
+      }
     };
   } catch (error) {
     console.error('Database operation error:', error);
