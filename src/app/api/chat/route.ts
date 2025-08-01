@@ -40,6 +40,18 @@ const fastIntentPatterns = {
       /show.*?contacts/i,
       /list.*?contacts/i,
       /all.*?contacts/i,
+      /view.*?accounts/i,
+      /show.*?accounts/i,
+      /list.*?accounts/i,
+      /all.*?accounts/i,
+      /view.*?deals/i,
+      /show.*?deals/i,
+      /list.*?deals/i,
+      /all.*?deals/i,
+      /view.*?activities/i,
+      /show.*?activities/i,
+      /list.*?activities/i,
+      /all.*?activities/i,
       /view.*?data/i,
       /show.*?data/i
     ],
@@ -569,17 +581,21 @@ export async function POST(req: NextRequest) {
         return await handleContactCreation(lastUserMessage, intent.entities || {}, userId);
         
       case 'queryDatabase':
+      case 'query_database':
       case 'viewData':
         return await handleDatabaseQuery(lastUserMessage, intent.entities || {}, userId);
         
       case 'generateChart':
+      case 'generate_chart':
         return await handleChartGeneration(lastUserMessage, intent.entities || {}, sessionFiles, userId);
         
       case 'analyzeFile':
+      case 'analyze_file':
         // Handle file analysis
         return await handleGeneralConversation(lastUserMessage, messages, context);
         
       case 'generalConversation':
+      case 'general_conversation':
       default:
         return await handleGeneralConversation(lastUserMessage, messages, context);
     }
