@@ -224,25 +224,75 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
     // Apply field-based filters
     const fieldFilters: Record<string, string> = {};
     
-    // Extract field filters from the message
+    // Simple and reliable filter patterns
     const filterPatterns = [
-      /title\s*=\s*(\w+)/i,
-      /status\s*=\s*(\w+)/i,
-      /type\s*=\s*(\w+)/i,
-      /company\s*=\s*(\w+)/i,
-      /email\s*=\s*(\w+)/i,
-      /phone\s*=\s*(\w+)/i,
-      /source\s*=\s*(\w+)/i
+      // Exact field = value patterns
+      { pattern: /title\s*=\s*(\w+)/i, field: 'title' },
+      { pattern: /status\s*=\s*(\w+)/i, field: 'status' },
+      { pattern: /type\s*=\s*(\w+)/i, field: 'type' },
+      { pattern: /company\s*=\s*(\w+)/i, field: 'company' },
+      { pattern: /email\s*=\s*(\w+)/i, field: 'email' },
+      { pattern: /phone\s*=\s*(\w+)/i, field: 'phone' },
+      { pattern: /source\s*=\s*(\w+)/i, field: 'source' },
+      { pattern: /name\s*=\s*(\w+)/i, field: 'name' },
+      { pattern: /industry\s*=\s*(\w+)/i, field: 'industry' },
+      { pattern: /size\s*=\s*(\w+)/i, field: 'size' },
+      { pattern: /stage\s*=\s*(\w+)/i, field: 'stage' },
+      { pattern: /value\s*=\s*(\w+)/i, field: 'value' },
+      { pattern: /subject\s*=\s*(\w+)/i, field: 'subject' },
+      { pattern: /dueDate\s*=\s*(\w+)/i, field: 'dueDate' },
+      
+      // Natural language patterns
+      { pattern: /with\s+title\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'title' },
+      { pattern: /with\s+status\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'status' },
+      { pattern: /with\s+type\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'type' },
+      { pattern: /with\s+company\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'company' },
+      { pattern: /with\s+email\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'email' },
+      { pattern: /with\s+phone\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'phone' },
+      { pattern: /with\s+source\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'source' },
+      { pattern: /with\s+name\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'name' },
+      { pattern: /with\s+industry\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'industry' },
+      { pattern: /with\s+size\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'size' },
+      { pattern: /with\s+stage\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'stage' },
+      { pattern: /with\s+value\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'value' },
+      { pattern: /with\s+subject\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'subject' },
+      { pattern: /with\s+dueDate\s+(?:of|is|equals|=)\s+(\w+)/i, field: 'dueDate' },
+      
+      // "at company" patterns
+      { pattern: /at\s+(\w+(?:\s+\w+)*)/i, field: 'company' },
+      { pattern: /from\s+(\w+(?:\s+\w+)*)/i, field: 'company' },
+      { pattern: /in\s+(\w+(?:\s+\w+)*)/i, field: 'company' },
+      
+      // Direct field mentions
+      { pattern: /title\s+(\w+)/i, field: 'title' },
+      { pattern: /status\s+(\w+)/i, field: 'status' },
+      { pattern: /type\s+(\w+)/i, field: 'type' },
+      { pattern: /company\s+(\w+)/i, field: 'company' },
+      { pattern: /email\s+(\w+)/i, field: 'email' },
+      { pattern: /phone\s+(\w+)/i, field: 'phone' },
+      { pattern: /source\s+(\w+)/i, field: 'source' },
+      { pattern: /name\s+(\w+)/i, field: 'name' },
+      { pattern: /industry\s+(\w+)/i, field: 'industry' },
+      { pattern: /size\s+(\w+)/i, field: 'size' },
+      { pattern: /stage\s+(\w+)/i, field: 'stage' },
+      { pattern: /value\s+(\w+)/i, field: 'value' },
+      { pattern: /subject\s+(\w+)/i, field: 'subject' },
+      { pattern: /dueDate\s+(\w+)/i, field: 'dueDate' }
     ];
 
-    filterPatterns.forEach(pattern => {
+    filterPatterns.forEach(({ pattern, field }) => {
       const match = messageLower.match(pattern);
       if (match) {
-        const field = pattern.source.split('\\s*=\\s*')[0];
         const value = match[1].toLowerCase();
         fieldFilters[field] = value;
       }
     });
+
+    // Special handling for "at company" patterns
+    const atCompanyMatch = messageLower.match(/at\s+(\w+(?:\s+\w+)*)/i);
+    if (atCompanyMatch && !fieldFilters.company) {
+      fieldFilters.company = atCompanyMatch[1].toLowerCase();
+    }
 
     // Apply field filters
     if (Object.keys(fieldFilters).length > 0) {
