@@ -198,7 +198,10 @@ export async function POST(req: NextRequest) {
           
           // More flexible name matching
           const matchingContact = contacts.find(contact => {
-            const contactName = contact.name?.toLowerCase() || '';
+            // Construct full name from firstName and lastName
+            const contactName = contact.firstName && contact.lastName 
+              ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
+              : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
             const searchName = potentialName.toLowerCase();
             
             // Check if names match (including partial matches)
@@ -210,11 +213,16 @@ export async function POST(req: NextRequest) {
           
           if (matchingContact) {
             recipientEmail = matchingContact.email;
-            recipientName = matchingContact.name;
+            recipientName = matchingContact.firstName && matchingContact.lastName 
+              ? `${matchingContact.firstName} ${matchingContact.lastName}`
+              : matchingContact.firstName || matchingContact.lastName || 'Unknown';
             console.log('Found contact:', { name: recipientName, email: recipientEmail });
           } else {
             console.log('No matching contact found for:', potentialName);
-            console.log('Available contacts:', contacts.map(c => ({ name: c.name, email: c.email })));
+            console.log('Available contacts:', contacts.map(c => ({ 
+              name: c.firstName && c.lastName ? `${c.firstName} ${c.lastName}` : c.firstName || c.lastName || 'Unknown',
+              email: c.email 
+            })));
           }
         } catch (error) {
           console.error('Error searching for contact:', error);
