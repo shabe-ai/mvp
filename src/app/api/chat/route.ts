@@ -231,6 +231,18 @@ export async function POST(req: NextRequest) {
         }
       }
       
+      // If no contact found, prompt to create a new contact
+      if (!recipientEmail) {
+        const potentialName = lastUserMessage.match(/send an email to (.*?)(?: |$)/i)?.[1]?.trim();
+        
+        return NextResponse.json({
+          message: `I couldn't find a contact named "${potentialName}" in your database. Would you like me to help you create a new contact for this person? Please provide their email address so I can add them to your contacts and then send the email.`,
+          needsContactCreation: true,
+          suggestedContactName: potentialName,
+          action: "create_contact"
+        });
+      }
+      
       // Handle email drafting with specific instructions
       const emailPrompt = enhancedSystemPrompt + `\n\nUSER REQUEST: ${lastUserMessage}\n\nCRITICAL EMAIL INSTRUCTIONS:\n- The user is asking to send an email TO someone else, not to themselves\n- Extract the recipient's name and email from the user's request\n- Use the user's actual name: "${userContext.userProfile.name}" as the sender\n- Use the user's actual email: "${userContext.userProfile.email}" as the sender's email\n- Use the company name: "${userContext.companyData.name}"\n- Use the company website: "${userContext.companyData.website}"\n- Do NOT use generic placeholders like "User", "user@example.com", or "Unknown Company"\n- Make the email professional and personalized with the user's real information\n- The "to" field should be the recipient's email, not the sender's email${recipientEmail ? `\n- RECIPIENT FOUND: ${recipientName} (${recipientEmail})` : '\n- NO RECIPIENT EMAIL FOUND: Use a placeholder email like "recipient@example.com" and ask the user to update it'}\n\nIMPORTANT: You must respond with ONLY a JSON object containing the email draft. Do not include any other text or explanations.`;
       
