@@ -183,9 +183,19 @@ export async function POST(req: NextRequest) {
     
     if (isContactCreationResponse) {
       // Extract contact details from user's response
-      const nameMatch = lastUserMessage.match(/name\s+([^\s]+(?:\s+[^\s]+)*)/i);
-      const emailMatch = lastUserMessage.match(/email\s+([^\s@]+@[^\s@]+\.[^\s@]+)/i);
-      const titleMatch = lastUserMessage.match(/title\s+([^\s]+(?:\s+[^\s]+)*)/i);
+      const nameMatch = lastUserMessage.match(/name\s*[=:]\s*([^\s,]+(?:\s+[^\s,]+)*)/i) || 
+                       lastUserMessage.match(/name\s+([^\s,]+(?:\s+[^\s,]+)*)/i);
+      const emailMatch = lastUserMessage.match(/email\s*[=:]\s*([^\s@]+@[^\s@]+\.[^\s@]+)/i) || 
+                        lastUserMessage.match(/email\s+([^\s@]+@[^\s@]+\.[^\s@]+)/i);
+      const titleMatch = lastUserMessage.match(/title\s*[=:]\s*([^\s,]+(?:\s+[^\s,]+)*)/i) || 
+                        lastUserMessage.match(/title\s+([^\s,]+(?:\s+[^\s,]+)*)/i);
+      
+      console.log('Contact creation parsing:', { 
+        nameMatch: nameMatch?.[1], 
+        emailMatch: emailMatch?.[1], 
+        titleMatch: titleMatch?.[1],
+        userMessage: lastUserMessage 
+      });
       
       if (nameMatch && emailMatch) {
         const fullName = nameMatch[1].trim();
@@ -265,8 +275,9 @@ export async function POST(req: NextRequest) {
           });
         }
       } else {
+        console.log('Failed to parse contact details:', { nameMatch, emailMatch, titleMatch });
         return NextResponse.json({
-          message: "I couldn't parse the contact details. Please provide the information in this format: 'name [full name] email [email address] title [optional title]'",
+          message: "I couldn't parse the contact details. Please provide the information in this format: 'name [full name] email [email address] title [optional title]' or 'name = [full name], email = [email address], title = [optional title]'",
           error: true
         });
       }
