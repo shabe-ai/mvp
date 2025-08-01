@@ -59,16 +59,52 @@ export default function Chat() {
     content: string;
   }>>([]);
 
-  // Initialize with welcome message if user is logged in
+  // Function to get initial message based on Google Workspace connection
+  const getInitialMessage = async (): Promise<string> => {
+    try {
+      // Check Google Workspace connection status
+      const response = await fetch("/api/test-token");
+      const data = await response.json();
+      
+      if (data.hasToken) {
+        // User has Google Workspace connected - get today's meetings
+        try {
+          const calendarResponse = await fetch("/api/calendar");
+          const calendarData = await calendarResponse.json();
+          
+          if (calendarData.summary && !calendarData.summary.toLowerCase().includes("insufficient authentication")) {
+            return `📅 **Today's Schedule**\n\n${calendarData.summary}\n\nI can help you analyze files, generate charts, and provide insights. Upload a file to get started!`;
+          } else {
+            return `Hello! I'm your AI assistant. I can see you have Google Workspace connected, but I need additional permissions to access your calendar. You can still upload files for analysis and chart generation. What would you like to do?`;
+          }
+        } catch (error) {
+          return `Hello! I'm your AI assistant. I can see you have Google Workspace connected. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?`;
+        }
+      } else {
+        // User doesn't have Google Workspace connected - show integration instructions
+        return `👋 **Welcome to Shabe AI!**\n\nI'm your AI assistant that can help you analyze files, generate charts, and provide insights.\n\n**To get the most out of your experience:**\n\n1. **Connect Google Workspace** (optional but recommended)\n   - Go to Admin → Google Workspace Integration\n   - Connect your account for calendar access\n\n2. **Upload files** for analysis\n   - Use the upload button to add files\n   - I can analyze PDFs, Excel files, and more\n\n3. **Ask me anything** about your data\n   - Generate charts and insights\n   - Get summaries and recommendations\n\nWhat would you like to do first?`;
+      }
+    } catch (error) {
+      // Fallback message if connection check fails
+      return "Hello! I'm your AI assistant. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?";
+    }
+  };
+
+  // Initialize with dynamic welcome message if user is logged in
   useEffect(() => {
     if (user && isLoaded && messages.length === 0) {
-      const welcomeMessage: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
-        content: "Hello! I'm your AI assistant. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?",
-        timestamp: new Date(),
+      const initializeChat = async () => {
+        const initialContent = await getInitialMessage();
+        const welcomeMessage: Message = {
+          id: Date.now().toString(),
+          role: "assistant",
+          content: initialContent,
+          timestamp: new Date(),
+        };
+        setMessages([welcomeMessage]);
       };
-      setMessages([welcomeMessage]);
+      
+      initializeChat();
     }
   }, [user, isLoaded, messages.length]);
 
