@@ -531,27 +531,39 @@ function applyFilters(records: any[], userMessage: string, dataType: string): an
   const filteredRecords = records.filter((record: any) => {
     if (dataType === 'contacts') {
       return filterTerms.some(term => {
-        const name = `${record.firstName || ''} ${record.lastName || ''}`.toLowerCase();
+        const fullName = `${record.firstName || ''} ${record.lastName || ''}`.toLowerCase().trim();
+        const firstName = (record.firstName || '').toLowerCase();
+        const lastName = (record.lastName || '').toLowerCase();
         const email = (record.email || '').toLowerCase();
         const company = (record.company || '').toLowerCase();
         const title = (record.title || '').toLowerCase();
         
-        // Check for exact name match first
-        if (name.includes(term) || name === term) {
+        // If we have multiple terms, try to match them as a full name first
+        if (filterTerms.length > 1) {
+          const combinedTerms = filterTerms.join(' ');
+          if (fullName === combinedTerms || fullName.includes(combinedTerms)) {
+            return true;
+          }
+        }
+        
+        // Check for exact name match
+        if (fullName === term || fullName.includes(term)) {
           return true;
         }
         
-        // Check individual name parts
-        const firstName = (record.firstName || '').toLowerCase();
-        const lastName = (record.lastName || '').toLowerCase();
-        if (firstName.includes(term) || lastName.includes(term)) {
+        // Check individual name parts (but be more strict)
+        if (firstName === term || lastName === term) {
           return true;
         }
         
-        // Check other fields
-        return email.includes(term) || 
-               company.includes(term) || 
-               title.includes(term);
+        // Only check other fields if it's a single term and not a name
+        if (filterTerms.length === 1) {
+          return email.includes(term) || 
+                 company.includes(term) || 
+                 title.includes(term);
+        }
+        
+        return false;
       });
     } else if (dataType === 'accounts') {
       return filterTerms.some(term => {
@@ -633,6 +645,15 @@ function extractFilterTerms(message: string): string[] {
           return [name];
         }
       }
+    }
+  }
+  
+  // If we have multiple terms that look like a full name, keep them together
+  if (terms.length >= 2) {
+    // Check if this looks like a full name (first + last)
+    const combinedName = terms.join(' ');
+    if (combinedName.length <= 50) {
+      return [combinedName, ...terms]; // Return both combined and individual terms
     }
   }
   
