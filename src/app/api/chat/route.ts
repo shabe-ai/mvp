@@ -388,10 +388,11 @@ function validateStringField(value: unknown, fieldName: string, maxLength?: numb
 // Database operation handler (existing logic)
 async function handleDatabaseOperation(userMessage: string, userId: string) {
   // Implementation from existing code
-  const isContactQuery = userMessage.toLowerCase().includes('contact');
-  const isAccountQuery = userMessage.toLowerCase().includes('account');
-  const isDealQuery = userMessage.toLowerCase().includes('deal');
-  const isActivityQuery = userMessage.toLowerCase().includes('activity');
+  const message = userMessage.toLowerCase();
+  const isContactQuery = message.includes('contact');
+  const isAccountQuery = message.includes('account');
+  const isDealQuery = message.includes('deal');
+  const isActivityQuery = message.includes('activity');
   
   try {
     const teams = await convex.query(api.crm.getTeamsByUser, { userId });
@@ -400,7 +401,8 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
     let dataType = '';
     let records: any[] = [];
     
-    if (isContactQuery) {
+    // Default to contacts if no specific type is mentioned
+    if (isContactQuery || (!isAccountQuery && !isDealQuery && !isActivityQuery)) {
       dataType = 'contacts';
       records = await convex.query(api.crm.getContactsByTeam, { teamId });
     } else if (isAccountQuery) {
@@ -413,6 +415,16 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
       dataType = 'activities';
       records = await convex.query(api.crm.getActivitiesByTeam, { teamId });
     }
+    
+    console.log('🔍 Database operation debug:', {
+      userMessage,
+      dataType,
+      recordsCount: records.length,
+      isContactQuery,
+      isAccountQuery,
+      isDealQuery,
+      isActivityQuery
+    });
     
     if (records.length === 0) {
       return {
