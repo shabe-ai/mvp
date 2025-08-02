@@ -523,51 +523,62 @@ function applyFilters(records: any[], userMessage: string, dataType: string): an
   
   const filteredRecords = records.filter((record: any) => {
     if (dataType === 'contacts') {
+      const fullName = `${record.firstName || ''} ${record.lastName || ''}`.toLowerCase().trim();
+      const firstName = (record.firstName || '').toLowerCase();
+      const lastName = (record.lastName || '').toLowerCase();
+      const email = (record.email || '').toLowerCase();
+      const company = (record.company || '').toLowerCase();
+      const title = (record.title || '').toLowerCase();
+      
+      // Check for company/title specific queries
+      if (message.includes(' at ') || message.includes(' with ')) {
+        // If query contains "at company" or "with title", prioritize those matches
+        if (message.includes(' at ') && filterTerms.some(term => company.includes(term))) {
+          return true;
+        }
+        if (message.includes(' with ') && filterTerms.some(term => title.includes(term))) {
+          return true;
+        }
+      }
+      
+      // If we have multiple terms, prioritize exact name matching
+      if (filterTerms.length > 1) {
+        const combinedTerms = filterTerms.join(' ');
+        // Exact full name match
+        if (fullName === combinedTerms) {
+          return true;
+        }
+        // Full name contains the combined terms
+        if (fullName.includes(combinedTerms)) {
+          return true;
+        }
+        // Check if ALL terms are found in the name (not just any)
+        const allTermsInName = filterTerms.every(term => 
+          fullName.includes(term) || firstName.includes(term) || lastName.includes(term)
+        );
+        if (allTermsInName) {
+          return true;
+        }
+        // If no name match found, don't check other fields for multiple terms
+        return false;
+      }
+      
+      // Single term matching
       return filterTerms.some(term => {
-        const fullName = `${record.firstName || ''} ${record.lastName || ''}`.toLowerCase().trim();
-        const firstName = (record.firstName || '').toLowerCase();
-        const lastName = (record.lastName || '').toLowerCase();
-        const email = (record.email || '').toLowerCase();
-        const company = (record.company || '').toLowerCase();
-        const title = (record.title || '').toLowerCase();
-        
-        // Check for company/title specific queries
-        if (message.includes(' at ') || message.includes(' with ')) {
-          // If query contains "at company" or "with title", prioritize those matches
-          if (message.includes(' at ') && company.includes(term)) {
-            return true;
-          }
-          if (message.includes(' with ') && title.includes(term)) {
-            return true;
-          }
-        }
-        
-        // If we have multiple terms, try to match them as a full name first
-        if (filterTerms.length > 1) {
-          const combinedTerms = filterTerms.join(' ');
-          if (fullName === combinedTerms || fullName.includes(combinedTerms)) {
-            return true;
-          }
-        }
-        
-        // Check for exact name match
+        // Check for exact name match first
         if (fullName === term || fullName.includes(term)) {
           return true;
         }
         
-        // Check individual name parts (but be more strict)
+        // Check individual name parts (exact matches only)
         if (firstName === term || lastName === term) {
           return true;
         }
         
-        // Only check other fields if it's a single term and not a name
-        if (filterTerms.length === 1) {
-          return email.includes(term) || 
-                 company.includes(term) || 
-                 title.includes(term);
-        }
-        
-        return false;
+        // Only check other fields for single terms
+        return email.includes(term) || 
+               company.includes(term) || 
+               title.includes(term);
       });
     } else if (dataType === 'accounts') {
       return filterTerms.some(term => {
