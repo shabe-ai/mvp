@@ -53,18 +53,27 @@ const fastIntentPatterns = {
       /list.*?activities/i,
       /all.*?activities/i,
       /view.*?data/i,
-      /show.*?data/i
+      /show.*?data/i,
+      // Add specific name patterns for database queries
+      /view\s+[a-zA-Z\s]+/i,
+      /show\s+[a-zA-Z\s]+/i,
+      /find\s+[a-zA-Z\s]+/i,
+      /get\s+[a-zA-Z\s]+/i
     ],
     confidence: 0.9
   },
   generateChart: {
     patterns: [
-      /chart/i,
-      /graph/i,
-      /plot/i,
-      /visualize/i,
       /create.*?chart/i,
-      /generate.*?chart/i
+      /generate.*?chart/i,
+      /make.*?chart/i,
+      /build.*?chart/i,
+      /chart.*?of/i,
+      /graph.*?of/i,
+      /plot.*?of/i,
+      /visualize.*?data/i,
+      /chart.*?data/i,
+      /graph.*?data/i
     ],
     confidence: 0.8
   },
@@ -97,10 +106,16 @@ You are an AI assistant that classifies user intents and extracts relevant entit
 Available actions:
 - send_email: User wants to send an email to someone
 - create_contact: User wants to create a new contact
-- query_database: User wants to view, search, or filter database records
-- generate_chart: User wants to create a chart or visualization
+- query_database: User wants to view, search, or filter database records (contacts, accounts, deals, activities)
+- generate_chart: User wants to create a chart or visualization of data
 - analyze_file: User wants to analyze uploaded files
 - general_conversation: General chat or questions
+
+IMPORTANT CLASSIFICATION RULES:
+- If the user mentions viewing/searching/finding specific people, companies, or records → query_database
+- If the user mentions creating charts, graphs, or visualizations → generate_chart
+- If the user mentions "view", "show", "find", "get" + a name → query_database
+- If the user mentions "chart", "graph", "visualize" + data → generate_chart
 
 Extract entities like:
 - recipient: Who the email is for (name)
