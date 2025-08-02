@@ -505,11 +505,18 @@ function applyFilters(records: any[], userMessage: string, dataType: string): an
   // Extract filter terms from the message
   const filterTerms = extractFilterTerms(message);
   
+  console.log('🔍 Filtering debug:', {
+    originalMessage: userMessage,
+    extractedTerms: filterTerms,
+    dataType: dataType,
+    totalRecords: records.length
+  });
+  
   if (filterTerms.length === 0) {
     return records; // No filters, return all records
   }
   
-  return records.filter((record: any) => {
+  const filteredRecords = records.filter((record: any) => {
     if (dataType === 'contacts') {
       return filterTerms.some(term => {
         const name = `${record.firstName || ''} ${record.lastName || ''}`.toLowerCase();
@@ -568,12 +575,22 @@ function applyFilters(records: any[], userMessage: string, dataType: string): an
     
     return true; // Default to include if unknown data type
   });
+  
+  console.log('🔍 Filtering result:', {
+    filteredCount: filteredRecords.length,
+    sampleRecords: filteredRecords.slice(0, 3).map(r => ({
+      name: `${r.firstName || ''} ${r.lastName || ''}`.trim(),
+      email: r.email
+    }))
+  });
+  
+  return filteredRecords;
 }
 
 // Helper function to extract filter terms from user message
 function extractFilterTerms(message: string): string[] {
   // Remove common query words but preserve names
-  const queryWords = ['view', 'show', 'list', 'all', 'contacts', 'accounts', 'deals', 'activities', 'at', 'in', 'with'];
+  const queryWords = ['view', 'show', 'list', 'all', 'contacts', 'accounts', 'deals', 'activities', 'contact', 'account', 'deal', 'activity', 'at', 'in', 'with'];
   let filteredMessage = message;
   
   queryWords.forEach(word => {
