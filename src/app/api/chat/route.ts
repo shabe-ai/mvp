@@ -3,6 +3,92 @@ import OpenAI from "openai";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
 
+// Add proper interfaces at the top
+interface UserContext {
+  userProfile: {
+    name: string;
+    email: string;
+    company: string;
+  };
+  companyData: {
+    name: string;
+    website: string;
+    description: string;
+  };
+  conversationHistory: Message[];
+  sessionFiles: Array<{ name: string; content: string }>;
+}
+
+interface IntentResult {
+  action: string | null;
+  entities?: Record<string, unknown>;
+  confidence: number;
+}
+
+interface EmailEntities {
+  recipient?: string;
+  subject?: string;
+  content_type?: string;
+}
+
+interface DatabaseRecord {
+  _id: string;
+  _creationTime: number;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  phone?: string;
+  company?: string;
+  title?: string;
+  leadStatus?: string;
+  contactType?: string;
+  source?: string;
+  name?: string;
+  industry?: string;
+  size?: string;
+  website?: string;
+  value?: string;
+  stage?: string;
+  probability?: string | number;
+  type?: string;
+  subject?: string;
+  status?: string;
+  dueDate?: string;
+}
+
+interface FormattedRecord {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  company: string;
+  title: string;
+  status: string;
+  type: string;
+  source: string;
+  created: string;
+  industry?: string;
+  size?: string;
+  website?: string;
+  value?: string;
+  stage?: string;
+  probability?: string;
+  dueDate?: string;
+  subject?: string;
+}
+
+interface DatabaseOperationResult {
+  message: string;
+  data?: {
+    records: FormattedRecord[];
+    type: string;
+    count: number;
+    displayFormat: string;
+  };
+  needsClarification?: boolean;
+  error?: boolean;
+}
+
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -99,7 +185,7 @@ function fastPatternMatch(message: string) {
 }
 
 // LLM intent classification for complex/ambiguous cases
-async function classifyIntentWithLLM(message: string, context: any) {
+async function classifyIntentWithLLM(message: string, context: UserContext) {
   const prompt = `
 You are an AI assistant that classifies user intents and extracts relevant entities.
 
@@ -151,7 +237,7 @@ Return ONLY a JSON object: { "action": "...", "entities": { ... }, "confidence":
 }
 
 // Entity extraction for email requests
-async function extractEmailEntities(message: string, context: any) {
+async function extractEmailEntities(message: string, context: UserContext) {
   const prompt = `
 Extract email-related entities from the user's message.
 
@@ -181,7 +267,7 @@ Return ONLY a JSON object: { "recipient": "...", "subject": "...", "content_type
 }
 
 // Main intent classification function
-async function classifyIntent(message: string, context: any) {
+async function classifyIntent(message: string, context: UserContext): Promise<IntentResult> {
   // Step 1: Fast pattern matching (0-5ms)
   const fastResult = fastPatternMatch(message);
   
@@ -198,7 +284,7 @@ async function classifyIntent(message: string, context: any) {
 }
 
 // Action handlers
-async function handleEmailRequest(message: string, entities: any, userId: string, context: any) {
+async function handleEmailRequest(message: string, entities: EmailEntities, userId: string, context: UserContext) {
   // Extract recipient from message or entities
   const emailEntities = await extractEmailEntities(message, context);
   const recipient = entities.recipient || emailEntities.recipient;
@@ -249,7 +335,7 @@ async function handleEmailRequest(message: string, entities: any, userId: string
   }
 }
 
-async function draftEmail(contact: any, context: any) {
+async function draftEmail(contact: DatabaseRecord, context: UserContext) {
   const emailPrompt = `
 You are drafting a professional email.
 
@@ -291,7 +377,7 @@ Draft a professional email. Return ONLY a JSON object:
   }
 }
 
-async function handleContactCreation(message: string, entities: any, userId: string) {
+async function handleContactCreation(message: string, entities: EmailEntities, userId: string) {
   // Extract contact details from message
   const nameMatch = message.match(/name\s*[=:]\s*([^\s,]+(?:\s+[^\s,]+)*)/i) || 
                    message.match(/name\s+([^\s,]+(?:\s+[^\s,]+)*)/i) ||
@@ -347,19 +433,19 @@ async function handleContactCreation(message: string, entities: any, userId: str
   }
 }
 
-async function handleDatabaseQuery(message: string, entities: any, userId: string) {
+async function handleDatabaseQuery(message: string, entities: Record<string, unknown>, userId: string) {
   // Use existing database operation logic
   const result = await handleDatabaseOperation(message, userId);
   return NextResponse.json(result);
 }
 
-async function handleChartGeneration(message: string, entities: any, sessionFiles: any[], userId: string) {
+async function handleChartGeneration(message: string, entities: Record<string, unknown>, sessionFiles: Array<{ name: string; content: string }>, userId: string) {
   // Use existing chart generation logic
   const result = await handleChart(message, sessionFiles, userId);
   return NextResponse.json(result);
 }
 
-async function handleGeneralConversation(message: string, messages: any[], context: any) {
+async function handleGeneralConversation(message: string, messages: Message[], context: UserContext) {
   // General AI conversation
   const completion = await openai.chat.completions.create({
     model: "gpt-4",
@@ -401,7 +487,7 @@ function validateStringField(value: unknown, fieldName: string, maxLength?: numb
 }
 
 // Database operation handler (existing logic)
-async function handleDatabaseOperation(userMessage: string, userId: string) {
+async function handleDatabaseOperation(userMessage: string, userId: string): Promise<DatabaseOperationResult> {
   // Implementation from existing code
   const message = userMessage.toLowerCase();
   const isContactQuery = message.includes('contact');
@@ -414,7 +500,7 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
     const teamId = teams.length > 0 ? teams[0]._id : 'default';
     
     let dataType = '';
-    let records: any[] = [];
+    let records: DatabaseRecord[] = [];
     
     // Default to contacts if no specific type is mentioned
     if (isContactQuery || (!isAccountQuery && !isDealQuery && !isActivityQuery)) {
@@ -463,7 +549,7 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
         message: clarificationMessage,
         needsClarification: true,
         data: {
-          records: filteredRecords.slice(0, 5).map((record: any) => formatRecord(record, dataType)),
+          records: filteredRecords.slice(0, 5).map((record: DatabaseRecord) => formatRecord(record, dataType)),
           type: dataType,
           count: filteredRecords.length,
           displayFormat: 'table'
@@ -478,7 +564,7 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
     }
     
     // Format records for table display
-    const formattedRecords = filteredRecords.map((record: any) => formatRecord(record, dataType));
+    const formattedRecords = filteredRecords.map((record: DatabaseRecord) => formatRecord(record, dataType));
     
     const filterInfo = getFilterInfo(userMessage, dataType);
     const message = filterInfo ? 
@@ -504,7 +590,7 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
 }
 
 // Helper function to apply filters based on user message
-function applyFilters(records: any[], userMessage: string, dataType: string): any[] {
+function applyFilters(records: DatabaseRecord[], userMessage: string, dataType: string): DatabaseRecord[] {
   const message = userMessage.toLowerCase();
   
   // Extract filter terms from the message
@@ -521,7 +607,7 @@ function applyFilters(records: any[], userMessage: string, dataType: string): an
     return records; // No filters, return all records
   }
   
-  const filteredRecords = records.filter((record: any) => {
+  const filteredRecords = records.filter((record: DatabaseRecord) => {
     if (dataType === 'contacts') {
       const fullName = `${record.firstName || ''} ${record.lastName || ''}`.toLowerCase().trim();
       const firstName = (record.firstName || '').toLowerCase();
@@ -686,10 +772,15 @@ function getFilterInfo(userMessage: string, dataType: string): string | null {
 }
 
 // Helper function to format records consistently
-function formatRecord(record: any, dataType: string) {
+function formatRecord(record: DatabaseRecord, dataType: string): FormattedRecord {
+  const baseRecord = {
+    id: record._id,
+    created: new Date(record._creationTime).toLocaleDateString()
+  };
+
   if (dataType === 'contacts') {
     return {
-      id: record._id,
+      ...baseRecord,
       name: `${record.firstName || ''} ${record.lastName || ''}`.trim(),
       email: record.email || '',
       phone: record.phone || '',
@@ -697,42 +788,70 @@ function formatRecord(record: any, dataType: string) {
       title: record.title || '',
       status: record.leadStatus || '',
       type: record.contactType || '',
-      source: record.source || '',
-      created: new Date(record._creationTime).toLocaleDateString()
+      source: record.source || ''
     };
   } else if (dataType === 'accounts') {
     return {
-      id: record._id,
+      ...baseRecord,
       name: record.name || '',
+      email: '', // Accounts don't have emails
+      phone: '', // Accounts don't have phones
+      company: record.name || '', // Use name as company for accounts
+      title: '', // Accounts don't have titles
+      status: '', // Accounts don't have status
+      type: '', // Accounts don't have type
+      source: '', // Accounts don't have source
       industry: record.industry || '',
       size: record.size || '',
-      website: record.website || '',
-      created: new Date(record._creationTime).toLocaleDateString()
+      website: record.website || ''
     };
   } else if (dataType === 'deals') {
     return {
-      id: record._id,
+      ...baseRecord,
       name: record.name || '',
+      email: '', // Deals don't have emails
+      phone: '', // Deals don't have phones
+      company: '', // Deals don't have company
+      title: '', // Deals don't have title
+      status: record.stage || '',
+      type: '', // Deals don't have type
+      source: '', // Deals don't have source
       value: record.value || '',
       stage: record.stage || '',
-      probability: record.probability || '',
-      created: new Date(record._creationTime).toLocaleDateString()
+      probability: typeof record.probability === 'number' ? record.probability.toString() : record.probability || ''
     };
   } else if (dataType === 'activities') {
     return {
-      id: record._id,
-      type: record.type || '',
-      subject: record.subject || '',
+      ...baseRecord,
+      name: record.subject || '', // Use subject as name for activities
+      email: '', // Activities don't have emails
+      phone: '', // Activities don't have phones
+      company: '', // Activities don't have company
+      title: '', // Activities don't have title
       status: record.status || '',
-      dueDate: record.dueDate ? new Date(record.dueDate).toLocaleDateString() : '',
-      created: new Date(record._creationTime).toLocaleDateString()
+      type: record.type || '',
+      source: '', // Activities don't have source
+      subject: record.subject || '',
+      dueDate: record.dueDate ? new Date(record.dueDate).toLocaleDateString() : ''
     };
   }
-  return record;
+  
+  // Fallback for unknown data types
+  return {
+    ...baseRecord,
+    name: record.name || '',
+    email: record.email || '',
+    phone: record.phone || '',
+    company: record.company || '',
+    title: record.title || '',
+    status: record.status || '',
+    type: record.type || '',
+    source: record.source || ''
+  };
 }
 
 // Helper function to generate clarification messages
-function getClarificationMessage(dataType: string, records: any[], userMessage: string): string {
+function getClarificationMessage(dataType: string, records: DatabaseRecord[], userMessage: string): string {
   if (dataType === 'contacts') {
     const companies = [...new Set(records.map(r => r.company).filter(Boolean))];
     const titles = [...new Set(records.map(r => r.title).filter(Boolean))];
@@ -841,7 +960,7 @@ export async function POST(req: NextRequest) {
     const lastUserMessage = messages[messages.length - 1].content;
     
     // Create context for LLM classification
-    const context = {
+    const context: UserContext = {
       userProfile: {
         name: userData.name || "User",
         email: userData.email || "user@example.com",

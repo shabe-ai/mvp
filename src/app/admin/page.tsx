@@ -46,7 +46,7 @@ function ProfileSection() {
           <div>
             <label className="block text-sm font-medium text-black mb-1">Member Since</label>
             <p className="text-sm text-[#d9d2c7]">
-              {new Date(user.createdAt).toLocaleDateString()}
+              {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}
             </p>
           </div>
         </div>
