@@ -435,6 +435,27 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
     // Apply filtering based on user message
     const filteredRecords = applyFilters(records, userMessage, dataType);
     
+    console.log('🔍 Filtering result:', {
+      originalCount: records.length,
+      filteredCount: filteredRecords.length,
+      userMessage
+    });
+    
+    // If filtering returns too many results or ambiguous results, ask for clarification
+    if (filteredRecords.length > 3) {
+      const clarificationMessage = getClarificationMessage(dataType, filteredRecords, userMessage);
+      return {
+        message: clarificationMessage,
+        needsClarification: true,
+        data: {
+          records: filteredRecords.slice(0, 5).map((record: any) => formatRecord(record, dataType)),
+          type: dataType,
+          count: filteredRecords.length,
+          displayFormat: 'table'
+        }
+      };
+    }
+    
     if (filteredRecords.length === 0) {
       return {
         message: `No ${dataType} found matching your filter criteria.`
@@ -442,50 +463,7 @@ async function handleDatabaseOperation(userMessage: string, userId: string) {
     }
     
     // Format records for table display
-    const formattedRecords = filteredRecords.map((record: any) => {
-      if (dataType === 'contacts') {
-        return {
-          id: record._id,
-          name: `${record.firstName || ''} ${record.lastName || ''}`.trim(),
-          email: record.email || '',
-          phone: record.phone || '',
-          company: record.company || '',
-          title: record.title || '',
-          status: record.leadStatus || '',
-          type: record.contactType || '',
-          source: record.source || '',
-          created: new Date(record._creationTime).toLocaleDateString()
-        };
-      } else if (dataType === 'accounts') {
-        return {
-          id: record._id,
-          name: record.name || '',
-          industry: record.industry || '',
-          size: record.size || '',
-          website: record.website || '',
-          created: new Date(record._creationTime).toLocaleDateString()
-        };
-      } else if (dataType === 'deals') {
-        return {
-          id: record._id,
-          name: record.name || '',
-          value: record.value || '',
-          stage: record.stage || '',
-          probability: record.probability || '',
-          created: new Date(record._creationTime).toLocaleDateString()
-        };
-      } else if (dataType === 'activities') {
-        return {
-          id: record._id,
-          type: record.type || '',
-          subject: record.subject || '',
-          status: record.status || '',
-          dueDate: record.dueDate ? new Date(record.dueDate).toLocaleDateString() : '',
-          created: new Date(record._creationTime).toLocaleDateString()
-        };
-      }
-      return record;
-    });
+    const formattedRecords = filteredRecords.map((record: any) => formatRecord(record, dataType));
     
     const filterInfo = getFilterInfo(userMessage, dataType);
     const message = filterInfo ? 
@@ -537,6 +515,17 @@ function applyFilters(records: any[], userMessage: string, dataType: string): an
         const email = (record.email || '').toLowerCase();
         const company = (record.company || '').toLowerCase();
         const title = (record.title || '').toLowerCase();
+        
+        // Check for company/title specific queries
+        if (message.includes(' at ') || message.includes(' with ')) {
+          // If query contains "at company" or "with title", prioritize those matches
+          if (message.includes(' at ') && company.includes(term)) {
+            return true;
+          }
+          if (message.includes(' with ') && title.includes(term)) {
+            return true;
+          }
+        }
         
         // If we have multiple terms, try to match them as a full name first
         if (filterTerms.length > 1) {
@@ -604,7 +593,8 @@ function applyFilters(records: any[], userMessage: string, dataType: string): an
     filteredCount: filteredRecords.length,
     sampleRecords: filteredRecords.slice(0, 3).map(r => ({
       name: `${r.firstName || ''} ${r.lastName || ''}`.trim(),
-      email: r.email
+      email: r.email,
+      company: r.company
     }))
   });
   
@@ -666,6 +656,95 @@ function getFilterInfo(userMessage: string, dataType: string): string | null {
   if (terms.length === 0) return null;
   
   return terms.join(', ');
+}
+
+// Helper function to format records consistently
+function formatRecord(record: any, dataType: string) {
+  if (dataType === 'contacts') {
+    return {
+      id: record._id,
+      name: `${record.firstName || ''} ${record.lastName || ''}`.trim(),
+      email: record.email || '',
+      phone: record.phone || '',
+      company: record.company || '',
+      title: record.title || '',
+      status: record.leadStatus || '',
+      type: record.contactType || '',
+      source: record.source || '',
+      created: new Date(record._creationTime).toLocaleDateString()
+    };
+  } else if (dataType === 'accounts') {
+    return {
+      id: record._id,
+      name: record.name || '',
+      industry: record.industry || '',
+      size: record.size || '',
+      website: record.website || '',
+      created: new Date(record._creationTime).toLocaleDateString()
+    };
+  } else if (dataType === 'deals') {
+    return {
+      id: record._id,
+      name: record.name || '',
+      value: record.value || '',
+      stage: record.stage || '',
+      probability: record.probability || '',
+      created: new Date(record._creationTime).toLocaleDateString()
+    };
+  } else if (dataType === 'activities') {
+    return {
+      id: record._id,
+      type: record.type || '',
+      subject: record.subject || '',
+      status: record.status || '',
+      dueDate: record.dueDate ? new Date(record.dueDate).toLocaleDateString() : '',
+      created: new Date(record._creationTime).toLocaleDateString()
+    };
+  }
+  return record;
+}
+
+// Helper function to generate clarification messages
+function getClarificationMessage(dataType: string, records: any[], userMessage: string): string {
+  if (dataType === 'contacts') {
+    const companies = [...new Set(records.map(r => r.company).filter(Boolean))];
+    const titles = [...new Set(records.map(r => r.title).filter(Boolean))];
+    
+    let message = `I found ${records.length} contacts that might match your search. To help me find the exact contact you're looking for, could you please provide more details?\n\n`;
+    
+    if (companies.length > 0) {
+      message += `**Companies found:** ${companies.slice(0, 3).join(', ')}${companies.length > 3 ? '...' : ''}\n`;
+    }
+    
+    if (titles.length > 0) {
+      message += `**Titles found:** ${titles.slice(0, 3).join(', ')}${titles.length > 3 ? '...' : ''}\n`;
+    }
+    
+    message += `\nPlease try:\n`;
+    message += `• "view john smith at acme corporation"\n`;
+    message += `• "show sarah johnson with ceo title"\n`;
+    message += `• "find mike chen with email"\n`;
+    message += `• Or provide the company name, title, or email address`;
+    
+    return message;
+  } else if (dataType === 'accounts') {
+    const industries = [...new Set(records.map(r => r.industry).filter(Boolean))];
+    
+    let message = `I found ${records.length} accounts that might match your search. To help me find the exact account, could you please provide more details?\n\n`;
+    
+    if (industries.length > 0) {
+      message += `**Industries found:** ${industries.slice(0, 3).join(', ')}${industries.length > 3 ? '...' : ''}\n`;
+    }
+    
+    message += `\nPlease try:\n`;
+    message += `• "view acme corporation in technology"\n`;
+    message += `• "show global solutions in healthcare"\n`;
+    message += `• Or provide the industry or website`;
+    
+    return message;
+  }
+  
+  return `I found ${records.length} ${dataType} that might match your search. Could you please provide more specific details to help me find the exact ${dataType} you're looking for?`;
 }
 
 // Chart generation handler (existing logic)
