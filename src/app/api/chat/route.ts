@@ -517,8 +517,20 @@ function applyFilters(records: any[], userMessage: string, dataType: string): an
         const company = (record.company || '').toLowerCase();
         const title = (record.title || '').toLowerCase();
         
-        return name.includes(term) || 
-               email.includes(term) || 
+        // Check for exact name match first
+        if (name.includes(term) || name === term) {
+          return true;
+        }
+        
+        // Check individual name parts
+        const firstName = (record.firstName || '').toLowerCase();
+        const lastName = (record.lastName || '').toLowerCase();
+        if (firstName.includes(term) || lastName.includes(term)) {
+          return true;
+        }
+        
+        // Check other fields
+        return email.includes(term) || 
                company.includes(term) || 
                title.includes(term);
       });
@@ -560,7 +572,7 @@ function applyFilters(records: any[], userMessage: string, dataType: string): an
 
 // Helper function to extract filter terms from user message
 function extractFilterTerms(message: string): string[] {
-  // Remove common query words
+  // Remove common query words but preserve names
   const queryWords = ['view', 'show', 'list', 'all', 'contacts', 'accounts', 'deals', 'activities', 'at', 'in', 'with'];
   let filteredMessage = message;
   
@@ -573,6 +585,27 @@ function extractFilterTerms(message: string): string[] {
     .split(/[\s,]+/)
     .map(term => term.trim())
     .filter(term => term.length > 0 && term.length < 50); // Reasonable length limits
+  
+  // If no terms found, try to extract names from the original message
+  if (terms.length === 0) {
+    // Look for patterns like "view john smith" or "show john"
+    const namePatterns = [
+      /view\s+([a-zA-Z\s]+)/i,
+      /show\s+([a-zA-Z\s]+)/i,
+      /find\s+([a-zA-Z\s]+)/i,
+      /get\s+([a-zA-Z\s]+)/i
+    ];
+    
+    for (const pattern of namePatterns) {
+      const match = message.match(pattern);
+      if (match && match[1]) {
+        const name = match[1].trim();
+        if (name.length > 0) {
+          return [name];
+        }
+      }
+    }
+  }
   
   return terms;
 }
