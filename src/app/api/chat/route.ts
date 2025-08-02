@@ -630,7 +630,7 @@ function applyFilters(records: any[], userMessage: string, dataType: string): an
 // Helper function to extract filter terms from user message
 function extractFilterTerms(message: string): string[] {
   // Remove common query words but preserve names
-  const queryWords = ['view', 'show', 'list', 'all', 'contacts', 'accounts', 'deals', 'activities', 'contact', 'account', 'deal', 'activity', 'at', 'in', 'with'];
+  const queryWords = ['view', 'show', 'list', 'all', 'contacts', 'accounts', 'deals', 'activities', 'contact', 'account', 'deal', 'activity', 'at', 'in', 'with', 'find', 'get', 'search', 'filter'];
   let filteredMessage = message;
   
   queryWords.forEach(word => {
@@ -650,7 +650,8 @@ function extractFilterTerms(message: string): string[] {
       /view\s+([a-zA-Z\s]+)/i,
       /show\s+([a-zA-Z\s]+)/i,
       /find\s+([a-zA-Z\s]+)/i,
-      /get\s+([a-zA-Z\s]+)/i
+      /get\s+([a-zA-Z\s]+)/i,
+      /search\s+([a-zA-Z\s]+)/i
     ];
     
     for (const pattern of namePatterns) {
