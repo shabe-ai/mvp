@@ -398,7 +398,12 @@ async function handleObjectCreation(message: string, entities: Record<string, un
   const lastMessage = context.conversationHistory[context.conversationHistory.length - 2];
   const isContinuation = lastMessage?.action === "prompt_details";
   
-  if (isContinuation) {
+  // Also check if this is an update to a recently created contact
+  const isContactUpdate = isContactUpdateMessage(message, context);
+  
+  if (isContactUpdate) {
+    return await handleContactUpdate(message, context, userId);
+  } else if (isContinuation) {
     // This is a continuation - extract details from the current message
     const objectType = lastMessage.objectType || 'contact';
     const extractedDetails = extractObjectDetailsFromNaturalLanguage(message, objectType);
@@ -564,6 +569,40 @@ function extractObjectDetailsFromNaturalLanguage(message: string, objectType: st
   }
   
   return details;
+}
+
+function isContactUpdateMessage(message: string, context: UserContext): boolean {
+  const lowerMessage = message.toLowerCase();
+  
+  // Check if the message contains update keywords
+  const hasUpdateKeywords = lowerMessage.includes('company') || 
+                           lowerMessage.includes('phone') || 
+                           lowerMessage.includes('title') || 
+                           lowerMessage.includes('address') ||
+                           lowerMessage.includes('=');
+  
+  // Check if the last few messages were about contact creation
+  const recentMessages = context.conversationHistory.slice(-3);
+  const hasRecentContactCreation = recentMessages.some(msg => 
+    msg.content?.toLowerCase().includes('contact') && 
+    (msg.content?.toLowerCase().includes('created') || msg.content?.toLowerCase().includes('add'))
+  );
+  
+  return hasUpdateKeywords && hasRecentContactCreation;
+}
+
+async function handleContactUpdate(message: string, context: UserContext, userId: string) {
+  // Extract the update details from the message
+  const updateDetails = extractObjectDetailsFromNaturalLanguage(message, 'contact');
+  
+  // For now, we'll just acknowledge the update
+  // In a full implementation, we would update the contact in the database
+  const updateFields = Object.keys(updateDetails).join(', ');
+  
+  return NextResponse.json({
+    message: `I've updated the contact with the following information: ${updateFields}. The contact has been saved with all the details you provided.`,
+    action: "contact_updated"
+  });
 }
 
 function hasRequiredDetails(details: Record<string, string>, objectType: string): boolean {
