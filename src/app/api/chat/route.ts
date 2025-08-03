@@ -116,7 +116,19 @@ const fastIntentPatterns = {
       /create.*?contact/i,
       /add.*?contact/i,
       /new.*?contact/i,
-      /contact.*?creation/i
+      /contact.*?creation/i,
+      /create.*?account/i,
+      /add.*?account/i,
+      /new.*?account/i,
+      /account.*?creation/i,
+      /create.*?deal/i,
+      /add.*?deal/i,
+      /new.*?deal/i,
+      /deal.*?creation/i,
+      /create.*?activity/i,
+      /add.*?activity/i,
+      /new.*?activity/i,
+      /activity.*?creation/i
     ],
     confidence: 0.9
   },
@@ -191,7 +203,7 @@ You are an AI assistant that classifies user intents and extracts relevant entit
 
 Available actions:
 - send_email: User wants to send an email to someone
-- create_contact: User wants to create a new contact
+- create_contact: User wants to create a new contact, account, deal, or activity
 - query_database: User wants to view, search, or filter database records (contacts, accounts, deals, activities)
 - generate_chart: User wants to create a chart or visualization of data
 - analyze_file: User wants to analyze uploaded files
@@ -377,60 +389,284 @@ Draft a professional email. Return ONLY a JSON object:
   }
 }
 
-async function handleContactCreation(message: string, entities: EmailEntities, userId: string) {
-  // Extract contact details from message
+// Enhanced object creation handlers for all types
+async function handleObjectCreation(message: string, entities: Record<string, unknown>, userId: string, context: UserContext) {
+  // Determine what type of object to create
+  const objectType = determineObjectType(message);
+  
+  // Extract any provided details from the message
+  const extractedDetails = extractObjectDetails(message, objectType);
+  
+  // If we have enough details, create the object
+  if (hasRequiredDetails(extractedDetails, objectType)) {
+    return await createObject(extractedDetails, objectType, userId);
+  } else {
+    // Return a prompt for missing information
+    return NextResponse.json({
+      message: getCreationPrompt(objectType, extractedDetails),
+      action: "prompt_details",
+      objectType,
+      partialDetails: extractedDetails
+    });
+  }
+}
+
+function determineObjectType(message: string): string {
+  const lowerMessage = message.toLowerCase();
+  
+  if (lowerMessage.includes('contact') || lowerMessage.includes('person')) {
+    return 'contact';
+  } else if (lowerMessage.includes('account') || lowerMessage.includes('company') || lowerMessage.includes('organization')) {
+    return 'account';
+  } else if (lowerMessage.includes('deal') || lowerMessage.includes('opportunity') || lowerMessage.includes('sale')) {
+    return 'deal';
+  } else if (lowerMessage.includes('activity') || lowerMessage.includes('event') || lowerMessage.includes('meeting') || lowerMessage.includes('call')) {
+    return 'activity';
+  } else {
+    // Default to contact if no specific type mentioned
+    return 'contact';
+  }
+}
+
+function extractObjectDetails(message: string, objectType: string): Record<string, string> {
+  const details: Record<string, string> = {};
+  
+  // Extract name patterns
   const nameMatch = message.match(/name\s*[=:]\s*([^\s,]+(?:\s+[^\s,]+)*)/i) || 
                    message.match(/name\s+([^\s,]+(?:\s+[^\s,]+)*)/i) ||
                    message.match(/name\s+([^,\n]+?)(?:\s+email\s|$)/i);
+  if (nameMatch) {
+    details.name = nameMatch[1].trim();
+  }
+  
+  // Extract email patterns
   const emailMatch = message.match(/email\s*[=:]\s*([^\s@]+@[^\s@]+\.[^\s@]+)/i) || 
                     message.match(/email\s+([^\s@]+@[^\s@]+\.[^\s@]+)/i);
+  if (emailMatch) {
+    details.email = emailMatch[1].trim();
+  }
+  
+  // Extract phone patterns
+  const phoneMatch = message.match(/phone\s*[=:]\s*([^\s,]+)/i) || 
+                    message.match(/phone\s+([^\s,]+)/i);
+  if (phoneMatch) {
+    details.phone = phoneMatch[1].trim();
+  }
+  
+  // Extract title patterns
   const titleMatch = message.match(/title\s*[=:]\s*([^\s,]+(?:\s+[^\s,]+)*)/i) || 
                     message.match(/title\s+([^\s,]+(?:\s+[^\s,]+)*)/i);
+  if (titleMatch) {
+    details.title = titleMatch[1].trim();
+  }
   
-  if (nameMatch && emailMatch) {
-    const fullName = nameMatch[1].trim();
-    const email = emailMatch[1].trim();
-    const title = titleMatch ? titleMatch[1].trim() : '';
-    
-    const nameParts = fullName.split(' ');
-    const firstName = nameParts[0];
-    const lastName = nameParts.slice(1).join(' ') || '';
-    
-    try {
-      const teams = await convex.query(api.crm.getTeamsByUser, { userId });
-      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+  // Extract company patterns
+  const companyMatch = message.match(/company\s*[=:]\s*([^\s,]+(?:\s+[^\s,]+)*)/i) || 
+                      message.match(/company\s+([^\s,]+(?:\s+[^\s,]+)*)/i);
+  if (companyMatch) {
+    details.company = companyMatch[1].trim();
+  }
+  
+  // Extract website patterns
+  const websiteMatch = message.match(/website\s*[=:]\s*([^\s,]+)/i) || 
+                      message.match(/website\s+([^\s,]+)/i);
+  if (websiteMatch) {
+    details.website = websiteMatch[1].trim();
+  }
+  
+  // Extract industry patterns
+  const industryMatch = message.match(/industry\s*[=:]\s*([^\s,]+(?:\s+[^\s,]+)*)/i) || 
+                       message.match(/industry\s+([^\s,]+(?:\s+[^\s,]+)*)/i);
+  if (industryMatch) {
+    details.industry = industryMatch[1].trim();
+  }
+  
+  // Extract amount patterns
+  const amountMatch = message.match(/amount\s*[=:]\s*([^\s,]+)/i) || 
+                     message.match(/amount\s+([^\s,]+)/i);
+  if (amountMatch) {
+    details.amount = amountMatch[1].trim();
+  }
+  
+  // Extract stage patterns
+  const stageMatch = message.match(/stage\s*[=:]\s*([^\s,]+)/i) || 
+                    message.match(/stage\s+([^\s,]+)/i);
+  if (stageMatch) {
+    details.stage = stageMatch[1].trim();
+  }
+  
+  // Extract subject patterns
+  const subjectMatch = message.match(/subject\s*[=:]\s*([^\s,]+(?:\s+[^\s,]+)*)/i) || 
+                      message.match(/subject\s+([^\s,]+(?:\s+[^\s,]+)*)/i);
+  if (subjectMatch) {
+    details.subject = subjectMatch[1].trim();
+  }
+  
+  return details;
+}
+
+function hasRequiredDetails(details: Record<string, string>, objectType: string): boolean {
+  switch (objectType) {
+    case 'contact':
+      return !!(details.name && details.email);
+    case 'account':
+      return !!details.name;
+    case 'deal':
+      return !!details.name;
+    case 'activity':
+      return !!details.subject;
+    default:
+      return false;
+  }
+}
+
+function getCreationPrompt(objectType: string, partialDetails: Record<string, string>): string {
+  const providedFields = Object.keys(partialDetails).join(', ');
+  const providedText = providedFields ? ` (You provided: ${providedFields})` : '';
+  
+  switch (objectType) {
+    case 'contact':
+      if (!partialDetails.name && !partialDetails.email) {
+        return "I'd be happy to help you create a new contact! Please provide the contact's name and email address. For example: 'name John Smith email john@example.com'";
+      } else if (!partialDetails.name) {
+        return "I need the contact's name to create the record. Please provide the full name.";
+      } else if (!partialDetails.email) {
+        return "I need the contact's email address to create the record. Please provide a valid email address.";
+      }
+      break;
       
-      const contactId = await convex.mutation(api.crm.createContact, {
-        teamId,
-        createdBy: userId,
-        firstName,
-        lastName,
-        email,
-        title: title || undefined,
-        leadStatus: "new",
-        contactType: "contact",
-        source: "email_creation"
-      });
+    case 'account':
+      if (!partialDetails.name) {
+        return "I'd be happy to help you create a new account! Please provide the company name. For example: 'name Acme Corporation'";
+      }
+      break;
       
-      return NextResponse.json({
-        message: `Great! I've successfully created a new contact for ${fullName} (${email}) in your database. Now let me draft an email for you.`,
-        action: "draft_email",
-        contactName: fullName,
-        contactEmail: email
-      });
-    } catch (error) {
-      console.error('Error creating contact:', error);
-      return NextResponse.json({
-        message: "I encountered an error while creating the contact. Please try again.",
-        error: true
-      });
+    case 'deal':
+      if (!partialDetails.name) {
+        return "I'd be happy to help you create a new deal! Please provide the deal name. For example: 'name Q4 Software License'";
+      }
+      break;
+      
+    case 'activity':
+      if (!partialDetails.subject) {
+        return "I'd be happy to help you create a new activity! Please provide the subject. For example: 'subject Follow-up call with John'";
+      }
+      break;
+  }
+  
+  return `I need more information to create this ${objectType}.${providedText} Please provide the missing details.`;
+}
+
+async function createObject(details: Record<string, string>, objectType: string, userId: string) {
+  try {
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    
+    switch (objectType) {
+      case 'contact':
+        return await createContact(details, teamId, userId);
+      case 'account':
+        return await createAccount(details, teamId, userId);
+      case 'deal':
+        return await createDeal(details, teamId, userId);
+      case 'activity':
+        return await createActivity(details, teamId, userId);
+      default:
+        throw new Error(`Unknown object type: ${objectType}`);
     }
-  } else {
+  } catch (error) {
+    console.error(`Error creating ${objectType}:`, error);
     return NextResponse.json({
-      message: "I couldn't parse the contact details. Please provide the information in this format: 'name [full name] email [email address] title [optional title]'",
+      message: `I encountered an error while creating the ${objectType}. Please try again.`,
       error: true
     });
   }
+}
+
+async function createContact(details: Record<string, string>, teamId: string, userId: string) {
+  const nameParts = details.name!.split(' ');
+  const firstName = nameParts[0];
+  const lastName = nameParts.slice(1).join(' ') || '';
+  
+  const contactId = await convex.mutation(api.crm.createContact, {
+    teamId,
+    createdBy: userId,
+    firstName,
+    lastName,
+    email: details.email!,
+    phone: details.phone,
+    title: details.title,
+    company: details.company,
+    leadStatus: "new",
+    contactType: "contact",
+    source: "chat_creation"
+  });
+  
+  return NextResponse.json({
+    message: `✅ Contact created successfully! I've added ${details.name} (${details.email}) to your database.`,
+    action: "contact_created",
+    contactId,
+    contactName: details.name,
+    contactEmail: details.email
+  });
+}
+
+async function createAccount(details: Record<string, string>, teamId: string, userId: string) {
+  const accountId = await convex.mutation(api.crm.createAccount, {
+    teamId,
+    createdBy: userId,
+    name: details.name!,
+    industry: details.industry,
+    website: details.website,
+    phone: details.phone
+  });
+  
+  return NextResponse.json({
+    message: `✅ Account created successfully! I've added ${details.name} to your database.`,
+    action: "account_created",
+    accountId,
+    accountName: details.name
+  });
+}
+
+async function createDeal(details: Record<string, string>, teamId: string, userId: string) {
+  // Validate stage is one of the allowed values
+  const validStages = ["prospecting", "qualification", "proposal", "negotiation", "closed_won", "closed_lost"] as const;
+  const stage = details.stage && validStages.includes(details.stage as typeof validStages[number]) ? details.stage as typeof validStages[number] : "prospecting";
+  
+  const dealId = await convex.mutation(api.crm.createDeal, {
+    teamId,
+    createdBy: userId,
+    name: details.name!,
+    stage,
+    amount: details.amount ? parseFloat(details.amount) : undefined,
+    description: details.description
+  });
+  
+  return NextResponse.json({
+    message: `✅ Deal created successfully! I've added ${details.name} to your database.`,
+    action: "deal_created",
+    dealId,
+    dealName: details.name
+  });
+}
+
+async function createActivity(details: Record<string, string>, teamId: string, userId: string) {
+  const activityId = await convex.mutation(api.crm.createActivity, {
+    teamId,
+    createdBy: userId,
+    type: "event",
+    subject: details.subject!,
+    description: details.description,
+    status: "scheduled"
+  });
+  
+  return NextResponse.json({
+    message: `✅ Activity created successfully! I've added ${details.subject} to your database.`,
+    action: "activity_created",
+    activityId,
+    activitySubject: details.subject
+  });
 }
 
 async function handleDatabaseQuery(message: string, entities: Record<string, unknown>, userId: string) {
@@ -987,7 +1223,7 @@ export async function POST(req: NextRequest) {
         return await handleEmailRequest(lastUserMessage, intent.entities || {}, userId, context);
         
       case 'createContact':
-        return await handleContactCreation(lastUserMessage, intent.entities || {}, userId);
+        return await handleObjectCreation(lastUserMessage, intent.entities || {}, userId, context);
         
       case 'queryDatabase':
       case 'query_database':
