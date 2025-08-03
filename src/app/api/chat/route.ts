@@ -97,6 +97,9 @@ const openai = new OpenAI({
 interface Message {
   role: string;
   content: string;
+  action?: string;
+  objectType?: string;
+  partialDetails?: Record<string, string>;
 }
 
 // Fast pattern matching for common intents (0-5ms latency)
@@ -391,23 +394,44 @@ Draft a professional email. Return ONLY a JSON object:
 
 // Enhanced object creation handlers for all types
 async function handleObjectCreation(message: string, entities: Record<string, unknown>, userId: string, context: UserContext) {
-  // Determine what type of object to create
-  const objectType = determineObjectType(message);
+  // Check if this is a continuation of a creation flow
+  const lastMessage = context.conversationHistory[context.conversationHistory.length - 2];
+  const isContinuation = lastMessage?.action === "prompt_details";
   
-  // Extract any provided details from the message
-  const extractedDetails = extractObjectDetails(message, objectType);
-  
-  // If we have enough details, create the object
-  if (hasRequiredDetails(extractedDetails, objectType)) {
-    return await createObject(extractedDetails, objectType, userId);
+  if (isContinuation) {
+    // This is a continuation - extract details from the current message
+    const objectType = lastMessage.objectType || 'contact';
+    const extractedDetails = extractObjectDetailsFromNaturalLanguage(message, objectType);
+    
+    // Merge with any partial details from previous message
+    const partialDetails = lastMessage.partialDetails || {};
+    const mergedDetails = { ...partialDetails, ...extractedDetails };
+    
+    if (hasRequiredDetails(mergedDetails, objectType)) {
+      return await createObject(mergedDetails, objectType, userId);
+    } else {
+      return NextResponse.json({
+        message: getCreationPrompt(objectType, mergedDetails),
+        action: "prompt_details",
+        objectType,
+        partialDetails: mergedDetails
+      });
+    }
   } else {
-    // Return a prompt for missing information
-    return NextResponse.json({
-      message: getCreationPrompt(objectType, extractedDetails),
-      action: "prompt_details",
-      objectType,
-      partialDetails: extractedDetails
-    });
+    // This is a new creation request
+    const objectType = determineObjectType(message);
+    const extractedDetails = extractObjectDetails(message, objectType);
+    
+    if (hasRequiredDetails(extractedDetails, objectType)) {
+      return await createObject(extractedDetails, objectType, userId);
+    } else {
+      return NextResponse.json({
+        message: getCreationPrompt(objectType, extractedDetails),
+        action: "prompt_details",
+        objectType,
+        partialDetails: extractedDetails
+      });
+    }
   }
 }
 
@@ -500,6 +524,43 @@ function extractObjectDetails(message: string, objectType: string): Record<strin
                       message.match(/subject\s+([^\s,]+(?:\s+[^\s,]+)*)/i);
   if (subjectMatch) {
     details.subject = subjectMatch[1].trim();
+  }
+  
+  return details;
+}
+
+function extractObjectDetailsFromNaturalLanguage(message: string, objectType: string): Record<string, string> {
+  const details: Record<string, string> = {};
+  
+  // For natural language input like "Howard Hall howard.hall@1414ventures.com"
+  // Try to extract name and email from the message
+  
+  // Look for email pattern
+  const emailMatch = message.match(/([^\s@]+@[^\s@]+\.[^\s@]+)/i);
+  if (emailMatch) {
+    details.email = emailMatch[1].trim();
+  }
+  
+  // Extract name - everything before the email
+  if (emailMatch) {
+    const beforeEmail = message.substring(0, emailMatch.index).trim();
+    if (beforeEmail) {
+      details.name = beforeEmail;
+    }
+  } else {
+    // If no email found, try to extract just a name
+    const words = message.trim().split(/\s+/);
+    if (words.length >= 2) {
+      details.name = words.slice(0, 2).join(' '); // Take first two words as name
+    } else if (words.length === 1) {
+      details.name = words[0];
+    }
+  }
+  
+  // Extract company if mentioned
+  const companyMatch = message.match(/company\s+(?:should\s+be\s+)?([^\s,]+(?:\s+[^\s,]+)*)/i);
+  if (companyMatch) {
+    details.company = companyMatch[1].trim();
   }
   
   return details;
