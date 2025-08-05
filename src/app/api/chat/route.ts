@@ -283,6 +283,15 @@ Return ONLY a JSON object: { "recipient": "...", "subject": "...", "content_type
 
 // Main intent classification function
 async function classifyIntent(message: string, context: UserContext): Promise<IntentResult> {
+  // Step 0: Check if this is a contact update (highest priority)
+  if (isContactUpdateMessage(message, context)) {
+    console.log('Contact update detected:', message);
+    return {
+      action: 'updateContact',
+      confidence: 0.95
+    };
+  }
+  
   // Step 1: Fast pattern matching (0-5ms)
   const fastResult = fastPatternMatch(message);
   
@@ -340,8 +349,8 @@ async function handleEmailRequest(message: string, entities: EmailEntities, user
         suggestedContactName: recipient,
         action: "create_contact"
       });
-    }
-  } catch (error) {
+        }
+      } catch (error) {
     console.error('Error checking contacts:', error);
     return NextResponse.json({
       message: "I encountered an error while checking your contacts. Please try again.",
@@ -598,8 +607,8 @@ async function handleContactUpdate(message: string, context: UserContext, userId
   // For now, we'll just acknowledge the update
   // In a full implementation, we would update the contact in the database
   const updateFields = Object.keys(updateDetails).join(', ');
-  
-  return NextResponse.json({
+
+    return NextResponse.json({
     message: `I've updated the contact with the following information: ${updateFields}. The contact has been saved with all the details you provided.`,
     action: "contact_updated"
   });
@@ -689,8 +698,8 @@ async function createContact(details: Record<string, string>, teamId: string, us
   const lastName = nameParts.slice(1).join(' ') || '';
   
   const contactId = await convex.mutation(api.crm.createContact, {
-    teamId,
-    createdBy: userId,
+          teamId,
+          createdBy: userId,
     firstName,
     lastName,
     email: details.email!,
@@ -713,8 +722,8 @@ async function createContact(details: Record<string, string>, teamId: string, us
 
 async function createAccount(details: Record<string, string>, teamId: string, userId: string) {
   const accountId = await convex.mutation(api.crm.createAccount, {
-    teamId,
-    createdBy: userId,
+          teamId,
+          createdBy: userId,
     name: details.name!,
     industry: details.industry,
     website: details.website,
@@ -735,8 +744,8 @@ async function createDeal(details: Record<string, string>, teamId: string, userI
   const stage = details.stage && validStages.includes(details.stage as typeof validStages[number]) ? details.stage as typeof validStages[number] : "prospecting";
   
   const dealId = await convex.mutation(api.crm.createDeal, {
-    teamId,
-    createdBy: userId,
+          teamId,
+          createdBy: userId,
     name: details.name!,
     stage,
     amount: details.amount ? parseFloat(details.amount) : undefined,
@@ -753,8 +762,8 @@ async function createDeal(details: Record<string, string>, teamId: string, userI
 
 async function createActivity(details: Record<string, string>, teamId: string, userId: string) {
   const activityId = await convex.mutation(api.crm.createActivity, {
-    teamId,
-    createdBy: userId,
+                  teamId,
+                  createdBy: userId,
     type: "event",
     subject: details.subject!,
     description: details.description,
@@ -841,13 +850,13 @@ async function handleDatabaseOperation(userMessage: string, userId: string): Pro
     // Default to contacts if no specific type is mentioned
     if (isContactQuery || (!isAccountQuery && !isDealQuery && !isActivityQuery)) {
       dataType = 'contacts';
-      records = await convex.query(api.crm.getContactsByTeam, { teamId });
+        records = await convex.query(api.crm.getContactsByTeam, { teamId });
     } else if (isAccountQuery) {
       dataType = 'accounts';
-      records = await convex.query(api.crm.getAccountsByTeam, { teamId });
+        records = await convex.query(api.crm.getAccountsByTeam, { teamId });
     } else if (isDealQuery) {
       dataType = 'deals';
-      records = await convex.query(api.crm.getDealsByTeam, { teamId });
+        records = await convex.query(api.crm.getDealsByTeam, { teamId });
     } else if (isActivityQuery) {
       dataType = 'activities';
       records = await convex.query(api.crm.getActivitiesByTeam, { teamId });
@@ -906,7 +915,7 @@ async function handleDatabaseOperation(userMessage: string, userId: string): Pro
     const message = filterInfo ? 
       `Found ${formattedRecords.length} ${dataType} matching "${filterInfo}":` :
       `Found ${formattedRecords.length} ${dataType}:`;
-    
+
     return {
       message: message,
       data: {
@@ -1064,6 +1073,13 @@ function extractFilterTerms(message: string): string[] {
     .split(/[\s,]+/)
     .map(term => term.trim())
     .filter(term => term.length > 0 && term.length < 50); // Reasonable length limits
+  
+  // Special case: if the message contains "all" and we're asking for all records, return empty array
+  // This will show all records without filtering
+  const lowerMessage = message.toLowerCase();
+  if (lowerMessage.includes('all')) {
+    return [];
+  }
   
   // If no terms found, try to extract names from the original message
   if (terms.length === 0) {
@@ -1324,6 +1340,9 @@ export async function POST(req: NextRequest) {
         
       case 'createContact':
         return await handleObjectCreation(lastUserMessage, intent.entities || {}, userId, context);
+        
+      case 'updateContact':
+        return await handleContactUpdate(lastUserMessage, context, userId);
         
       case 'queryDatabase':
       case 'query_database':

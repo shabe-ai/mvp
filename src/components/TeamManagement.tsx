@@ -121,6 +121,36 @@ export default function TeamManagement() {
     }
   };
 
+  const createTeam = async () => {
+    if (!user) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const teamName = `${user.firstName || user.username || 'My'}'s Team`;
+      const response = await fetch('/api/teams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: teamName }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        console.log('✅ Team created successfully:', data);
+        await loadTeams();
+        setError(null);
+      } else {
+        console.error('❌ Failed to create team:', data);
+        setError(data.error || 'Failed to create team');
+      }
+    } catch (error) {
+      console.error('Error creating team:', error);
+      setError("Failed to create team");
+    } finally {
+      setLoading(false);
+    }
+  };
 
 
   const formatDate = (timestamp: number) => {
@@ -135,8 +165,15 @@ export default function TeamManagement() {
     <div className="space-y-6">
       {/* Team List */}
       <div className="bg-white rounded-xl shadow-sm border border-[#d9d2c7] p-6">
-        <div className="mb-6">
+        <div className="mb-6 flex justify-between items-center">
           <h3 className="text-xl font-semibold text-black">Your Teams</h3>
+          <button
+            onClick={createTeam}
+            disabled={loading}
+            className="bg-gradient-to-r from-[#f3e89a] to-[#efe076] hover:from-[#efe076] hover:to-[#f3e89a] text-black px-4 py-2 rounded-lg font-medium transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {loading ? 'Creating...' : 'Create Team'}
+          </button>
         </div>
 
         {error && (

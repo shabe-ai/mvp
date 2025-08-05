@@ -60,6 +60,48 @@ export default function Chat() {
     content: string;
   }>>([]);
 
+  // Auto-create team for new users
+  useEffect(() => {
+    if (user && isLoaded) {
+      checkAndCreateDefaultTeam();
+    }
+  }, [user, isLoaded]);
+
+  const checkAndCreateDefaultTeam = async () => {
+    if (!user) return;
+    
+    try {
+      // First check if user already has teams
+      const teamsResponse = await fetch('/api/teams');
+      if (teamsResponse.ok) {
+        const teams = await teamsResponse.json();
+        if (teams && teams.length > 0) {
+          console.log('✅ User already has teams, skipping default team creation');
+          return;
+        }
+      }
+      
+      // Create default team if user has no teams
+      console.log('Creating default team for user:', user.id);
+      const response = await fetch('/api/teams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `${user.firstName || user.username || 'My'}'s Team`,
+        }),
+      });
+      
+      if (response.ok) {
+        const newTeam = await response.json();
+        console.log('✅ Default team created successfully:', newTeam);
+      } else {
+        console.error('Failed to create default team:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Error creating default team:', error);
+    }
+  };
+
   // Function to get initial message based on Google Workspace connection
   const getInitialMessage = async (): Promise<string> => {
     try {
@@ -99,9 +141,9 @@ export default function Chat() {
         const initialContent = await getInitialMessage();
         const welcomeMessage: Message = {
           id: Date.now().toString(),
-          role: "assistant",
+        role: "assistant",
           content: initialContent,
-          timestamp: new Date(),
+        timestamp: new Date(),
         };
         setMessages([welcomeMessage]);
         setIsInitializing(false);
@@ -167,27 +209,27 @@ export default function Chat() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+        const data = await response.json();
       
       if (data.error) {
         throw new Error(data.error);
       }
 
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: data.message,
-        timestamp: new Date(),
-        action: data.action,
-        data: data.data,
-        needsClarification: data.needsClarification,
-        clarificationQuestion: data.clarificationQuestion,
+              id: (Date.now() + 1).toString(),
+              role: "assistant",
+              content: data.message,
+              timestamp: new Date(),
+              action: data.action,
+              data: data.data,
+              needsClarification: data.needsClarification,
+              clarificationQuestion: data.clarificationQuestion,
         fields: data.fields,
         chartSpec: data.chartSpec,
         narrative: data.narrative,
-      };
+        };
 
-      setMessages(prev => [...prev, assistantMessage]);
+        setMessages(prev => [...prev, assistantMessage]);
 
       // Handle email draft if present
       if (data.emailDraft) {
@@ -510,11 +552,11 @@ export default function Chat() {
           >
             <Upload className="h-5 w-5" />
           </button>
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
             placeholder={isLoading ? "Shabe ai is thinking..." : "Ask me anything about your uploaded files..."}
-            disabled={isLoading}
+          disabled={isLoading}
             className="flex-1 border-0 focus:ring-0 px-4 py-3 text-base"
           />
           <Button type="submit" disabled={isLoading} className="bg-[#f3e89a] hover:bg-[#efe076] text-black rounded-r-full px-3 flex items-center justify-center" style={{ width: '48px' }}>
@@ -523,7 +565,7 @@ export default function Chat() {
             ) : (
               <Send className="h-4 w-4" />
             )}
-          </Button>
+        </Button>
         </div>
       </form>
     </div>
