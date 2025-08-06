@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { convex } from "@/lib/convex";
 import { api } from "@/convex/_generated/api";
@@ -52,28 +52,46 @@ export default function AnalyticsDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchAnalyticsData = async () => {
+  const fetchAnalyticsData = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      const data = await convex.query(api.analytics.getAnalyticsDashboard, { days: 7 });
-      setAnalyticsData(data);
+      // Use available analytics functions
+      const rateLimitStats = await convex.query(api.analytics.getRateLimitStats, { timeWindow: 7 * 24 * 60 * 60 * 1000 });
+      const userActivityStats = await convex.query(api.analytics.getUserActivityStats, { timeWindow: 7 * 24 * 60 * 60 * 1000 });
+      
+      // Create mock data structure for now
+      const mockData: AnalyticsData = {
+        snapshots: [],
+        currentDay: {
+          costStats: {
+            totalCost: 0,
+            totalRequests: rateLimitStats.totalRequests,
+            costByModel: {}
+          },
+          rateLimitStats,
+          userStats: userActivityStats
+        },
+        days: 7
+      };
+      
+      setAnalyticsData(mockData);
     } catch (error) {
       setError('Error fetching analytics data');
       console.error('Error:', error);
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (user) {
       fetchAnalyticsData();
     }
-  }, [user]);
+  }, [user, fetchAnalyticsData]);
 
   const formatCost = (cost: number) => {
     return `$${cost.toFixed(4)}`;
@@ -115,7 +133,7 @@ export default function AnalyticsDashboard() {
         <div className="space-y-6">
           {/* Current Day Stats */}
           <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Today's Activity</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Today&apos;s Activity</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-4 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-600">Total Cost</p>

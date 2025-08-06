@@ -1,59 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth, currentUser } from "@clerk/nextjs/server";
+import { currentUser } from "@clerk/nextjs/server";
 
-export async function GET(req: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    // For internal API calls, we'll accept a userId parameter
-    const url = new URL(req.url);
-    const userIdParam = url.searchParams.get('userId');
-    
-    let user = null;
-    let userId = null;
+    const user = await currentUser();
 
-    if (userIdParam) {
-      // Internal API call - we need to get the real user data
-      // For now, we'll use a simple approach - in production you'd store user data in a database
-      // and fetch it by userId
-      userId = userIdParam;
-      
-      // Since we can't easily get Clerk user data without the full auth context,
-      // we'll use a more sophisticated approach
-      try {
-        // Try to get the current user from Clerk (this might work in some contexts)
-        const currentUserResult = await currentUser();
-        if (currentUserResult) {
-          user = currentUserResult;
-        } else {
-          // Fallback to placeholder data - in production you'd fetch from your database
-          user = {
-            firstName: "Vigeash",
-            lastName: "Gobal",
-            emailAddresses: [{ emailAddress: "vigeash11@gmail.com" }]
-          };
-        }
-      } catch (error) {
-        console.error('Error getting current user:', error);
-        // Fallback to placeholder data
-        user = {
-          firstName: "Vigeash",
-          lastName: "Gobal",
-          emailAddresses: [{ emailAddress: "vigeash11@gmail.com" }]
-        };
-      }
-    } else {
-      // External call - use Clerk auth
-      const authResult = await auth();
-      const currentUserResult = await currentUser();
-      
-      if (!authResult.userId || !currentUserResult) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
-      
-      userId = authResult.userId;
-      user = currentUserResult;
+    if (!user) {
+      return NextResponse.json(
+        { error: 'User not authenticated' },
+        { status: 401 }
+      );
     }
 
-    // Get user profile from Clerk
+    // Get user profile data
     const userProfile = {
       name: user.firstName && user.lastName 
         ? `${user.firstName} ${user.lastName}`
@@ -63,12 +22,13 @@ export async function GET(req: NextRequest) {
     };
 
     // Get company data from request query params (passed from frontend)
+    const url = new URL(request.url);
     const companyDataParam = url.searchParams.get('companyData');
-    
+
     let companyData = {
       name: "Shabe ai",
       website: "www.shabe.ai",
-      description: "Shabe AI is a chat-first revenue platform that turns every CRM, email, and calendar task into a single natural-language request"
+      description: "Shabe AI is a chat-first revenue platform"
     };
 
     if (companyDataParam) {
@@ -90,7 +50,10 @@ export async function GET(req: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Error getting user context:', error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error('❌ Error getting user context:', error);
+    return NextResponse.json(
+      { error: 'Failed to get user context' },
+      { status: 500 }
+    );
   }
 } 

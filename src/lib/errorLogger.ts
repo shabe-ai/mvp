@@ -1,12 +1,12 @@
 import * as Sentry from '@sentry/nextjs';
 import { safePostHog } from './posthog';
 
-export interface ErrorContext {
+interface ErrorContext {
+  component?: string;
+  action?: string;
   userId?: string;
   userEmail?: string;
-  action?: string;
-  component?: string;
-  additionalData?: Record<string, any>;
+  additionalData?: Record<string, unknown>;
 }
 
 export class ErrorLogger {
@@ -67,7 +67,7 @@ export class ErrorLogger {
     // Send to Sentry
     try {
       Sentry.captureMessage(message, {
-        level: level as Sentry.SeverityLevel,
+        level,
         tags: {
           component: context?.component || 'unknown',
           action: context?.action || 'unknown',
@@ -98,6 +98,73 @@ export class ErrorLogger {
     }
   }
 
+  static capturePerformance(
+    operation: string,
+    duration: number,
+    context?: ErrorContext
+  ) {
+    // Log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`⏱️ Performance: ${operation} took ${duration}ms`, context);
+    }
+
+    // Send to Sentry
+    try {
+      Sentry.addBreadcrumb({
+        category: 'performance',
+        message: `${operation} took ${duration}ms`,
+        level: 'info',
+        data: {
+          operation,
+          duration,
+          ...context?.additionalData,
+        },
+      });
+    } catch (sentryError) {
+      console.error('Failed to send performance data to Sentry:', sentryError);
+    }
+
+    // Track in PostHog
+    try {
+      if (typeof window !== 'undefined') {
+        safePostHog.capture('performance_measured', {
+          operation,
+          duration,
+          component: context?.component,
+          action: context?.action,
+          ...context?.additionalData,
+        });
+      }
+    } catch (posthogError) {
+      console.error('Failed to send performance data to PostHog:', posthogError);
+    }
+  }
+
+  static captureUserAction(
+    action: string,
+    properties: Record<string, unknown> = {},
+    context?: ErrorContext
+  ) {
+    // Log to console in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`👤 User Action: ${action}`, { properties, context });
+    }
+
+    // Track in PostHog
+    try {
+      if (typeof window !== 'undefined') {
+        safePostHog.capture(action, {
+          ...properties,
+          component: context?.component,
+          action: context?.action,
+          ...context?.additionalData,
+        });
+      }
+    } catch (posthogError) {
+      console.error('Failed to send user action to PostHog:', posthogError);
+    }
+  }
+
   static setUser(userId: string, email?: string) {
     try {
       Sentry.setUser({
@@ -112,7 +179,7 @@ export class ErrorLogger {
   static addBreadcrumb(
     message: string,
     category: string,
-    data?: Record<string, any>
+    data?: Record<string, unknown>
   ) {
     try {
       Sentry.addBreadcrumb({
@@ -144,6 +211,6 @@ export const setUser = (userId: string, email?: string) => {
   ErrorLogger.setUser(userId, email);
 };
 
-export const addBreadcrumb = (message: string, category: string, data?: Record<string, any>) => {
+export const addBreadcrumb = (message: string, category: string, data?: Record<string, unknown>) => {
   ErrorLogger.addBreadcrumb(message, category, data);
 }; 

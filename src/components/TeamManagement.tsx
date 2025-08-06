@@ -29,51 +29,41 @@ export default function TeamManagement() {
   const [error, setError] = useState<string | null>(null);
   const [editingTeam, setEditingTeam] = useState<Team | null>(null);
 
-  useEffect(() => {
-    if (user) {
-      loadTeams();
-    }
-  }, [user]);
-
-  useEffect(() => {
-    if (selectedTeam) {
-      loadTeamStats(selectedTeam._id);
-    }
-  }, [selectedTeam]);
-
   const loadTeams = useCallback(async () => {
-    if (!user) return;
     setLoading(true);
-    setError(null);
-    
     try {
       const response = await fetch('/api/teams');
       const data = await response.json();
-      
-      if (data.success) {
-        setTeams(data.teams || []);
-        if (data.teams && data.teams.length > 0 && !selectedTeam) {
-          setSelectedTeam(data.teams[0]);
-        }
-      }
+      setTeams(data);
     } catch (error) {
+      setError('Failed to load teams');
       console.error('Error loading teams:', error);
     } finally {
       setLoading(false);
     }
-  }, [user, selectedTeam]);
+  }, []);
 
   const loadTeamStats = useCallback(async (teamId: string) => {
     try {
       const response = await fetch(`/api/teams/stats?teamId=${teamId}`);
       const data = await response.json();
-      if (data.success) {
-        setTeamStats(data.stats);
-      }
+      setTeamStats(data);
     } catch (error) {
       console.error('Error loading team stats:', error);
     }
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadTeams();
+    }
+  }, [user, loadTeams]);
+
+  useEffect(() => {
+    if (selectedTeam) {
+      loadTeamStats(selectedTeam._id);
+    }
+  }, [selectedTeam, loadTeamStats]);
 
   const updateTeamName = useCallback(async (teamId: string, newName: string) => {
     try {

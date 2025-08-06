@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -61,13 +61,7 @@ export default function Chat() {
   }>>([]);
 
   // Auto-create team for new users
-  useEffect(() => {
-    if (user && isLoaded) {
-      checkAndCreateDefaultTeam();
-    }
-  }, [user, isLoaded]);
-
-  const checkAndCreateDefaultTeam = async () => {
+  const checkAndCreateDefaultTeam = useCallback(async () => {
     if (!user) return;
     
     try {
@@ -100,10 +94,16 @@ export default function Chat() {
     } catch (error) {
       console.error('Error creating default team:', error);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user && isLoaded) {
+      checkAndCreateDefaultTeam();
+    }
+  }, [user, isLoaded, checkAndCreateDefaultTeam]);
 
   // Function to get initial message based on Google Workspace connection
-  const getInitialMessage = async (): Promise<string> => {
+  const getInitialMessage = useCallback(async (): Promise<string> => {
     try {
       // Check Google Workspace connection status
       const response = await fetch("/api/test-token");
@@ -120,18 +120,20 @@ export default function Chat() {
           } else {
             return `Hello! I'm your AI assistant. I can see you have Google Workspace connected, but I need additional permissions to access your calendar. You can still upload files for analysis and chart generation. What would you like to do?`;
           }
-        } catch (_error) {
+        } catch (error) {
+          console.error('Error fetching calendar data:', error);
           return `Hello! I'm your AI assistant. I can see you have Google Workspace connected. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?`;
         }
       } else {
         // User doesn't have Google Workspace connected - show integration instructions
         return `👋 Welcome to Shabe AI!\n\nI'm your AI assistant that can help you analyze files, generate charts, and provide insights.\n\nTo get the most out of your experience:\n\n1. Connect Google Workspace (optional but recommended)\n   • Go to Admin → Google Workspace Integration\n   • Connect your account for calendar access\n\n2. Upload files for analysis\n   • Use the upload button to add files\n   • I can analyze PDFs, Excel files, and more\n\n3. Ask me anything about your data\n   • Generate charts and insights\n   • Get summaries and recommendations\n\nWhat would you like to do first?`;
       }
-    } catch (_error) {
+    } catch (error) {
+      console.error('Error checking Google Workspace connection:', error);
       // Fallback message if connection check fails
       return "Hello! I'm your AI assistant. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?";
     }
-  };
+  }, []);
 
   // Initialize with dynamic welcome message if user is logged in
   useEffect(() => {
@@ -151,7 +153,7 @@ export default function Chat() {
       
       initializeChat();
     }
-  }, [user, isLoaded, messages.length]);
+  }, [user, isLoaded, messages.length, getInitialMessage]);
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {

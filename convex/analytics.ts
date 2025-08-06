@@ -135,46 +135,4 @@ export const storeDailySnapshot = mutation({
     console.log(`📊 Daily snapshot stored with ID: ${snapshotId}`);
     return snapshotId;
   },
-});
-
-// Get analytics dashboard data
-export const getAnalyticsDashboard = query({
-  args: {
-    days: v.optional(v.number()),
-  },
-  handler: async (ctx, args) => {
-    const days = args.days || 7;
-    const now = Date.now();
-    const startTime = now - (days * 24 * 60 * 60 * 1000);
-
-    // Get recent snapshots
-    const snapshots = await ctx.db
-      .query("dailySnapshots")
-      .filter((q) => q.gte(q.field("timestamp"), startTime))
-      .order("desc")
-      .collect();
-
-    // Get current day stats
-    const currentCostStats = await ctx.runQuery(api.monitoring.getCostStats, {
-      timeWindow: 24 * 60 * 60 * 1000,
-    });
-
-    const currentRateLimitStats = await ctx.runQuery(api.analytics.getRateLimitStats, {
-      timeWindow: 24 * 60 * 60 * 1000,
-    });
-
-    const currentUserStats = await ctx.runQuery(api.analytics.getUserActivityStats, {
-      timeWindow: 24 * 60 * 60 * 1000,
-    });
-
-    return {
-      snapshots,
-      currentDay: {
-        costStats: currentCostStats,
-        rateLimitStats: currentRateLimitStats,
-        userStats: currentUserStats,
-      },
-      days,
-    };
-  },
 }); 

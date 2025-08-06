@@ -36,7 +36,11 @@ export async function GET(request: NextRequest) {
     console.log('🔄 Attempting to exchange code for tokens...');
     
     // Exchange code for tokens
-    let tokens: any;
+    let tokens: {
+      access_token?: string | null;
+      refresh_token?: string | null;
+      expires_in?: number | null;
+    };
     try {
       const tokenResponse = await oauth2Client.getToken(code);
       tokens = tokenResponse.tokens;
@@ -47,18 +51,17 @@ export async function GET(request: NextRequest) {
       }
       
       console.log('✅ Successfully received tokens from Google');
-    } catch (tokenError: any) {
+    } catch (tokenError: unknown) {
       console.error('❌ Error exchanging code for tokens:', tokenError);
-      console.error('❌ Error details:', {
-        message: tokenError.message,
-        code: tokenError.code,
-        status: tokenError.status,
-        response: tokenError.response?.data
+      const error = tokenError as { message?: string; code?: string; status?: number; response?: { data?: unknown } };
+      const errorDetails = error.message || error.code || 'unknown_error';
+      console.error('❌ Token exchange error details:', {
+        message: error.message,
+        code: error.code,
+        status: error.status,
+        responseData: error.response?.data
       });
-      
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=token_exchange_failed&details=${tokenError.message}`
-      );
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=oauth_error&details=${errorDetails}`);
     }
 
     // Get user session

@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { convex } from "@/lib/convex";
 import { api } from "@/convex/_generated/api";
 import { openaiClient } from "@/lib/openaiClient";
-import { logError, logMessage, addBreadcrumb } from "@/lib/errorLogger";
+import { logError, addBreadcrumb } from "@/lib/errorLogger";
 
 // Add proper interfaces at the top
 interface UserContext {
@@ -422,11 +421,11 @@ async function handleObjectCreation(message: string, entities: Record<string, un
   const isContactUpdate = isContactUpdateMessage(message, context);
   
   if (isContactUpdate) {
-    return await handleContactUpdate(message, context, userId);
+    return await handleContactUpdate(message);
   } else if (isContinuation) {
     // This is a continuation - extract details from the current message
     const objectType = lastMessage.objectType || 'contact';
-    const extractedDetails = extractObjectDetailsFromNaturalLanguage(message, objectType);
+    const extractedDetails = extractObjectDetailsFromNaturalLanguage(message);
     
     // Merge with any partial details from previous message
     const partialDetails = lastMessage.partialDetails || {};
@@ -445,7 +444,7 @@ async function handleObjectCreation(message: string, entities: Record<string, un
   } else {
     // This is a new creation request
     const objectType = determineObjectType(message);
-    const extractedDetails = extractObjectDetails(message, objectType);
+    const extractedDetails = extractObjectDetails(message);
     
     if (hasRequiredDetails(extractedDetails, objectType)) {
       return await createObject(extractedDetails, objectType, userId);
@@ -477,7 +476,7 @@ function determineObjectType(message: string): string {
   }
 }
 
-function extractObjectDetails(message: string, objectType: string): Record<string, string> {
+function extractObjectDetails(message: string): Record<string, string> {
   const details: Record<string, string> = {};
   
   // Extract name patterns
@@ -554,7 +553,7 @@ function extractObjectDetails(message: string, objectType: string): Record<strin
   return details;
 }
 
-function extractObjectDetailsFromNaturalLanguage(message: string, objectType: string): Record<string, string> {
+function extractObjectDetailsFromNaturalLanguage(message: string): Record<string, string> {
   const details: Record<string, string> = {};
   
   // For natural language input like "Howard Hall howard.hall@1414ventures.com"
@@ -611,9 +610,9 @@ function isContactUpdateMessage(message: string, context: UserContext): boolean 
   return hasUpdateKeywords && hasRecentContactCreation;
 }
 
-async function handleContactUpdate(message: string, context: UserContext, userId: string) {
+async function handleContactUpdate(message: string) {
   // Extract the update details from the message
-  const updateDetails = extractObjectDetailsFromNaturalLanguage(message, 'contact');
+  const updateDetails = extractObjectDetailsFromNaturalLanguage(message);
   
   // For now, we'll just acknowledge the update
   // In a full implementation, we would update the contact in the database
@@ -904,7 +903,7 @@ async function handleDatabaseOperation(userMessage: string, userId: string): Pro
     
     // If filtering returns too many results or ambiguous results, ask for clarification
     if (filteredRecords.length > 3) {
-      const clarificationMessage = getClarificationMessage(dataType, filteredRecords, userMessage);
+      const clarificationMessage = getClarificationMessage(dataType, filteredRecords);
       return {
         message: clarificationMessage,
         needsClarification: true,
@@ -926,7 +925,7 @@ async function handleDatabaseOperation(userMessage: string, userId: string): Pro
     // Format records for table display
     const formattedRecords = filteredRecords.map((record: DatabaseRecord) => formatRecord(record, dataType));
     
-    const filterInfo = getFilterInfo(userMessage, dataType);
+    const filterInfo = getFilterInfo(userMessage);
     const message = filterInfo ? 
       `Found ${formattedRecords.length} ${dataType} matching "${filterInfo}":` :
       `Found ${formattedRecords.length} ${dataType}:`;
@@ -1131,7 +1130,7 @@ function extractFilterTerms(message: string): string[] {
 }
 
 // Helper function to get filter info for display
-function getFilterInfo(userMessage: string, dataType: string): string | null {
+function getFilterInfo(userMessage: string): string | null {
   const terms = extractFilterTerms(userMessage.toLowerCase());
   if (terms.length === 0) return null;
   
@@ -1218,7 +1217,7 @@ function formatRecord(record: DatabaseRecord, dataType: string): FormattedRecord
 }
 
 // Helper function to generate clarification messages
-function getClarificationMessage(dataType: string, records: DatabaseRecord[], userMessage: string): string {
+function getClarificationMessage(dataType: string, records: DatabaseRecord[]): string {
   if (dataType === 'contacts') {
     const companies = [...new Set(records.map(r => r.company).filter(Boolean))];
     const titles = [...new Set(records.map(r => r.title).filter(Boolean))];
@@ -1368,7 +1367,7 @@ export async function POST(req: NextRequest) {
         return await handleObjectCreation(lastUserMessage, intent.entities || {}, userId, context);
         
       case 'updateContact':
-        return await handleContactUpdate(lastUserMessage, context, userId);
+        return await handleContactUpdate(lastUserMessage);
         
       case 'queryDatabase':
       case 'query_database':
@@ -1395,12 +1394,10 @@ export async function POST(req: NextRequest) {
     
     // Log error with context
     logError(error instanceof Error ? error : String(error), {
-      userId,
       action: 'chat_api_request',
       component: 'chat_route',
       additionalData: {
-        messageCount: messages?.length || 0,
-        hasSessionFiles: sessionFiles?.length > 0,
+        error: error instanceof Error ? error.message : String(error),
       },
     });
     

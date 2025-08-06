@@ -1,44 +1,45 @@
-import posthog from 'posthog-js'
+import posthog from 'posthog-js';
 
 let isInitialized = false;
 
-if (typeof window !== 'undefined') {
+// Initialize PostHog
+export function initializePostHog() {
+  if (typeof window === 'undefined') return;
+
   const posthogKey = process.env.NEXT_PUBLIC_POSTHOG_KEY;
   
-  // Only initialize if we have a valid API key
-  if (posthogKey && posthogKey !== 'phc_placeholder' && posthogKey.length > 10) {
-    try {
-      posthog.init(posthogKey, {
-        api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
-        loaded: (posthog) => {
-          if (process.env.NODE_ENV === 'development') posthog.debug()
-        },
-        capture_pageview: false, // We'll handle this manually
-        capture_pageleave: true,
-        autocapture: true,
-        disable_session_recording: false,
-        session_recording: {
-          maskAllInputs: true,
-          maskInputOptions: {
-            password: true,
-            email: true,
-            phone: true,
-          },
-        },
-      });
-      isInitialized = true;
-      console.log('✅ PostHog initialized successfully');
-    } catch (error) {
-      console.warn('⚠️ PostHog initialization failed:', error);
-    }
-  } else {
-    console.log('ℹ️ PostHog not initialized - no valid API key provided');
+  if (!posthogKey) {
+    console.warn('⚠️ PostHog key not found, analytics disabled');
+    return;
+  }
+
+  try {
+    posthog.init(posthogKey, {
+      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://app.posthog.com',
+      loaded: (_posthogInstance) => { // eslint-disable-line @typescript-eslint/no-unused-vars
+        if (process.env.NODE_ENV === 'development') {
+          console.log('✅ PostHog initialized');
+        }
+      },
+      capture_pageview: false, // We'll handle this manually
+      capture_pageleave: false, // We'll handle this manually
+      autocapture: false, // We'll handle this manually
+      disable_session_recording: true, // Disable session recording for privacy
+      opt_out_capturing_by_default: false,
+      persistence: 'localStorage',
+      cross_subdomain_cookie: false,
+      secure_cookie: true,
+    });
+    
+    isInitialized = true;
+  } catch (error) {
+    console.error('❌ Failed to initialize PostHog:', error);
   }
 }
 
 // Create a safe wrapper for PostHog methods
 export const safePostHog = {
-  capture: (event: string, properties?: any) => {
+  capture: (event: string, properties?: Record<string, unknown>) => {
     if (isInitialized && typeof window !== 'undefined') {
       try {
         posthog.capture(event, properties);
@@ -47,7 +48,7 @@ export const safePostHog = {
       }
     }
   },
-  identify: (userId: string, properties?: any) => {
+  identify: (userId: string, properties?: Record<string, unknown>) => {
     if (isInitialized && typeof window !== 'undefined') {
       try {
         posthog.identify(userId, properties);
@@ -56,16 +57,14 @@ export const safePostHog = {
       }
     }
   },
-  set: (properties: any) => {
+  set: (properties: Record<string, unknown>) => {
     if (isInitialized && typeof window !== 'undefined') {
       try {
-        posthog.set(properties);
+        posthog.people.set(properties);
       } catch (error) {
         console.warn('⚠️ PostHog set failed:', error);
       }
     }
   },
   isInitialized: () => isInitialized
-};
-
-export { posthog } 
+}; 

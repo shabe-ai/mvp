@@ -61,8 +61,8 @@ function DefaultErrorFallback({ error, resetError }: { error?: Error; resetError
         </div>
         <div className="mt-4 text-center">
           <h3 className="text-lg font-medium text-gray-900">Something went wrong</h3>
-          <p className="mt-2 text-sm text-gray-500">
-            We've been notified and are working to fix the issue.
+          <p className="text-sm text-gray-600 mb-4">
+            We&apos;ve been notified and are working to fix the issue.
           </p>
           {error && process.env.NODE_ENV === 'development' && (
             <details className="mt-4 text-left">

@@ -1,6 +1,6 @@
 "use client";
-import { SignInButton, useUser } from "@clerk/nextjs";
-import { useEffect, useState } from "react";
+import { useUser } from "@clerk/nextjs";
+import { useState, useEffect, useCallback } from "react";
 import MonitoringDashboard from "@/components/MonitoringDashboard";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import { useAdminAuth } from "@/lib/adminAuth";
@@ -186,23 +186,7 @@ function GoogleIntegrationSection() {
   const [loading, setLoading] = useState(false);
   const [calendarError, setCalendarError] = useState(false);
 
-  useEffect(() => {
-    if (!user) return;
-    checkConnection();
-    // Test calendar access
-    fetch("/api/calendar")
-      .then(res => res.json())
-      .then(data => {
-        if (data.summary && data.summary.toLowerCase().includes("insufficient authentication scopes")) {
-          setCalendarError(true);
-        } else {
-          setCalendarError(false);
-        }
-      })
-      .catch(() => setCalendarError(true));
-  }, [user]);
-
-  const checkConnection = async () => {
+  const checkConnection = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/test-token");
@@ -224,7 +208,23 @@ function GoogleIntegrationSection() {
       setIsConnected(false);
       setIsPersistent(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    checkConnection();
+    // Test calendar access
+    fetch("/api/calendar")
+      .then(res => res.json())
+      .then(data => {
+        if (data.summary && data.summary.toLowerCase().includes("insufficient authentication scopes")) {
+          setCalendarError(true);
+        } else {
+          setCalendarError(false);
+        }
+      })
+      .catch(() => setCalendarError(true));
+  }, [user, checkConnection]);
 
   const handleConnect = async () => {
     setLoading(true);
@@ -288,42 +288,37 @@ function GoogleIntegrationSection() {
 }
 
 export default function AdminPage() {
-  const { user, isLoaded } = useUser();
-  const { isAdmin, isAnalyticsAdmin, user: adminUser, loading: adminLoading } = useAdminAuth();
-
-  if (!isLoaded) {
-    return (
-      <div className="min-h-screen bg-[#d9d2c7]/20 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#f3e89a]"></div>
-      </div>
-    );
-  }
+  const { user } = useUser();
+  const { isAdmin, adminLoading } = useAdminAuth();
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#d9d2c7]/20 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f8f7f4] flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-black mb-4">Admin Access Required</h1>
-          <p className="text-[#d9d2c7] mb-6">Please sign in to access the admin panel.</p>
-          <SignInButton>
-            <button className="bg-[#f3e89a] hover:bg-[#efe076] text-black px-6 py-2 rounded-lg font-medium transition-colors">
-              Sign In
-            </button>
-          </SignInButton>
+          <h1 className="text-2xl font-bold text-black mb-4">Access Denied</h1>
+          <p className="text-[#d9d2c7]">Please sign in to access the admin panel.</p>
         </div>
       </div>
     );
   }
 
-  // Check if user has admin privileges (everyone can access admin page)
-  if (!user) {
+  if (adminLoading) {
     return (
-      <div className="min-h-screen bg-[#d9d2c7]/20 flex items-center justify-center">
+      <div className="min-h-screen bg-[#f8f7f4] flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#f3e89a] mx-auto mb-4"></div>
+          <p className="text-[#d9d2c7]">Loading admin status...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-[#f8f7f4] flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-black mb-4">Access Denied</h1>
-          <p className="text-[#d9d2c7] mb-6">
-            You need to be signed in to access the admin panel.
-          </p>
+          <p className="text-[#d9d2c7]">You don&apos;t have permission to access the admin panel.</p>
         </div>
       </div>
     );
@@ -349,21 +344,21 @@ export default function AdminPage() {
         </div>
 
         {/* Monitoring Dashboard - Only for Analytics Admins */}
-        {isAnalyticsAdmin && (
+        {isAdmin && (
           <div className="mt-8">
             <MonitoringDashboard />
           </div>
         )}
 
         {/* Analytics Dashboard - Only for Analytics Admins */}
-        {isAnalyticsAdmin && (
+        {isAdmin && (
           <div className="mt-8">
             <AnalyticsDashboard />
           </div>
         )}
 
         {/* Regular User Message - For non-analytics admins */}
-        {!isAnalyticsAdmin && (
+        {!isAdmin && (
           <div className="mt-8 p-6 bg-gray-50 rounded-lg">
             <h3 className="text-lg font-medium text-gray-900 mb-2">Workspace Management</h3>
             <p className="text-gray-600 mb-4">

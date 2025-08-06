@@ -1,13 +1,9 @@
-import React from "react";
-import type { Metadata } from "next";
-import { ClerkProvider } from "@clerk/nextjs";
-
-import "./globals.css";
-import { safePostHog } from "@/lib/posthog";
+import { ClerkProvider } from '@clerk/nextjs';
+import './globals.css';
 import PostHogProvider from "@/components/PostHogProvider";
 import Header from "@/components/Header";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "Shabe - Conversational Workspace",
   description: "Enterprise conversational workspace with AI-powered chat, email, events, and reports",
 };

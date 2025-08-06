@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 
 interface RateLimitStatus {
@@ -30,7 +30,7 @@ export default function MonitoringDashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMonitoringData = async () => {
+  const fetchMonitoringData = useCallback(async () => {
     if (!user) return;
 
     setLoading(true);
@@ -53,13 +53,13 @@ export default function MonitoringDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
   useEffect(() => {
     if (user) {
       fetchMonitoringData();
     }
-  }, [user]);
+  }, [user, fetchMonitoringData]);
 
   const formatCost = (cost: number) => {
     return `$${cost.toFixed(4)}`;
