@@ -103,9 +103,8 @@ export default function Chat() {
   }, [user, isLoaded, checkAndCreateDefaultTeam]);
 
   // Function to get initial message based on Google Workspace connection
-  const getInitialMessage = useCallback(async (): Promise<string> => {
+  const getInitialMessage = useCallback(async () => {
     try {
-      // Check Google Workspace connection status
       const response = await fetch("/api/test-token");
       const data = await response.json();
       
@@ -140,15 +139,28 @@ export default function Chat() {
     if (user && isLoaded && messages.length === 0) {
       const initializeChat = async () => {
         setIsInitializing(true);
-        const initialContent = await getInitialMessage();
-        const welcomeMessage: Message = {
-          id: Date.now().toString(),
-        role: "assistant",
-          content: initialContent,
-        timestamp: new Date(),
-        };
-        setMessages([welcomeMessage]);
-        setIsInitializing(false);
+        try {
+          const initialContent = await getInitialMessage();
+          const welcomeMessage: Message = {
+            id: Date.now().toString(),
+            role: "assistant",
+            content: initialContent,
+            timestamp: new Date(),
+          };
+          setMessages([welcomeMessage]);
+        } catch (error) {
+          console.error('Error initializing chat:', error);
+          // Fallback message if initialization fails
+          const fallbackMessage: Message = {
+            id: Date.now().toString(),
+            role: "assistant",
+            content: "Hello! I'm your AI assistant. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?",
+            timestamp: new Date(),
+          };
+          setMessages([fallbackMessage]);
+        } finally {
+          setIsInitializing(false);
+        }
       };
       
       initializeChat();
