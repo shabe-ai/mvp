@@ -13,9 +13,11 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as analytics from "../analytics.js";
 import type * as crm from "../crm.js";
 import type * as documents from "../documents.js";
 import type * as enrich from "../enrich.js";
+import type * as monitoring from "../monitoring.js";
 import type * as seed from "../seed.js";
 
 /**
@@ -27,9 +29,11 @@ import type * as seed from "../seed.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  analytics: typeof analytics;
   crm: typeof crm;
   documents: typeof documents;
   enrich: typeof enrich;
+  monitoring: typeof monitoring;
   seed: typeof seed;
 }>;
 export declare const api: FilterApi<

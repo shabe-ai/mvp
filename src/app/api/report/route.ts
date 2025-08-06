@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
-
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+import { openaiClient } from "@/lib/openaiClient";
 
 type DataPoint = {
   date?: string;
@@ -30,7 +28,7 @@ export async function POST(request: NextRequest) {
     console.log("Mock data generated:", mockData);
 
     // Generate chart specification using OpenAI
-    const chartResponse = await openai.chat.completions.create({
+    const chartResponse = await openaiClient.chatCompletionsCreate({
       model: "gpt-3.5-turbo-1106",
       messages: [
         {
@@ -43,6 +41,10 @@ export async function POST(request: NextRequest) {
         }
       ],
       stream: false,
+    }, {
+      userId: 'system',
+      operation: 'chart_generation',
+      model: 'gpt-3.5-turbo-1106'
     });
 
     let chartSpec;
@@ -69,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate narrative using OpenAI
-    const narrativeResponse = await openai.chat.completions.create({
+    const narrativeResponse = await openaiClient.chatCompletionsCreate({
       model: "gpt-3.5-turbo-1106",
       messages: [
         {
@@ -82,6 +84,10 @@ export async function POST(request: NextRequest) {
         }
       ],
       stream: false,
+    }, {
+      userId: 'system',
+      operation: 'narrative_generation',
+      model: 'gpt-3.5-turbo-1106'
     });
 
     const narrative = narrativeResponse.choices[0]?.message?.content || "No narrative generated";

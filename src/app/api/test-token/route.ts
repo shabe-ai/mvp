@@ -17,16 +17,20 @@ export async function GET() {
     // Test token storage with async methods
     const hasToken = await TokenStorage.hasValidToken(userId);
     const token = await TokenStorage.getToken(userId);
-    const hasRefreshToken = !!TokenStorage.getRefreshToken(userId);
+    const tokenInfo = TokenStorage.getTokenInfo(userId);
+    const persistentConnection = TokenStorage.isPersistentConnection(userId);
 
     return NextResponse.json({
       userId,
       hasToken,
-      hasRefreshToken,
+      hasRefreshToken: !!tokenInfo?.refreshToken,
       tokenExists: !!token,
       tokenPreview: token ? `${token.substring(0, 10)}...` : null,
       connectionStatus: hasToken ? 'connected' : 'disconnected',
-      persistentConnection: hasToken && hasRefreshToken
+      persistentConnection,
+      userEmail: tokenInfo?.email,
+      tokenCreatedAt: tokenInfo?.createdAt,
+      lastRefreshed: tokenInfo?.lastRefreshed
     });
 
   } catch (error) {

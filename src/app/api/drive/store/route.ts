@@ -1,12 +1,10 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
+import { convex } from "@/lib/convex";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { getGoogleDriveService } from '@/lib/googleDrive';
 import { embeddingsService } from '@/lib/embeddings';
-import { ConvexHttpClient } from 'convex/browser';
-import { api } from '../../../../../convex/_generated/api';
-
-// Initialize Convex client
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
   try {
@@ -76,8 +74,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Store document in Convex
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let documentId: any; // Will be Convex ID type
+    let documentId: string; // Will be Convex ID type
     try {
       documentId = await convex.mutation(api.documents.storeDocument, {
         teamId,
@@ -119,7 +116,7 @@ export async function POST(request: NextRequest) {
     const chunkIds = await convex.mutation(api.documents.storeDocumentChunks, {
       teamId,
       createdBy: userId, // Pass the user ID directly
-      documentId,
+      documentId: documentId as Id<"documents">,
       chunks: chunksForStorage,
     });
 

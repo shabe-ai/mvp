@@ -306,4 +306,39 @@ export default defineSchema({
     .index("by_document", ["documentId"])
     .index("by_created_by", ["createdBy"])
     .index("by_chunk_index", ["chunkIndex"]),
+
+  // Cost tracking table
+  costTracking: defineTable({
+    userId: v.string(),
+    model: v.string(),
+    inputTokens: v.number(),
+    outputTokens: v.number(),
+    cost: v.number(),
+    operation: v.string(),
+    timestamp: v.number(),
+  })
+    .index("by_user_and_time", ["userId", "timestamp"])
+    .index("by_time", ["timestamp"])
+    .index("by_model", ["model"]),
+
+  // Rate limit tracking table
+  rateLimitTracking: defineTable({
+    userId: v.string(),
+    operation: v.string(),
+    timestamp: v.number(),
+  })
+    .index("by_user_and_time", ["userId", "timestamp"])
+    .index("by_time", ["timestamp"])
+    .index("by_operation", ["operation"]),
+
+  // Daily snapshots table
+  dailySnapshots: defineTable({
+    date: v.string(),
+    timestamp: v.number(),
+    costStats: v.any(),
+    rateLimitStats: v.any(),
+    userStats: v.any(),
+  })
+    .index("by_date", ["date"])
+    .index("by_timestamp", ["timestamp"]),
 }); 

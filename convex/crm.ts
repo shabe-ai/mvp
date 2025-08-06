@@ -12,6 +12,8 @@ export const createTeam = mutation({
     ownerId: v.string(),
   },
   handler: async (ctx, args) => {
+    console.log(`Creating team "${args.name}" for user ${args.ownerId}`);
+    
     const teamId = await ctx.db.insert("teams", {
       name: args.name,
       ownerId: args.ownerId,
@@ -20,6 +22,20 @@ export const createTeam = mutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
+
+    console.log(`Team created with ID: ${teamId}`);
+
+    // Automatically seed sample data for the new team
+    try {
+      console.log(`Starting to seed data for team ${teamId}`);
+      // Call seeding directly instead of using scheduler
+      await ctx.runMutation(api.seed.seedTeamData, { teamId: teamId.toString() });
+      console.log(`Seeding completed for team ${teamId}`);
+    } catch (error) {
+      console.error("Failed to seed team data:", error);
+      // Don't fail team creation if seeding fails
+    }
+
     return teamId;
   },
 });

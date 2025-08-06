@@ -37,3 +37,8 @@ next-env.d.ts
 
 # tokens (for security)
 .tokens.json
+
+# Sentry Config File
+.env.sentry-build-plugin
+.tokens.json
+.tokens.backup.json

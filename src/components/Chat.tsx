@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -60,8 +60,50 @@ export default function Chat() {
     content: string;
   }>>([]);
 
+  // Auto-create team for new users
+  const checkAndCreateDefaultTeam = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      // First check if user already has teams
+      const teamsResponse = await fetch('/api/teams');
+      if (teamsResponse.ok) {
+        const teams = await teamsResponse.json();
+        if (teams && teams.length > 0) {
+          console.log('✅ User already has teams, skipping default team creation');
+          return;
+        }
+      }
+      
+      // Create default team if user has no teams
+      console.log('Creating default team for user:', user.id);
+      const response = await fetch('/api/teams', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: `${user.firstName || user.username || 'My'}'s Team`,
+        }),
+      });
+      
+      if (response.ok) {
+        const newTeam = await response.json();
+        console.log('✅ Default team created successfully:', newTeam);
+      } else {
+        console.error('Failed to create default team:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Error creating default team:', error);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user && isLoaded) {
+      checkAndCreateDefaultTeam();
+    }
+  }, [user, isLoaded, checkAndCreateDefaultTeam]);
+
   // Function to get initial message based on Google Workspace connection
-  const getInitialMessage = async (): Promise<string> => {
+  const getInitialMessage = useCallback(async (): Promise<string> => {
     try {
       // Check Google Workspace connection status
       const response = await fetch("/api/test-token");
@@ -78,18 +120,20 @@ export default function Chat() {
           } else {
             return `Hello! I'm your AI assistant. I can see you have Google Workspace connected, but I need additional permissions to access your calendar. You can still upload files for analysis and chart generation. What would you like to do?`;
           }
-        } catch (_error) {
+        } catch (error) {
+          console.error('Error fetching calendar data:', error);
           return `Hello! I'm your AI assistant. I can see you have Google Workspace connected. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?`;
         }
       } else {
         // User doesn't have Google Workspace connected - show integration instructions
         return `👋 Welcome to Shabe AI!\n\nI'm your AI assistant that can help you analyze files, generate charts, and provide insights.\n\nTo get the most out of your experience:\n\n1. Connect Google Workspace (optional but recommended)\n   • Go to Admin → Google Workspace Integration\n   • Connect your account for calendar access\n\n2. Upload files for analysis\n   • Use the upload button to add files\n   • I can analyze PDFs, Excel files, and more\n\n3. Ask me anything about your data\n   • Generate charts and insights\n   • Get summaries and recommendations\n\nWhat would you like to do first?`;
       }
-    } catch (_error) {
+    } catch (error) {
+      console.error('Error checking Google Workspace connection:', error);
       // Fallback message if connection check fails
       return "Hello! I'm your AI assistant. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?";
     }
-  };
+  }, []);
 
   // Initialize with dynamic welcome message if user is logged in
   useEffect(() => {
@@ -99,9 +143,9 @@ export default function Chat() {
         const initialContent = await getInitialMessage();
         const welcomeMessage: Message = {
           id: Date.now().toString(),
-          role: "assistant",
+        role: "assistant",
           content: initialContent,
-          timestamp: new Date(),
+        timestamp: new Date(),
         };
         setMessages([welcomeMessage]);
         setIsInitializing(false);
@@ -109,7 +153,7 @@ export default function Chat() {
       
       initializeChat();
     }
-  }, [user, isLoaded, messages.length]);
+  }, [user, isLoaded, messages.length, getInitialMessage]);
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -132,6 +176,23 @@ export default function Chat() {
     setIsLoading(true);
 
     try {
+      // Get company data from localStorage
+      const companyData = localStorage.getItem('companyData');
+      const parsedCompanyData = companyData ? JSON.parse(companyData) : {
+        name: "",
+        website: "",
+        description: ""
+      };
+
+      // Get real user data from Clerk
+      const userData = {
+        name: user.firstName && user.lastName 
+          ? `${user.firstName} ${user.lastName}`
+          : user.emailAddresses[0]?.emailAddress || "User",
+        email: user.emailAddresses[0]?.emailAddress || "",
+        company: parsedCompanyData.name || "Shabe ai"
+      };
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: {
@@ -141,6 +202,8 @@ export default function Chat() {
           messages: [...messages, userMessage],
           userId: user.id,
           sessionFiles: sessionFiles,
+          companyData: parsedCompanyData,
+          userData: userData, // Pass real user data directly
         }),
       });
 
@@ -148,27 +211,27 @@ export default function Chat() {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const data = await response.json();
+        const data = await response.json();
       
       if (data.error) {
         throw new Error(data.error);
       }
 
       const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: data.message,
-        timestamp: new Date(),
-        action: data.action,
-        data: data.data,
-        needsClarification: data.needsClarification,
-        clarificationQuestion: data.clarificationQuestion,
+              id: (Date.now() + 1).toString(),
+              role: "assistant",
+              content: data.message,
+              timestamp: new Date(),
+              action: data.action,
+              data: data.data,
+              needsClarification: data.needsClarification,
+              clarificationQuestion: data.clarificationQuestion,
         fields: data.fields,
         chartSpec: data.chartSpec,
         narrative: data.narrative,
-      };
+        };
 
-      setMessages(prev => [...prev, assistantMessage]);
+        setMessages(prev => [...prev, assistantMessage]);
 
       // Handle email draft if present
       if (data.emailDraft) {
@@ -376,6 +439,23 @@ export default function Chat() {
         ) : (
           <>
             {messages.map(renderMessage)}
+            
+            {/* Loading indicator when preparing response */}
+            {isLoading && (
+              <div className="flex justify-start mb-4">
+                <div className="max-w-[80%] rounded-lg px-4 py-2 bg-[#d9d2c7]/10 text-black">
+                  <div className="flex items-center gap-2">
+                    <div className="flex space-x-1">
+                      <div className="w-2 h-2 bg-[#f3e89a] rounded-full animate-bounce"></div>
+                      <div className="w-2 h-2 bg-[#f3e89a] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                      <div className="w-2 h-2 bg-[#f3e89a] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                    </div>
+                    <span className="text-sm text-[#d9d2c7]">Shabe ai is thinking...</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div ref={messagesEndRef} />
           </>
         )}
@@ -474,16 +554,20 @@ export default function Chat() {
           >
             <Upload className="h-5 w-5" />
           </button>
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask me anything about your uploaded files..."
-            disabled={isLoading}
+        <Input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+            placeholder={isLoading ? "Shabe ai is thinking..." : "Ask me anything about your uploaded files..."}
+          disabled={isLoading}
             className="flex-1 border-0 focus:ring-0 px-4 py-3 text-base"
           />
           <Button type="submit" disabled={isLoading} className="bg-[#f3e89a] hover:bg-[#efe076] text-black rounded-r-full px-3 flex items-center justify-center" style={{ width: '48px' }}>
-            <Send className="h-4 w-4" />
-          </Button>
+            {isLoading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Send className="h-4 w-4" />
+            )}
+        </Button>
         </div>
       </form>
     </div>

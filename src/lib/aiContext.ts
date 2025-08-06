@@ -288,7 +288,7 @@ export class AIContextService {
       const maxTokensPerContext = 2000; // More aggressive limit to avoid token issues
       let shouldBreak = false;
       
-      for (const [_fileName, group] of groupedDocs) {
+      for (const [, group] of groupedDocs) {
         if (shouldBreak) break;
         
         const avgSimilarity = group.avgSimilarity / group.chunks.length;

@@ -1,9 +1,9 @@
-import OpenAI from 'openai';
+import { openaiClient } from './openaiClient';
 
 // Initialize OpenAI client
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// const openai = new OpenAI({
+//   apiKey: process.env.OPENAI_API_KEY,
+// });
 
 export interface DocumentChunk {
   id: string;
@@ -82,10 +82,14 @@ export class EmbeddingsService {
    */
   async generateEmbeddings(textChunks: string[]): Promise<number[][]> {
     try {
-      const response = await openai.embeddings.create({
+      const response = await openaiClient.embeddingsCreate({
         model: 'text-embedding-3-small',
         input: textChunks,
         encoding_format: 'float',
+      }, {
+        userId: 'system',
+        operation: 'embeddings',
+        model: 'text-embedding-3-small'
       });
 
       return response.data.map(item => item.embedding);
