@@ -1,30 +1,24 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 
 export async function GET() {
   try {
     const session = await auth();
-    const userId = session?.userId;
-
-    console.log('🔍 Test Auth API - Session:', { userId: userId ? 'present' : 'missing' });
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User not authenticated', session: null },
-        { status: 401 }
-      );
-    }
-
+    const user = await currentUser();
+    
     return NextResponse.json({
-      success: true,
-      userId,
-      message: 'Authentication working correctly'
+      authenticated: !!session?.userId,
+      userId: session?.userId,
+      userEmail: user?.emailAddresses?.[0]?.emailAddress,
+      firstName: user?.firstName,
+      lastName: user?.lastName,
+      sessionExists: !!session,
+      userExists: !!user
     });
-
   } catch (error) {
-    console.error('❌ Test Auth API error:', error);
+    console.error('❌ Error testing auth:', error);
     return NextResponse.json(
-      { error: 'Authentication test failed', details: error },
+      { error: 'Failed to test authentication' },
       { status: 500 }
     );
   }
