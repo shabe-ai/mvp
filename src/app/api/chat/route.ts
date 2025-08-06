@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
-import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../../convex/_generated/api";
+import { auth } from "@clerk/nextjs/server";
+import { convex } from "@/lib/convex";
+import { api } from "@/convex/_generated/api";
+import { openaiClient } from "@/lib/openaiClient";
+import { logError, logMessage, addBreadcrumb } from "@/lib/errorLogger";
 
 // Add proper interfaces at the top
 interface UserContext {
@@ -89,10 +91,7 @@ interface DatabaseOperationResult {
   error?: boolean;
 }
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Convex client is now imported from lib/convex
 
 interface Message {
   role: string;
@@ -236,11 +235,15 @@ Return ONLY a JSON object: { "action": "...", "entities": { ... }, "confidence":
 `;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await openaiClient.chatCompletionsCreate({
       model: "gpt-4",
       messages: [{ role: "system", content: prompt }],
       temperature: 0.1,
       max_tokens: 200
+    }, {
+      userId: context.userProfile?.name || 'unknown',
+      operation: 'intent_classification',
+      model: 'gpt-4'
     });
 
     const result = JSON.parse(response.choices[0]?.message?.content || "{}");
@@ -267,11 +270,15 @@ Return ONLY a JSON object: { "recipient": "...", "subject": "...", "content_type
 `;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await openaiClient.chatCompletionsCreate({
       model: "gpt-4",
       messages: [{ role: "system", content: prompt }],
       temperature: 0.1,
       max_tokens: 150
+    }, {
+      userId: context.userProfile?.name || 'unknown',
+      operation: 'email_entity_extraction',
+      model: 'gpt-4'
     });
 
     return JSON.parse(response.choices[0]?.message?.content || "{}");
@@ -379,11 +386,15 @@ Draft a professional email. Return ONLY a JSON object:
 `;
 
   try {
-    const response = await openai.chat.completions.create({
+    const response = await openaiClient.chatCompletionsCreate({
       model: "gpt-4",
       messages: [{ role: "system", content: emailPrompt }],
       temperature: 0.7,
       max_tokens: 500
+    }, {
+      userId: context.userProfile?.name || 'unknown',
+      operation: 'email_drafting',
+      model: 'gpt-4'
     });
 
     const result = JSON.parse(response.choices[0]?.message?.content || "{}");
@@ -792,7 +803,7 @@ async function handleChartGeneration(message: string, entities: Record<string, u
 
 async function handleGeneralConversation(message: string, messages: Message[], context: UserContext) {
   // General AI conversation
-  const completion = await openai.chat.completions.create({
+  const completion = await openaiClient.chatCompletionsCreate({
     model: "gpt-4",
     messages: [
       {
@@ -806,6 +817,10 @@ async function handleGeneralConversation(message: string, messages: Message[], c
     ],
     temperature: 0.7,
     max_tokens: 1000,
+  }, {
+    userId: context.userProfile?.name || 'unknown',
+    operation: 'general_conversation',
+    model: 'gpt-4'
   });
 
   return NextResponse.json({
@@ -1265,11 +1280,15 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
   `;
   
   try {
-    const response = await openai.chat.completions.create({
+    const response = await openaiClient.chatCompletionsCreate({
       model: "gpt-4",
       messages: [{ role: "system", content: chartPrompt }],
       temperature: 0.1,
       max_tokens: 1000
+    }, {
+      userId: userId || 'unknown',
+      operation: 'chart_generation',
+      model: 'gpt-4'
     });
     
     const result = JSON.parse(response.choices[0]?.message?.content || "{}");
@@ -1291,6 +1310,13 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { messages, userId, sessionFiles = [], companyData = {}, userData = {} } = body;
+
+    // Add breadcrumb for tracking
+    addBreadcrumb('Chat API called', 'api', {
+      userId,
+      messageCount: messages.length,
+      hasSessionFiles: sessionFiles.length > 0,
+    });
 
     // Validate required fields
     validateRequiredFields(body, ['userId', 'messages']);
@@ -1366,6 +1392,17 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('❌ Chat API error:', error);
+    
+    // Log error with context
+    logError(error instanceof Error ? error : String(error), {
+      userId,
+      action: 'chat_api_request',
+      component: 'chat_route',
+      additionalData: {
+        messageCount: messages?.length || 0,
+        hasSessionFiles: sessionFiles?.length > 0,
+      },
+    });
     
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },

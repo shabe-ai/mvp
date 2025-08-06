@@ -16,20 +16,49 @@ export async function GET(request: NextRequest) {
     const code = searchParams.get('code');
     const error = searchParams.get('error');
 
+    console.log('🔍 Google OAuth callback received:', {
+      hasCode: !!code,
+      hasError: !!error,
+      error,
+      url: request.url
+    });
+
     if (error) {
       console.error('Google OAuth error:', error);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=oauth_error`);
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=oauth_error&details=${error}`);
     }
 
     if (!code) {
+      console.error('No authorization code received');
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=no_code`);
     }
 
-    // Exchange code for tokens
-    const { tokens } = await oauth2Client.getToken(code);
+    console.log('🔄 Attempting to exchange code for tokens...');
     
-    if (!tokens.access_token) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=no_access_token`);
+    // Exchange code for tokens
+    let tokens: any;
+    try {
+      const tokenResponse = await oauth2Client.getToken(code);
+      tokens = tokenResponse.tokens;
+      
+      if (!tokens.access_token) {
+        console.error('❌ No access token received from Google');
+        return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=no_access_token`);
+      }
+      
+      console.log('✅ Successfully received tokens from Google');
+    } catch (tokenError: any) {
+      console.error('❌ Error exchanging code for tokens:', tokenError);
+      console.error('❌ Error details:', {
+        message: tokenError.message,
+        code: tokenError.code,
+        status: tokenError.status,
+        response: tokenError.response?.data
+      });
+      
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=token_exchange_failed&details=${tokenError.message}`
+      );
     }
 
     // Get user session
@@ -40,13 +69,25 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=not_authenticated`);
     }
 
+    // Get user email from Google
+    let userEmail: string | undefined;
+    try {
+      oauth2Client.setCredentials(tokens);
+      const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
+      const userInfo = await oauth2.userinfo.get();
+      userEmail = userInfo.data.email || undefined;
+    } catch (error) {
+      console.warn('⚠️ Could not fetch user email:', error);
+    }
+
     // Store both access and refresh tokens with longer expiration
     const expiresIn = (tokens as { expires_in?: number }).expires_in || 3600; // Use Google's provided expiration
     TokenStorage.setToken(
       userId, 
       tokens.access_token, 
       tokens.refresh_token || undefined, // Store refresh token for persistent connections
-      expiresIn
+      expiresIn,
+      userEmail
     );
     
     console.log('✅ Google OAuth successful for user:', userId);

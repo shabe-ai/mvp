@@ -4,11 +4,16 @@ import { google } from 'googleapis';
 
 // File-based token storage for persistence
 const TOKEN_FILE = path.join(process.cwd(), '.tokens.json');
+const TOKEN_BACKUP_FILE = path.join(process.cwd(), '.tokens.backup.json');
 
 interface TokenData {
   accessToken: string;
   refreshToken?: string;
   expiresAt: number;
+  createdAt: number;
+  lastRefreshed: number;
+  userId: string;
+  email?: string;
 }
 
 interface TokenStorageData {
@@ -22,25 +27,58 @@ const oauth2Client = new google.auth.OAuth2(
   `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/auth/google/callback`
 );
 
-// Load tokens from file
+// Load tokens from file with backup recovery
 function loadTokens(): TokenStorageData {
   try {
+    // Try primary file first
     if (fs.existsSync(TOKEN_FILE)) {
       const data = fs.readFileSync(TOKEN_FILE, 'utf8');
-      return JSON.parse(data);
+      const tokens = JSON.parse(data);
+      console.log('📁 Loaded tokens from primary file');
+      return tokens;
+    }
+    
+    // Try backup file if primary doesn't exist
+    if (fs.existsSync(TOKEN_BACKUP_FILE)) {
+      const data = fs.readFileSync(TOKEN_BACKUP_FILE, 'utf8');
+      const tokens = JSON.parse(data);
+      console.log('📁 Loaded tokens from backup file');
+      // Restore primary file
+      saveTokens(tokens);
+      return tokens;
     }
   } catch (error) {
-    console.error('Error loading tokens:', error);
+    console.error('❌ Error loading tokens:', error);
+    
+    // Try backup file if primary file is corrupted
+    try {
+      if (fs.existsSync(TOKEN_BACKUP_FILE)) {
+        const data = fs.readFileSync(TOKEN_BACKUP_FILE, 'utf8');
+        const tokens = JSON.parse(data);
+        console.log('📁 Restored tokens from backup after corruption');
+        saveTokens(tokens);
+        return tokens;
+      }
+    } catch (backupError) {
+      console.error('❌ Error loading backup tokens:', backupError);
+    }
   }
   return {};
 }
 
-// Save tokens to file
+// Save tokens to file with backup
 function saveTokens(tokens: TokenStorageData): void {
   try {
+    // Create backup first
+    if (fs.existsSync(TOKEN_FILE)) {
+      fs.copyFileSync(TOKEN_FILE, TOKEN_BACKUP_FILE);
+    }
+    
+    // Save to primary file
     fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2));
+    console.log('💾 Tokens saved successfully');
   } catch (error) {
-    console.error('Error saving tokens:', error);
+    console.error('❌ Error saving tokens:', error);
   }
 }
 
@@ -62,6 +100,7 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
       if (tokenData) {
         tokenData.accessToken = newAccessToken;
         tokenData.expiresAt = Date.now() + (((credentials as { credentials: { expires_in?: number } }).credentials.expires_in || 3600) * 1000);
+        tokenData.lastRefreshed = Date.now();
         saveTokens(tokens);
         
         console.log('🔄 Access token refreshed for user:', userId);
@@ -76,20 +115,26 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
 }
 
 export class TokenStorage {
-  static setToken(userId: string, accessToken: string, refreshToken?: string, expiresIn: number = 3600): void {
+  static setToken(userId: string, accessToken: string, refreshToken?: string, expiresIn: number = 3600, email?: string): void {
     const tokens = loadTokens();
     const expiresAt = Date.now() + (expiresIn * 1000);
+    const now = Date.now();
     
     tokens[userId] = { 
       accessToken, 
       refreshToken, 
-      expiresAt 
+      expiresAt,
+      createdAt: now,
+      lastRefreshed: now,
+      userId,
+      email
     };
     saveTokens(tokens);
     
     console.log('🔐 Token stored for user:', userId);
     console.log('🔐 Has refresh token:', !!refreshToken);
     console.log('🔐 Total tokens in storage:', Object.keys(tokens).length);
+    console.log('🔐 User email:', email);
   }
 
   static async getToken(userId: string): Promise<string | null> {
@@ -150,5 +195,23 @@ export class TokenStorage {
     const tokens = loadTokens();
     const tokenData = tokens[userId];
     return tokenData?.refreshToken || null;
+  }
+
+  // Get all stored tokens (for debugging)
+  static getAllTokens(): TokenStorageData {
+    return loadTokens();
+  }
+
+  // Get token info for a specific user
+  static getTokenInfo(userId: string): TokenData | null {
+    const tokens = loadTokens();
+    return tokens[userId] || null;
+  }
+
+  // Check if connection is persistent (has refresh token)
+  static isPersistentConnection(userId: string): boolean {
+    const tokens = loadTokens();
+    const tokenData = tokens[userId];
+    return !!(tokenData && tokenData.refreshToken);
   }
 } 

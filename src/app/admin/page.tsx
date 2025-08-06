@@ -1,6 +1,9 @@
 "use client";
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { useEffect, useState } from "react";
+import MonitoringDashboard from "@/components/MonitoringDashboard";
+import AnalyticsDashboard from "@/components/AnalyticsDashboard";
+import { useAdminAuth } from "@/lib/adminAuth";
 
 function ProfileSection() {
   const { user } = useUser();
@@ -207,6 +210,15 @@ function GoogleIntegrationSection() {
       setIsConnected(!!data.hasToken);
       setIsPersistent(!!data.persistentConnection);
       setLoading(false);
+      
+      // Log detailed connection info
+      console.log('🔍 Connection check:', {
+        hasToken: data.hasToken,
+        persistentConnection: data.persistentConnection,
+        userEmail: data.userEmail,
+        tokenCreatedAt: data.tokenCreatedAt,
+        lastRefreshed: data.lastRefreshed
+      });
     } catch (error) {
       console.error('Error checking connection:', error);
       setIsConnected(false);
@@ -277,6 +289,7 @@ function GoogleIntegrationSection() {
 
 export default function AdminPage() {
   const { user, isLoaded } = useUser();
+  const { isAdmin, isAnalyticsAdmin, user: adminUser, loading: adminLoading } = useAdminAuth();
 
   if (!isLoaded) {
     return (
@@ -302,6 +315,20 @@ export default function AdminPage() {
     );
   }
 
+  // Check if user has admin privileges (everyone can access admin page)
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#d9d2c7]/20 flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-black mb-4">Access Denied</h1>
+          <p className="text-[#d9d2c7] mb-6">
+            You need to be signed in to access the admin panel.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#d9d2c7]/20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -320,6 +347,35 @@ export default function AdminPage() {
             <GoogleIntegrationSection />
           </div>
         </div>
+
+        {/* Monitoring Dashboard - Only for Analytics Admins */}
+        {isAnalyticsAdmin && (
+          <div className="mt-8">
+            <MonitoringDashboard />
+          </div>
+        )}
+
+        {/* Analytics Dashboard - Only for Analytics Admins */}
+        {isAnalyticsAdmin && (
+          <div className="mt-8">
+            <AnalyticsDashboard />
+          </div>
+        )}
+
+        {/* Regular User Message - For non-analytics admins */}
+        {!isAnalyticsAdmin && (
+          <div className="mt-8 p-6 bg-gray-50 rounded-lg">
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Workspace Management</h3>
+            <p className="text-gray-600 mb-4">
+              Use the sections above to manage your profile, company settings, and Google Workspace integration.
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                💡 <strong>Tip:</strong> Connect your Google Workspace to enable calendar integration and enhanced features.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
