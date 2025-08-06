@@ -7,11 +7,20 @@ export async function GET() {
     const session = await auth();
     const userId = session?.userId;
 
+    console.log('🔍 Test token - Session:', { userId: userId ? 'present' : 'missing' });
+
+    // TEMPORARY: Allow testing without authentication for debugging
     if (!userId) {
-      return NextResponse.json(
-        { error: 'User not authenticated' },
-        { status: 401 }
-      );
+      console.log('⚠️ Test token - No user session, returning debug info');
+      return NextResponse.json({
+        error: 'User not authenticated',
+        debug: {
+          sessionExists: !!session,
+          userId: userId,
+          environment: process.env.NODE_ENV,
+          baseUrl: process.env.NEXT_PUBLIC_BASE_URL
+        }
+      });
     }
 
     // Test token storage with async methods
@@ -36,7 +45,7 @@ export async function GET() {
   } catch (error) {
     console.error('❌ Error testing token:', error);
     return NextResponse.json(
-      { error: 'Failed to test token' },
+      { error: 'Failed to test token', details: error },
       { status: 500 }
     );
   }
