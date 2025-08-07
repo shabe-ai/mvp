@@ -22,7 +22,7 @@ export async function GET() {
       );
     }
 
-    // Generate OAuth URL
+    // Generate OAuth URL with state parameter containing userId
     const authUrl = oauth2Client.generateAuthUrl({
       access_type: 'offline',
       scope: [
@@ -35,7 +35,8 @@ export async function GET() {
         'https://www.googleapis.com/auth/drive.metadata.readonly',
       ],
       prompt: 'consent',
-      include_granted_scopes: true
+      include_granted_scopes: true,
+      state: userId // Include userId in state parameter
     });
 
     console.log('🔗 Generated Google OAuth URL for user:', userId);

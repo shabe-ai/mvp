@@ -15,10 +15,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const error = searchParams.get('error');
+    const state = searchParams.get('state'); // Get userId from state parameter
 
     console.log('🔍 Google OAuth callback received:', {
       hasCode: !!code,
       hasError: !!error,
+      hasState: !!state,
       error,
       url: request.url
     });
@@ -32,6 +34,13 @@ export async function GET(request: NextRequest) {
       console.error('No authorization code received');
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=no_code`);
     }
+
+    if (!state) {
+      console.error('No state parameter received (userId)');
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=no_state`);
+    }
+
+    const userId = state; // Use state parameter as userId
 
     console.log('🔄 Attempting to exchange code for tokens...');
     
@@ -62,14 +71,6 @@ export async function GET(request: NextRequest) {
         responseData: error.response?.data
       });
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=oauth_error&details=${errorDetails}`);
-    }
-
-    // Get user session
-    const session = await auth();
-    const userId = session?.userId;
-
-    if (!userId) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=not_authenticated`);
     }
 
     // Get user email from Google
