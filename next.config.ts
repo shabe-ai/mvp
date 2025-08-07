@@ -11,8 +11,11 @@ const nextConfig: NextConfig = {
   },
   // Optimize build performance
   experimental: {
-    optimizePackageImports: ['lucide-react'],
+    optimizePackageImports: ['lucide-react'], // Removed FontAwesome
   },
+  // Added a comment to trigger redeploy for new domain
+  // New domain: app.shabe.ai
+  // Trigger redeploy to pick up latest Clerk keys
 };
 
 export default withSentryConfig(nextConfig, {
