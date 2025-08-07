@@ -16,6 +16,7 @@ const nextConfig: NextConfig = {
   // Added a comment to trigger redeploy for new domain
   // New domain: app.shabe.ai
   // Trigger redeploy to pick up latest Clerk keys
+  // Trigger redeploy to pick up Google OAuth environment variables
 };
 
 export default withSentryConfig(nextConfig, {
