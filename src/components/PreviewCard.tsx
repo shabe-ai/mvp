@@ -82,15 +82,24 @@ export default function PreviewCard({
       <div className="bg-gradient-to-r from-[#f3e89a]/20 to-[#efe076]/20 px-6 py-4 border-b border-[#d9d2c7]">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold text-black">{title}</h3>
-          {isEditable && !isEditing && (
+          <div className="flex items-center space-x-2">
+            {isEditable && !isEditing && (
+              <button
+                onClick={handleEdit}
+                className="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-[#d9d2c7] hover:text-black bg-white border border-[#d9d2c7] rounded-lg hover:bg-[#d9d2c7]/10 transition-colors"
+              >
+                <Edit className="w-4 h-4" />
+                <span>Edit</span>
+              </button>
+            )}
             <button
-              onClick={handleEdit}
+              onClick={handleCancel}
               className="flex items-center space-x-2 px-3 py-1.5 text-sm font-medium text-[#d9d2c7] hover:text-black bg-white border border-[#d9d2c7] rounded-lg hover:bg-[#d9d2c7]/10 transition-colors"
             >
-              <Edit className="w-4 h-4" />
-              <span>Edit</span>
+              <X className="w-4 h-4" />
+              <span>Close</span>
             </button>
-          )}
+          </div>
         </div>
       </div>
 
