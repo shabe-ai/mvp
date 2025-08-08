@@ -1044,9 +1044,17 @@ Respond naturally and conversationally. If the user asks to send an email to som
     const aiResponse = response.choices[0]?.message?.content || "I'm here to help! What would you like to do?";
 
     // Check if this is a follow-up to an email context prompt
+    console.log('🔍 Checking for email context response...');
+    console.log('📋 Messages length:', messages.length);
+    console.log('📋 Last few messages:', messages.slice(-3).map(m => ({ role: m.role, action: m.action, content: m.content?.substring(0, 50) + '...' })));
+    
     const lastAssistantMessage = messages[messages.length - 2];
+    console.log('📋 Last assistant message:', { role: lastAssistantMessage?.role, action: lastAssistantMessage?.action, contactName: lastAssistantMessage?.contactName });
+    
     const isEmailContextResponse = lastAssistantMessage?.role === 'assistant' && 
                                   lastAssistantMessage?.action === "prompt_email_context";
+    
+    console.log('🎯 Is email context response:', isEmailContextResponse);
     
     if (isEmailContextResponse) {
       // User is providing email context after being prompted
@@ -1058,7 +1066,7 @@ Respond naturally and conversationally. If the user asks to send an email to som
       const matchingContact = contacts.find(contact => contact._id === contactId);
       if (matchingContact) {
         console.log('📧 Creating email with provided context for:', contactName);
-        return await draftEmail(matchingContact, context);
+        return await draftEmail(matchingContact, context, message);
       } else {
         console.log('❌ Could not find matching contact for ID:', contactId);
       }
