@@ -63,6 +63,10 @@ export async function GET(request: NextRequest) {
     });
 
     console.log('🔗 Generated Google OAuth URL for user:', finalUserId);
+    console.log('🔗 OAuth URL:', authUrl);
+    console.log('🔗 Redirect URI:', `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/auth/google/callback`);
+    console.log('🔗 Client ID:', process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 10)}...` : 'NOT_SET');
+    console.log('🔗 Has Client Secret:', !!process.env.GOOGLE_CLIENT_SECRET);
 
     return NextResponse.json({ authUrl });
 
