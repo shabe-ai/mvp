@@ -627,8 +627,9 @@ async function handleContactUpdate(message: string, userId: string) {
     const lowerMessage = message.toLowerCase();
     
     // Extract name (look for patterns like "john smith", "john", "smith")
-    const nameMatch = message.match(/\b([A-Z][a-z]+)\s+([A-Z][a-z]+)\b/) || 
-                     message.match(/\b([A-Z][a-z]+)\b/);
+    // Handle both uppercase and lowercase names
+    const nameMatch = message.match(/\b([A-Za-z]+)\s+([A-Za-z]+)\b/) || 
+                     message.match(/\b([A-Za-z]+)\b/);
     const contactName = nameMatch ? nameMatch[0] : null;
     
     // Extract field and value (e.g., "email to johnsmith@acme.com")
