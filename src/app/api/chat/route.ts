@@ -1035,11 +1035,12 @@ Respond naturally and conversationally. If the user asks to send an email to som
 
     const aiResponse = response.choices[0]?.message?.content || "I'm here to help! What would you like to do?";
 
-    // Check if the AI wants to perform an action
-    if (aiResponse.toLowerCase().includes('send') && aiResponse.toLowerCase().includes('email')) {
-      // Extract contact name from AI response or conversation context
-      const contactMatch = aiResponse.match(/send.*email.*to\s+([^,\n]+)/i) || 
-                          message.match(/(?:send|email)\s+(?:to\s+)?([a-z\s]+)/i);
+    // Check if the user wants to send an email and go directly to email preview
+    const lowerMessage = message.toLowerCase();
+    if (lowerMessage.includes('send') && lowerMessage.includes('email')) {
+      // Extract contact name from the message
+      const contactMatch = message.match(/(?:send|email)\s+(?:to\s+)?([a-z\s]+)/i) ||
+                          message.match(/send.*email.*to\s+([^,\n]+)/i);
       
       if (contactMatch) {
         const contactName = contactMatch[1].trim();
@@ -1050,6 +1051,7 @@ Respond naturally and conversationally. If the user asks to send an email to som
         });
 
         if (matchingContact) {
+          console.log('📧 Going directly to email preview for:', contactName);
           return await draftEmail(matchingContact, context);
         }
       }
