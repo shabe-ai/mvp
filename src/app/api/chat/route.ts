@@ -200,61 +200,7 @@ function fastPatternMatch(message: string) {
   return { action: null, confidence: 0 };
 }
 
-// LLM intent classification for complex/ambiguous cases
-async function classifyIntentWithLLM(message: string, context: UserContext) {
-  const prompt = `
-You are an AI assistant that classifies user intents and extracts relevant entities.
 
-Available actions:
-- send_email: User wants to send an email to someone
-- create_contact: User wants to create a new contact, account, deal, or activity
-- query_database: User wants to view, search, or filter database records (contacts, accounts, deals, activities)
-- generate_chart: User wants to create a chart or visualization of data
-- analyze_file: User wants to analyze uploaded files
-- general_conversation: General chat or questions
-
-IMPORTANT CLASSIFICATION RULES:
-- If the user mentions viewing/searching/finding specific people, companies, or records → query_database
-- If the user mentions creating charts, graphs, or visualizations → generate_chart
-- If the user mentions "view", "show", "find", "get" + a name → query_database
-- If the user mentions "chart", "graph", "visualize" + data → generate_chart
-
-Extract entities like:
-- recipient: Who the email is for (name)
-- contact_name: Name for new contact
-- contact_email: Email for new contact
-- query_type: Type of database query (contacts, accounts, deals, activities)
-- chart_type: Type of chart to generate
-- file_action: What to do with uploaded files
-
-Context:
-- User: ${context.userProfile?.name || 'Unknown'}
-- Company: ${context.companyData?.name || 'Unknown'}
-
-Message: "${message}"
-
-Return ONLY a JSON object: { "action": "...", "entities": { ... }, "confidence": 0.0-1.0 }
-`;
-
-  try {
-    const response = await openaiClient.chatCompletionsCreate({
-      model: "gpt-4",
-      messages: [{ role: "system", content: prompt }],
-      temperature: 0.1,
-      max_tokens: 200
-    }, {
-      userId: context.userProfile?.name || 'unknown',
-      operation: 'intent_classification',
-      model: 'gpt-4'
-    });
-
-    const result = JSON.parse(response.choices[0]?.message?.content || "{}");
-    return result;
-  } catch (error) {
-    console.error('LLM intent classification failed:', error);
-    return { action: "general_conversation", entities: {}, confidence: 0.5 };
-  }
-}
 
 // Entity extraction for email requests
 async function extractEmailEntities(message: string, context: UserContext) {
@@ -290,31 +236,7 @@ Return ONLY a JSON object: { "recipient": "...", "subject": "...", "content_type
   }
 }
 
-// Main intent classification function
-async function classifyIntent(message: string, context: UserContext): Promise<IntentResult> {
-  // Step 0: Check if this is a contact update (highest priority)
-      if (isContactUpdateMessage(message)) {
-    console.log('Contact update detected:', message);
-    return {
-      action: 'updateContact',
-      confidence: 0.95
-    };
-  }
-  
-  // Step 1: Fast pattern matching (0-5ms)
-  const fastResult = fastPatternMatch(message);
-  
-  if (fastResult.confidence > 0.8) {
-    console.log('Fast pattern match:', fastResult);
-    return fastResult;
-  }
-  
-  // Step 2: LLM classification for ambiguous cases (1-2s)
-  console.log('Using LLM classification for:', message);
-  const llmResult = await classifyIntentWithLLM(message, context);
-  
-  return llmResult;
-}
+
 
 // Action handlers
 // Function to resolve pronouns by looking at conversation context
@@ -364,75 +286,7 @@ function resolvePronoun(pronoun: string, context: UserContext): string | null {
   return null;
 }
 
-async function handleEmailRequest(message: string, entities: EmailEntities, userId: string, context: UserContext) {
-  // Extract recipient from message or entities
-  const emailEntities = await extractEmailEntities(message, context);
-  let recipient = entities.recipient || emailEntities.recipient;
-  
-  // If no recipient found, check if it's a pronoun and try to resolve it
-  if (!recipient) {
-    const lowerMessage = message.toLowerCase();
-    const pronounMatch = lowerMessage.match(/\b(him|her|them|his|hers|theirs)\b/);
-    
-    if (pronounMatch) {
-      const pronoun = pronounMatch[1];
-      const resolvedName = resolvePronoun(pronoun, context);
-      
-      if (resolvedName) {
-        recipient = resolvedName;
-        console.log(`🔍 Resolved pronoun "${pronoun}" to contact: ${resolvedName}`);
-      } else {
-        return NextResponse.json({
-          message: "I couldn't identify who you want to send an email to. Please specify the recipient's name.",
-          error: true
-        });
-      }
-    } else {
-      return NextResponse.json({
-        message: "I couldn't identify who you want to send an email to. Please specify the recipient's name.",
-        error: true
-      });
-    }
-  }
-  
-  // Check if contact exists
-  try {
-    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
-    const teamId = teams.length > 0 ? teams[0]._id : 'default';
-    const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
-    
-    const matchingContact = contacts.find(contact => {
-      const contactName = contact.firstName && contact.lastName 
-        ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
-        : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
-      const searchName = recipient.toLowerCase();
-      
-      return contactName.includes(searchName) || 
-             searchName.includes(contactName) ||
-             contactName.split(' ').some((part: string) => searchName.includes(part)) ||
-             searchName.split(' ').some((part: string) => contactName.includes(part));
-    });
-    
-    if (matchingContact) {
-      // Contact exists, draft email
-      return await draftEmail(matchingContact, context);
-    } else {
-      // Contact doesn't exist, prompt for creation
-      return NextResponse.json({
-        message: `I couldn't find a contact named "${recipient}" in your database. Would you like me to help you create a new contact for this person? Please provide their email address so I can add them to your contacts and then send the email.`,
-        needsContactCreation: true,
-        suggestedContactName: recipient,
-        action: "create_contact"
-      });
-    }
-  } catch (error) {
-    console.error('Error checking contacts:', error);
-    return NextResponse.json({
-      message: "I encountered an error while checking your contacts. Please try again.",
-      error: true
-    });
-  }
-}
+
 
 async function draftEmail(contact: DatabaseRecord, context: UserContext, emailContext?: string) {
   // Get the latest user message for context
@@ -486,53 +340,7 @@ Based on the user's request, draft a professional email. Return ONLY a JSON obje
   }
 }
 
-// Enhanced object creation handlers for all types
-async function handleObjectCreation(message: string, entities: Record<string, unknown>, userId: string, context: UserContext) {
-  // Check if this is a continuation of a creation flow
-  const lastMessage = context.conversationHistory[context.conversationHistory.length - 2];
-  const isContinuation = lastMessage?.action === "prompt_details";
-  
-  // Also check if this is an update to a recently created contact
-      const isContactUpdate = isContactUpdateMessage(message);
-  
-  if (isContactUpdate) {
-    return await handleContactUpdate(message, userId);
-  } else if (isContinuation) {
-    // This is a continuation - extract details from the current message
-    const objectType = lastMessage.objectType || 'contact';
-    const extractedDetails = extractObjectDetailsFromNaturalLanguage(message);
-    
-    // Merge with any partial details from previous message
-    const partialDetails = lastMessage.partialDetails || {};
-    const mergedDetails = { ...partialDetails, ...extractedDetails };
-    
-    if (hasRequiredDetails(mergedDetails, objectType)) {
-      return await createObject(mergedDetails, objectType, userId);
-    } else {
-      return NextResponse.json({
-        message: getCreationPrompt(objectType, mergedDetails),
-        action: "prompt_details",
-        objectType,
-        partialDetails: mergedDetails
-      });
-    }
-  } else {
-    // This is a new creation request
-    const objectType = determineObjectType(message);
-    const extractedDetails = extractObjectDetails(message);
-    
-    if (hasRequiredDetails(extractedDetails, objectType)) {
-      return await createObject(extractedDetails, objectType, userId);
-    } else {
-      return NextResponse.json({
-        message: getCreationPrompt(objectType, extractedDetails),
-        action: "prompt_details",
-        objectType,
-        partialDetails: extractedDetails
-      });
-    }
-  }
-}
+
 
 function determineObjectType(message: string): string {
   const lowerMessage = message.toLowerCase();
@@ -1613,7 +1421,7 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     
     // Determine what data to fetch based on user request
     const lowerMessage = userMessage.toLowerCase();
-    let chartData: any[] = [];
+    let chartData: Array<{ stage?: string; status?: string; industry?: string; count: number; name: string }> = [];
     let chartType = 'bar';
     let title = 'Chart';
     
