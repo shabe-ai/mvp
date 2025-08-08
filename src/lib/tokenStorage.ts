@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { google } from 'googleapis';
 
-// File-based token storage for persistence
+// File-based token storage for local development
 const TOKEN_FILE = path.join(process.cwd(), '.tokens.json');
 const TOKEN_BACKUP_FILE = path.join(process.cwd(), '.tokens.backup.json');
 
@@ -30,24 +30,37 @@ const oauth2Client = new google.auth.OAuth2(
   `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/auth/google/callback`
 );
 
+// Check if we're in a serverless environment (Vercel)
+function isServerlessEnvironment(): boolean {
+  return process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
+}
+
 // Check if file system is writable
 function isFileSystemWritable(): boolean {
   try {
-    // Try to write a test file
     const testFile = path.join(process.cwd(), '.test-write');
     fs.writeFileSync(testFile, 'test');
     fs.unlinkSync(testFile);
     return true;
   } catch (error) {
-    console.log('⚠️ File system is read-only, using memory storage fallback');
+    console.log('⚠️ File system is read-only, using environment variable storage');
     return false;
   }
 }
 
-// Load tokens from file with backup recovery
+// Load tokens with priority: Environment Variable > File System > Memory
 function loadTokens(): TokenStorageData {
+  // In serverless environment, prioritize environment variable
+  if (isServerlessEnvironment()) {
+    const envTokens = loadTokensFromEnv();
+    if (Object.keys(envTokens).length > 0) {
+      console.log('📁 Loaded tokens from environment variable (serverless)');
+      return envTokens;
+    }
+  }
+
+  // Try file system (for local development)
   try {
-    // Try primary file first
     if (fs.existsSync(TOKEN_FILE)) {
       const data = fs.readFileSync(TOKEN_FILE, 'utf8');
       const tokens = JSON.parse(data);
@@ -55,19 +68,16 @@ function loadTokens(): TokenStorageData {
       return tokens;
     }
     
-    // Try backup file if primary doesn't exist
     if (fs.existsSync(TOKEN_BACKUP_FILE)) {
       const data = fs.readFileSync(TOKEN_BACKUP_FILE, 'utf8');
       const tokens = JSON.parse(data);
       console.log('📁 Loaded tokens from backup file');
-      // Restore primary file
       saveTokens(tokens);
       return tokens;
     }
   } catch (error) {
     console.error('❌ Error loading tokens from file:', error);
     
-    // Try backup file if primary file is corrupted
     try {
       if (fs.existsSync(TOKEN_BACKUP_FILE)) {
         const data = fs.readFileSync(TOKEN_BACKUP_FILE, 'utf8');
@@ -81,39 +91,48 @@ function loadTokens(): TokenStorageData {
     }
   }
   
-  // If file system fails, try environment variable
+  // Try environment variable as fallback
   const envTokens = loadTokensFromEnv();
   if (Object.keys(envTokens).length > 0) {
+    console.log('📁 Loaded tokens from environment variable (fallback)');
     return envTokens;
   }
   
   // Finally, try memory storage
+  console.log('📁 Using memory storage (no persistent tokens found)');
   return memoryTokens;
 }
 
-// Save tokens to file with backup
+// Save tokens with priority: Environment Variable > File System > Memory
 function saveTokens(tokens: TokenStorageData): void {
+  console.log('💾 Attempting to save tokens...');
+  
+  // In serverless environment, we can't update environment variables at runtime
+  // So we'll use memory storage and log the tokens for manual environment variable update
+  if (isServerlessEnvironment()) {
+    memoryTokens = tokens;
+    console.log('💾 Tokens saved to memory storage (serverless environment)');
+    console.log('💾 For persistence, manually update GOOGLE_TOKENS environment variable with:', JSON.stringify(tokens));
+    return;
+  }
+
+  // Try file system (for local development)
   try {
-    // Check if file system is writable
     if (!isFileSystemWritable()) {
       console.log('⚠️ File system is read-only, storing in memory');
-      // Store in memory as fallback
       memoryTokens = tokens;
       console.log('💾 Tokens saved to memory storage');
       return;
     }
     
-    // Create backup first
     if (fs.existsSync(TOKEN_FILE)) {
       fs.copyFileSync(TOKEN_FILE, TOKEN_BACKUP_FILE);
     }
     
-    // Save to primary file
     fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2));
     console.log('💾 Tokens saved successfully to file');
   } catch (error) {
     console.error('❌ Error saving tokens to file:', error);
-    // Try memory storage as fallback
     try {
       memoryTokens = tokens;
       console.log('💾 Tokens saved to memory storage as fallback');
@@ -123,7 +142,7 @@ function saveTokens(tokens: TokenStorageData): void {
   }
 }
 
-// Load tokens from environment variable if file system fails
+// Load tokens from environment variable
 function loadTokensFromEnv(): TokenStorageData {
   try {
     const envTokens = process.env.GOOGLE_TOKENS;
@@ -193,6 +212,11 @@ export class TokenStorage {
     console.log('🔐 Has refresh token:', !!refreshToken);
     console.log('🔐 Total tokens in storage:', Object.keys(tokens).length);
     console.log('🔐 User email:', email);
+    
+    // In serverless environment, provide instructions for manual environment variable update
+    if (isServerlessEnvironment()) {
+      console.log('🔐 IMPORTANT: For persistence across deployments, update GOOGLE_TOKENS environment variable in Vercel with:', JSON.stringify(tokens));
+    }
   }
 
   static async getToken(userId: string): Promise<string | null> {
