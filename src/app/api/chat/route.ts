@@ -434,15 +434,21 @@ async function handleEmailRequest(message: string, entities: EmailEntities, user
   }
 }
 
-async function draftEmail(contact: DatabaseRecord, context: UserContext) {
+async function draftEmail(contact: DatabaseRecord, context: UserContext, emailContext?: string) {
+  // Get the latest user message for context
+  const latestUserMessage = context.conversationHistory[context.conversationHistory.length - 1]?.content || '';
+  const contextToUse = emailContext || latestUserMessage;
+  
   const emailPrompt = `
-You are drafting a professional email.
+You are drafting a professional email based on the user's request.
 
 Sender: ${context.userProfile?.name || 'User'}
 Company: ${context.companyData?.name || 'Company'}
 Recipient: ${contact.firstName} ${contact.lastName} (${contact.email})
 
-Draft a professional email. Return ONLY a JSON object:
+User's request/context: "${contextToUse}"
+
+Based on the user's request, draft a professional email. Return ONLY a JSON object:
 {
   "message": "I've drafted an email for you. You can review and edit it below.",
   "emailDraft": {
@@ -1038,18 +1044,23 @@ Respond naturally and conversationally. If the user asks to send an email to som
     const aiResponse = response.choices[0]?.message?.content || "I'm here to help! What would you like to do?";
 
     // Check if this is a follow-up to an email context prompt
-    const lastMessage = messages[messages.length - 2];
-    const isEmailContextResponse = lastMessage?.action === "prompt_email_context";
+    const lastAssistantMessage = messages[messages.length - 2];
+    const isEmailContextResponse = lastAssistantMessage?.role === 'assistant' && 
+                                  lastAssistantMessage?.action === "prompt_email_context";
     
     if (isEmailContextResponse) {
       // User is providing email context after being prompted
-      const contactName = lastMessage.contactName;
-      const contactId = lastMessage.contactId;
+      const contactName = lastAssistantMessage.contactName;
+      const contactId = lastAssistantMessage.contactId;
+      
+      console.log('🔍 Detected email context response. ContactName:', contactName, 'ContactId:', contactId);
       
       const matchingContact = contacts.find(contact => contact._id === contactId);
       if (matchingContact) {
         console.log('📧 Creating email with provided context for:', contactName);
         return await draftEmail(matchingContact, context);
+      } else {
+        console.log('❌ Could not find matching contact for ID:', contactId);
       }
     }
     
