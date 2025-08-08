@@ -960,30 +960,104 @@ async function handleChartGeneration(message: string, entities: Record<string, u
 }
 
 async function handleGeneralConversation(message: string, messages: Message[], context: UserContext) {
-  // General AI conversation
-  const completion = await openaiClient.chatCompletionsCreate({
-    model: "gpt-4",
-    messages: [
-      {
-        role: "system",
-        content: `You are Shabe ai, an intelligent AI assistant that helps users with their business operations. You can analyze files, generate charts, help with database operations, and draft emails. Be helpful and professional.`
-      },
-      ...messages.map((msg: Message) => ({
-        role: msg.role as "user" | "assistant",
-        content: msg.content,
-      })),
-    ],
-    temperature: 0.7,
-    max_tokens: 1000,
-  }, {
-    userId: context.userProfile?.name || 'unknown',
-    operation: 'general_conversation',
-    model: 'gpt-4'
-  });
+  try {
+    // Get user's data for context
+    const userId = context.userProfile?.email || 'unknown';
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+    const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+    const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+    const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
 
-  return NextResponse.json({
-    message: completion.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response."
-  });
+    const systemPrompt = `You are Shabe AI, a helpful and conversational CRM assistant. You have access to the user's CRM data and can help with:
+
+**Available Data:**
+- Contacts: ${contacts.length} contacts (${contacts.slice(0, 3).map(c => `${c.firstName} ${c.lastName}`).join(', ')}${contacts.length > 3 ? ' and more...' : ''}
+- Accounts: ${accounts.length} accounts
+- Deals: ${deals.length} deals  
+- Activities: ${activities.length} activities
+
+**Your Capabilities:**
+- View and search contacts, accounts, deals, and activities
+- Send emails to contacts
+- Create new records
+- Update existing records
+- Analyze data and provide insights
+
+**Current Context:**
+- User: ${context.userProfile?.name || 'Unknown'}
+- Company: ${context.companyData?.name || 'Unknown Company'}
+
+**Instructions:**
+1. Be conversational and natural, like ChatGPT
+2. If the user wants to perform an action (send email, view data, etc.), tell them what you're doing
+3. Use the available data to provide helpful responses
+4. If you need to perform a specific action, let the user know and ask for confirmation
+5. Be helpful and engaging in your responses
+6. If the user mentions a contact by name or pronoun, use the available contact data to help them
+
+**Available Actions:**
+- To send an email: Mention you'll draft an email for the contact
+- To view data: Tell them what you found and show relevant details
+- To create records: Ask for the necessary information
+- To update records: Confirm the changes you'll make
+
+Respond naturally and conversationally. If the user asks to send an email to someone, tell them you'll draft an email and ask if they'd like you to proceed.`;
+
+    const response = await openaiClient.chatCompletionsCreate({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        ...messages.map(msg => ({
+          role: msg.role as "user" | "assistant",
+          content: msg.content
+        }))
+      ],
+      temperature: 0.7,
+      max_tokens: 1500
+    }, {
+      userId: context.userProfile?.name || 'unknown',
+      operation: 'general_conversation',
+      model: 'gpt-4'
+    });
+
+    const aiResponse = response.choices[0]?.message?.content || "I'm here to help! What would you like to do?";
+
+    // Check if the AI wants to perform an action
+    if (aiResponse.toLowerCase().includes('send') && aiResponse.toLowerCase().includes('email')) {
+      // Extract contact name from AI response or conversation context
+      const contactMatch = aiResponse.match(/send.*email.*to\s+([^,\n]+)/i) || 
+                          message.match(/(?:send|email)\s+(?:to\s+)?([a-z\s]+)/i);
+      
+      if (contactMatch) {
+        const contactName = contactMatch[1].trim();
+        const matchingContact = contacts.find(contact => {
+          const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
+          return fullName.includes(contactName.toLowerCase()) || 
+                 contactName.toLowerCase().includes(fullName);
+        });
+
+        if (matchingContact) {
+          return await draftEmail(matchingContact, context);
+        }
+      }
+    }
+
+    return NextResponse.json({
+      message: aiResponse
+    });
+
+  } catch (error) {
+    console.error('General conversation failed:', error);
+    return NextResponse.json({
+      message: "I'm having trouble processing your request right now. Please try again.",
+      error: true
+    });
+  }
 }
 
 // Validation functions
@@ -1513,40 +1587,9 @@ export async function POST(req: NextRequest) {
 
     console.log('Chat API received user context:', context);
 
-    // Step 1: Intent Classification (Fast pattern + LLM fallback)
-    const intent = await classifyIntent(lastUserMessage, context);
-    console.log('Intent classification result:', intent);
-
-    // Step 2: Route to appropriate handler based on intent
-    switch (intent.action) {
-      case 'sendEmail':
-        return await handleEmailRequest(lastUserMessage, intent.entities || {}, userId, context);
-        
-      case 'createContact':
-        return await handleObjectCreation(lastUserMessage, intent.entities || {}, userId, context);
-        
-      case 'updateContact':
-        return await handleContactUpdate(lastUserMessage, userId);
-        
-      case 'queryDatabase':
-      case 'query_database':
-      case 'viewData':
-        return await handleDatabaseQuery(lastUserMessage, intent.entities || {}, userId);
-        
-      case 'generateChart':
-      case 'generate_chart':
-        return await handleChartGeneration(lastUserMessage, intent.entities || {}, sessionFiles, userId);
-        
-      case 'analyzeFile':
-      case 'analyze_file':
-        // Handle file analysis
-        return await handleGeneralConversation(lastUserMessage, messages, context);
-        
-      case 'generalConversation':
-      case 'general_conversation':
-      default:
-        return await handleGeneralConversation(lastUserMessage, messages, context);
-    }
+    // Use LLM-driven approach instead of rigid rule-based routing
+    // Let the LLM handle the conversation naturally and decide what actions to take
+    return await handleGeneralConversation(lastUserMessage, messages, context);
 
   } catch (error) {
     console.error('❌ Chat API error:', error);
