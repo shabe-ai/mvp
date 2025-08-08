@@ -45,6 +45,12 @@ export async function GET(request: NextRequest) {
     const userId = state; // Use state parameter as userId
 
     console.log('🔄 Attempting to exchange code for tokens...');
+    console.log('🔄 Code received:', code ? `${code.substring(0, 10)}...` : 'NO_CODE');
+    console.log('🔄 OAuth2Client config:', {
+      clientId: process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 10)}...` : 'NOT_SET',
+      hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
+      redirectUri: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/auth/google/callback`
+    });
     
     // Exchange code for tokens
     let tokens: {
@@ -53,8 +59,16 @@ export async function GET(request: NextRequest) {
       expires_in?: number | null;
     };
     try {
+      console.log('🔄 Calling oauth2Client.getToken...');
       const tokenResponse = await oauth2Client.getToken(code);
       tokens = tokenResponse.tokens;
+      
+      console.log('🔄 Token response received:', {
+        hasAccessToken: !!tokens.access_token,
+        hasRefreshToken: !!tokens.refresh_token,
+        expiresIn: tokens.expires_in,
+        tokenKeys: Object.keys(tokens)
+      });
       
       if (!tokens.access_token) {
         console.error('❌ No access token received from Google');
@@ -88,18 +102,32 @@ export async function GET(request: NextRequest) {
 
     // Store both access and refresh tokens with longer expiration
     const expiresIn = (tokens as { expires_in?: number }).expires_in || 3600; // Use Google's provided expiration
-    TokenStorage.setToken(
-      userId, 
-      tokens.access_token, 
-      tokens.refresh_token || undefined, // Store refresh token for persistent connections
+    
+    console.log('💾 About to store tokens for user:', userId);
+    console.log('💾 Token details:', {
+      hasAccessToken: !!tokens.access_token,
+      hasRefreshToken: !!tokens.refresh_token,
       expiresIn,
       userEmail
-    );
+    });
     
-    console.log('✅ Google OAuth successful for user:', userId);
-    console.log('Access token stored:', tokens.access_token ? 'Yes' : 'No');
-    console.log('Refresh token stored:', tokens.refresh_token ? 'Yes' : 'No');
-    console.log('Token expires in:', expiresIn, 'seconds');
+    try {
+      TokenStorage.setToken(
+        userId, 
+        tokens.access_token, 
+        tokens.refresh_token || undefined, // Store refresh token for persistent connections
+        expiresIn,
+        userEmail
+      );
+      
+      console.log('✅ Google OAuth successful for user:', userId);
+      console.log('Access token stored:', tokens.access_token ? 'Yes' : 'No');
+      console.log('Refresh token stored:', tokens.refresh_token ? 'Yes' : 'No');
+      console.log('Token expires in:', expiresIn, 'seconds');
+    } catch (storageError) {
+      console.error('❌ Error storing tokens:', storageError);
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?error=storage_error`);
+    }
 
     // Redirect back to the app with success
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}?success=google_connected`);
