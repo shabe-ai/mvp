@@ -20,6 +20,9 @@ interface TokenStorageData {
   [userId: string]: TokenData;
 }
 
+// In-memory token storage as fallback
+let memoryTokens: TokenStorageData = {};
+
 // Initialize Google OAuth2 client for token refresh
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
@@ -36,7 +39,7 @@ function isFileSystemWritable(): boolean {
     fs.unlinkSync(testFile);
     return true;
   } catch (error) {
-    console.log('⚠️ File system is read-only, using environment variable fallback');
+    console.log('⚠️ File system is read-only, using memory storage fallback');
     return false;
   }
 }
@@ -79,7 +82,13 @@ function loadTokens(): TokenStorageData {
   }
   
   // If file system fails, try environment variable
-  return loadTokensFromEnv();
+  const envTokens = loadTokensFromEnv();
+  if (Object.keys(envTokens).length > 0) {
+    return envTokens;
+  }
+  
+  // Finally, try memory storage
+  return memoryTokens;
 }
 
 // Save tokens to file with backup
@@ -87,9 +96,10 @@ function saveTokens(tokens: TokenStorageData): void {
   try {
     // Check if file system is writable
     if (!isFileSystemWritable()) {
-      console.log('⚠️ File system is read-only, storing in environment variable');
-      // Store in environment variable as fallback
-      process.env.GOOGLE_TOKENS = JSON.stringify(tokens);
+      console.log('⚠️ File system is read-only, storing in memory');
+      // Store in memory as fallback
+      memoryTokens = tokens;
+      console.log('💾 Tokens saved to memory storage');
       return;
     }
     
@@ -100,15 +110,15 @@ function saveTokens(tokens: TokenStorageData): void {
     
     // Save to primary file
     fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2));
-    console.log('💾 Tokens saved successfully');
+    console.log('💾 Tokens saved successfully to file');
   } catch (error) {
-    console.error('❌ Error saving tokens:', error);
-    // Try environment variable as fallback
+    console.error('❌ Error saving tokens to file:', error);
+    // Try memory storage as fallback
     try {
-      process.env.GOOGLE_TOKENS = JSON.stringify(tokens);
-      console.log('💾 Tokens saved to environment variable as fallback');
-    } catch (envError) {
-      console.error('❌ Error saving to environment variable:', envError);
+      memoryTokens = tokens;
+      console.log('💾 Tokens saved to memory storage as fallback');
+    } catch (memError) {
+      console.error('❌ Error saving to memory storage:', memError);
     }
   }
 }
