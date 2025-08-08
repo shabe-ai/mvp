@@ -3,7 +3,7 @@ import { TokenStorage } from '@/lib/tokenStorage';
 
 export async function GET() {
   try {
-    const allTokens = TokenStorage.getAllTokens();
+    const allTokens = await TokenStorage.getAllTokens();
     
     console.log('📋 Current tokens in storage:', Object.keys(allTokens).length);
     

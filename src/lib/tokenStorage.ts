@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { google } from 'googleapis';
+import { kv } from '@vercel/kv';
 
 // File-based token storage for local development
 const TOKEN_FILE = path.join(process.cwd(), '.tokens.json');
@@ -35,6 +36,11 @@ function isServerlessEnvironment(): boolean {
   return process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
 }
 
+// Check if KV is available
+function isKvAvailable(): boolean {
+  return !!(process.env.KV_URL && process.env.KV_REST_API_TOKEN);
+}
+
 // Check if file system is writable
 function isFileSystemWritable(): boolean {
   try {
@@ -43,20 +49,31 @@ function isFileSystemWritable(): boolean {
     fs.unlinkSync(testFile);
     return true;
   } catch (error) {
-    console.log('⚠️ File system is read-only, using environment variable storage');
+    console.log('⚠️ File system is read-only, using KV storage');
     return false;
   }
 }
 
-// Load tokens with priority: Environment Variable > File System > Memory
-function loadTokens(): TokenStorageData {
-  // In serverless environment, prioritize environment variable
-  if (isServerlessEnvironment()) {
-    const envTokens = loadTokensFromEnv();
-    if (Object.keys(envTokens).length > 0) {
-      console.log('📁 Loaded tokens from environment variable (serverless)');
-      return envTokens;
+// Load tokens with priority: KV > Environment Variable > File System > Memory
+async function loadTokens(): Promise<TokenStorageData> {
+  // Try KV first (for production)
+  if (isKvAvailable()) {
+    try {
+      const kvTokens = await kv.get('google_tokens');
+      if (kvTokens) {
+        console.log('📁 Loaded tokens from KV storage');
+        return kvTokens as TokenStorageData;
+      }
+    } catch (error) {
+      console.error('❌ Error loading tokens from KV:', error);
     }
+  }
+
+  // Try environment variable as fallback
+  const envTokens = loadTokensFromEnv();
+  if (Object.keys(envTokens).length > 0) {
+    console.log('📁 Loaded tokens from environment variable');
+    return envTokens;
   }
 
   // Try file system (for local development)
@@ -91,29 +108,24 @@ function loadTokens(): TokenStorageData {
     }
   }
   
-  // Try environment variable as fallback
-  const envTokens = loadTokensFromEnv();
-  if (Object.keys(envTokens).length > 0) {
-    console.log('📁 Loaded tokens from environment variable (fallback)');
-    return envTokens;
-  }
-  
   // Finally, try memory storage
   console.log('📁 Using memory storage (no persistent tokens found)');
   return memoryTokens;
 }
 
-// Save tokens with priority: Environment Variable > File System > Memory
-function saveTokens(tokens: TokenStorageData): void {
+// Save tokens with priority: KV > File System > Memory
+async function saveTokens(tokens: TokenStorageData): Promise<void> {
   console.log('💾 Attempting to save tokens...');
   
-  // In serverless environment, we can't update environment variables at runtime
-  // So we'll use memory storage and log the tokens for manual environment variable update
-  if (isServerlessEnvironment()) {
-    memoryTokens = tokens;
-    console.log('💾 Tokens saved to memory storage (serverless environment)');
-    console.log('💾 For persistence, manually update GOOGLE_TOKENS environment variable with:', JSON.stringify(tokens));
-    return;
+  // Try KV first (for production)
+  if (isKvAvailable()) {
+    try {
+      await kv.set('google_tokens', tokens);
+      console.log('💾 Tokens saved successfully to KV storage');
+      return;
+    } catch (error) {
+      console.error('❌ Error saving tokens to KV:', error);
+    }
   }
 
   // Try file system (for local development)
@@ -169,14 +181,14 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
     
     if (newAccessToken) {
       // Update stored tokens with new access token
-      const tokens = loadTokens();
+      const tokens = await loadTokens();
       const tokenData = tokens[userId];
       
       if (tokenData) {
         tokenData.accessToken = newAccessToken;
         tokenData.expiresAt = Date.now() + (((credentials as { credentials: { expires_in?: number } }).credentials.expires_in || 3600) * 1000);
         tokenData.lastRefreshed = Date.now();
-        saveTokens(tokens);
+        await saveTokens(tokens);
         
         console.log('🔄 Access token refreshed for user:', userId);
         return newAccessToken;
@@ -190,10 +202,10 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
 }
 
 export class TokenStorage {
-  static setToken(userId: string, accessToken: string, refreshToken?: string, expiresIn: number = 3600, email?: string): void {
+  static async setToken(userId: string, accessToken: string, refreshToken?: string, expiresIn: number = 3600, email?: string): Promise<void> {
     console.log('🚨 SETTOKEN CALLED - userId:', userId, 'hasAccessToken:', !!accessToken, 'hasRefreshToken:', !!refreshToken);
     
-    const tokens = loadTokens();
+    const tokens = await loadTokens();
     const expiresAt = Date.now() + (expiresIn * 1000);
     const now = Date.now();
     
@@ -206,23 +218,18 @@ export class TokenStorage {
       userId,
       email
     };
-    saveTokens(tokens);
+    await saveTokens(tokens);
     
     console.log('🔐 Token stored for user:', userId);
     console.log('🔐 Has refresh token:', !!refreshToken);
     console.log('🔐 Total tokens in storage:', Object.keys(tokens).length);
     console.log('🔐 User email:', email);
-    
-    // In serverless environment, provide instructions for manual environment variable update
-    if (isServerlessEnvironment()) {
-      console.log('🔐 IMPORTANT: For persistence across deployments, update GOOGLE_TOKENS environment variable in Vercel with:', JSON.stringify(tokens));
-    }
   }
 
   static async getToken(userId: string): Promise<string | null> {
     console.log('🔍 Looking for token for user:', userId);
     
-    const tokens = loadTokens();
+    const tokens = await loadTokens();
     const tokenData = tokens[userId];
     
     if (!tokenData) {
@@ -244,14 +251,14 @@ export class TokenStorage {
         } else {
           // Refresh failed, remove the token
           delete tokens[userId];
-          saveTokens(tokens);
+          await saveTokens(tokens);
           console.log('❌ Token refresh failed, removed token for user:', userId);
           return null;
         }
       } else {
         // No refresh token, remove the expired token
         delete tokens[userId];
-        saveTokens(tokens);
+        await saveTokens(tokens);
         console.log('❌ No refresh token available, removed expired token for user:', userId);
         return null;
       }
@@ -261,10 +268,10 @@ export class TokenStorage {
     return tokenData.accessToken;
   }
 
-  static removeToken(userId: string): void {
-    const tokens = loadTokens();
+  static async removeToken(userId: string): Promise<void> {
+    const tokens = await loadTokens();
     delete tokens[userId];
-    saveTokens(tokens);
+    await saveTokens(tokens);
     console.log('🗑️ Token removed for user:', userId);
   }
 
@@ -273,26 +280,26 @@ export class TokenStorage {
     return token !== null;
   }
 
-  static getRefreshToken(userId: string): string | null {
-    const tokens = loadTokens();
+  static async getRefreshToken(userId: string): Promise<string | null> {
+    const tokens = await loadTokens();
     const tokenData = tokens[userId];
     return tokenData?.refreshToken || null;
   }
 
   // Get all stored tokens (for debugging)
-  static getAllTokens(): TokenStorageData {
-    return loadTokens();
+  static async getAllTokens(): Promise<TokenStorageData> {
+    return await loadTokens();
   }
 
   // Get token info for a specific user
-  static getTokenInfo(userId: string): TokenData | null {
-    const tokens = loadTokens();
+  static async getTokenInfo(userId: string): Promise<TokenData | null> {
+    const tokens = await loadTokens();
     return tokens[userId] || null;
   }
 
   // Check if connection is persistent (has refresh token)
-  static isPersistentConnection(userId: string): boolean {
-    const tokens = loadTokens();
+  static async isPersistentConnection(userId: string): Promise<boolean> {
+    const tokens = await loadTokens();
     const tokenData = tokens[userId];
     return !!(tokenData && tokenData.refreshToken);
   }

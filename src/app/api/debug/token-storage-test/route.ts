@@ -10,7 +10,7 @@ export async function GET() {
     console.log('🧪 Testing token storage in current environment...');
     
     // Test setting a token
-    TokenStorage.setToken(
+    await TokenStorage.setToken(
       testUserId,
       testAccessToken,
       testRefreshToken,
@@ -23,8 +23,8 @@ export async function GET() {
     // Test retrieving the token
     const hasToken = await TokenStorage.hasValidToken(testUserId);
     const token = await TokenStorage.getToken(testUserId);
-    const tokenInfo = TokenStorage.getTokenInfo(testUserId);
-    const allTokens = TokenStorage.getAllTokens();
+    const tokenInfo = await TokenStorage.getTokenInfo(testUserId);
+    const allTokens = await TokenStorage.getAllTokens();
     
     console.log('🔍 Token retrieval results:', {
       hasToken,
@@ -38,11 +38,12 @@ export async function GET() {
     });
     
     // Clean up test token
-    TokenStorage.removeToken(testUserId);
+    await TokenStorage.removeToken(testUserId);
     
     return NextResponse.json({
       environment: process.env.NODE_ENV,
       isServerless: process.env.VERCEL === '1' || process.env.NODE_ENV === 'production',
+      kvAvailable: !!(process.env.KV_URL && process.env.KV_REST_API_TOKEN),
       testResults: {
         tokenSet: true,
         hasToken,

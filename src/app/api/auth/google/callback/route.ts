@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
     });
     
     try {
-      TokenStorage.setToken(
+      await TokenStorage.setToken(
         userId, 
         tokens.access_token, 
         tokens.refresh_token || undefined, // Store refresh token for persistent connections
