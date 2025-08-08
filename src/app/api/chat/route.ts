@@ -1425,7 +1425,8 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     let chartType = 'bar';
     let title = 'Chart';
     
-    if (lowerMessage.includes('deal') && lowerMessage.includes('stage')) {
+    if ((lowerMessage.includes('deal') && lowerMessage.includes('stage')) || 
+        (lowerMessage.includes('deal') && (lowerMessage.includes('pipeline') || lowerMessage.includes('progress')))) {
       // Deals by stage chart
       console.log('📊 Generating deals by stage chart');
       const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
@@ -1489,24 +1490,14 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       chartType = 'pie';
       
     } else {
-      // Default to deals by stage if unclear
-      console.log('📊 Defaulting to deals by stage chart');
-      const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+      // Ask for clarification when chart type is unclear
+      console.log('📊 Chart request unclear, asking for clarification');
       
-      const stageGroups: Record<string, number> = {};
-      deals.forEach(deal => {
-        const stage = deal.stage || 'Unknown';
-        stageGroups[stage] = (stageGroups[stage] || 0) + 1;
-      });
-      
-      chartData = Object.entries(stageGroups).map(([stage, count]) => ({
-        stage,
-        count,
-        name: stage
-      }));
-      
-      title = 'Deals by Stage';
-      chartType = 'bar';
+      return {
+        message: "I'd be happy to create a chart for you! To provide the most relevant visualization, could you please specify what type of data you'd like to see? For example:\n\n• **Deals by stage** - Shows your sales pipeline\n• **Contacts by status** - Shows lead progression\n• **Accounts by industry** - Shows customer distribution\n\nOr feel free to describe any other data you'd like visualized from your CRM.",
+        needsClarification: true,
+        action: 'chart_clarification'
+      };
     }
     
     console.log('📊 Chart data generated:', { chartData, chartType, title });
@@ -1518,13 +1509,23 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       };
     }
     
-    // Create chart specification
+    // Determine the appropriate data key for X-axis
+    const xAxisDataKey = chartType === 'bar' ? 
+      (chartData[0].stage ? 'stage' : chartData[0].status ? 'status' : chartData[0].industry ? 'industry' : 'name') : 
+      'name';
+    
+    // Create chart specification with proper chartConfig
     const chartSpec = {
       chartType,
       data: chartData,
       title,
-      xAxis: chartType === 'bar' ? (chartData[0].stage ? 'stage' : chartData[0].status ? 'status' : chartData[0].industry ? 'industry' : 'name') : undefined,
-      yAxis: chartType === 'bar' ? 'count' : undefined
+      chartConfig: {
+        width: 600,
+        height: 400,
+        margin: { top: 20, right: 30, left: 20, bottom: 60 },
+        xAxis: { dataKey: xAxisDataKey },
+        yAxis: { dataKey: 'count' }
+      }
     };
     
     return {
