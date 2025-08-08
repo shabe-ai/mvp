@@ -1081,8 +1081,28 @@ Respond naturally and conversationally. If the user asks to send an email to som
       }
     }
     
-    // Check if the user wants to send an email and go directly to email preview
+    // Check if the user wants to create a chart
     const lowerMessage = message.toLowerCase();
+    if (lowerMessage.includes('chart') || lowerMessage.includes('graph') || lowerMessage.includes('visualization')) {
+      console.log('📊 Chart request detected, calling chart generation');
+      return await handleChartGeneration(message, {}, [], userId);
+    }
+    
+    // Check if the user wants to view data (contacts, deals, accounts, etc.)
+    if (lowerMessage.includes('view') || lowerMessage.includes('show') || lowerMessage.includes('list') || lowerMessage.includes('see')) {
+      if (lowerMessage.includes('contact') || lowerMessage.includes('deal') || lowerMessage.includes('account') || lowerMessage.includes('activity')) {
+        console.log('📋 Data view request detected, calling database query');
+        return await handleDatabaseQuery(message, {}, userId);
+      }
+    }
+    
+    // Check if the user wants to update a contact
+    if (lowerMessage.includes('update') && (lowerMessage.includes('email') || lowerMessage.includes('phone') || lowerMessage.includes('contact'))) {
+      console.log('✏️ Contact update request detected');
+      return await handleContactUpdate(message, userId);
+    }
+    
+    // Check if the user wants to send an email and go directly to email preview
     if (lowerMessage.includes('send') && lowerMessage.includes('email')) {
       // Extract contact name from the message
       const contactMatch = message.match(/(?:send|email)\s+(?:to\s+)?([a-z\s]+)/i) ||
