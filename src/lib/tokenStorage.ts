@@ -27,6 +27,20 @@ const oauth2Client = new google.auth.OAuth2(
   `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/auth/google/callback`
 );
 
+// Check if file system is writable
+function isFileSystemWritable(): boolean {
+  try {
+    // Try to write a test file
+    const testFile = path.join(process.cwd(), '.test-write');
+    fs.writeFileSync(testFile, 'test');
+    fs.unlinkSync(testFile);
+    return true;
+  } catch (error) {
+    console.log('⚠️ File system is read-only, using environment variable fallback');
+    return false;
+  }
+}
+
 // Load tokens from file with backup recovery
 function loadTokens(): TokenStorageData {
   try {
@@ -48,7 +62,7 @@ function loadTokens(): TokenStorageData {
       return tokens;
     }
   } catch (error) {
-    console.error('❌ Error loading tokens:', error);
+    console.error('❌ Error loading tokens from file:', error);
     
     // Try backup file if primary file is corrupted
     try {
@@ -63,12 +77,22 @@ function loadTokens(): TokenStorageData {
       console.error('❌ Error loading backup tokens:', backupError);
     }
   }
-  return {};
+  
+  // If file system fails, try environment variable
+  return loadTokensFromEnv();
 }
 
 // Save tokens to file with backup
 function saveTokens(tokens: TokenStorageData): void {
   try {
+    // Check if file system is writable
+    if (!isFileSystemWritable()) {
+      console.log('⚠️ File system is read-only, storing in environment variable');
+      // Store in environment variable as fallback
+      process.env.GOOGLE_TOKENS = JSON.stringify(tokens);
+      return;
+    }
+    
     // Create backup first
     if (fs.existsSync(TOKEN_FILE)) {
       fs.copyFileSync(TOKEN_FILE, TOKEN_BACKUP_FILE);
@@ -79,7 +103,29 @@ function saveTokens(tokens: TokenStorageData): void {
     console.log('💾 Tokens saved successfully');
   } catch (error) {
     console.error('❌ Error saving tokens:', error);
+    // Try environment variable as fallback
+    try {
+      process.env.GOOGLE_TOKENS = JSON.stringify(tokens);
+      console.log('💾 Tokens saved to environment variable as fallback');
+    } catch (envError) {
+      console.error('❌ Error saving to environment variable:', envError);
+    }
   }
+}
+
+// Load tokens from environment variable if file system fails
+function loadTokensFromEnv(): TokenStorageData {
+  try {
+    const envTokens = process.env.GOOGLE_TOKENS;
+    if (envTokens) {
+      const tokens = JSON.parse(envTokens);
+      console.log('📁 Loaded tokens from environment variable');
+      return tokens;
+    }
+  } catch (error) {
+    console.error('❌ Error loading tokens from environment:', error);
+  }
+  return {};
 }
 
 // Refresh access token using refresh token
