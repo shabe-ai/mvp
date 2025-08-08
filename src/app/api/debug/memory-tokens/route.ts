@@ -8,8 +8,8 @@ export async function GET() {
     const userId = 'user_30yNzzaqY36tW07nKprV52twdEQ';
     const hasToken = await TokenStorage.hasValidToken(userId);
     const token = await TokenStorage.getToken(userId);
-    const tokenInfo = TokenStorage.getTokenInfo(userId);
-    const persistentConnection = TokenStorage.isPersistentConnection(userId);
+    const tokenInfo = await TokenStorage.getTokenInfo(userId);
+    const persistentConnection = await TokenStorage.isPersistentConnection(userId);
     
     return NextResponse.json({
       userId,
