@@ -6,7 +6,7 @@ import { google } from 'googleapis';
 const TOKEN_FILE = path.join(process.cwd(), '.tokens.json');
 const TOKEN_BACKUP_FILE = path.join(process.cwd(), '.tokens.backup.json');
 
-interface TokenData {
+export interface TokenData {
   accessToken: string;
   refreshToken?: string;
   expiresAt: number;
