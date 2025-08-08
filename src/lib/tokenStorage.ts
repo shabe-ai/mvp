@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { google } from 'googleapis';
-import { kv } from '@vercel/kv';
+import { Redis } from '@upstash/redis';
 
 // File-based token storage for local development
 const TOKEN_FILE = path.join(process.cwd(), '.tokens.json');
@@ -36,9 +36,23 @@ function isServerlessEnvironment(): boolean {
   return process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
 }
 
-// Check if KV is available
-function isKvAvailable(): boolean {
-  return !!(process.env.KV_URL && process.env.KV_REST_API_TOKEN);
+// Check if Redis is available
+function isRedisAvailable(): boolean {
+  return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+}
+
+// Initialize Redis client
+function getRedisClient(): Redis | null {
+  if (!isRedisAvailable()) {
+    return null;
+  }
+  
+  try {
+    return Redis.fromEnv();
+  } catch (error) {
+    console.error('❌ Error initializing Redis client:', error);
+    return null;
+  }
 }
 
 // Check if file system is writable
@@ -49,23 +63,24 @@ function isFileSystemWritable(): boolean {
     fs.unlinkSync(testFile);
     return true;
   } catch (error) {
-    console.log('⚠️ File system is read-only, using KV storage');
+    console.log('⚠️ File system is read-only, using Redis storage');
     return false;
   }
 }
 
-// Load tokens with priority: KV > Environment Variable > File System > Memory
+// Load tokens with priority: Redis > Environment Variable > File System > Memory
 async function loadTokens(): Promise<TokenStorageData> {
-  // Try KV first (for production)
-  if (isKvAvailable()) {
+  // Try Redis first (for production)
+  const redis = getRedisClient();
+  if (redis) {
     try {
-      const kvTokens = await kv.get('google_tokens');
+      const kvTokens = await redis.get('google_tokens');
       if (kvTokens) {
-        console.log('📁 Loaded tokens from KV storage');
+        console.log('📁 Loaded tokens from Redis storage');
         return kvTokens as TokenStorageData;
       }
     } catch (error) {
-      console.error('❌ Error loading tokens from KV:', error);
+      console.error('❌ Error loading tokens from Redis:', error);
     }
   }
 
@@ -113,18 +128,19 @@ async function loadTokens(): Promise<TokenStorageData> {
   return memoryTokens;
 }
 
-// Save tokens with priority: KV > File System > Memory
+// Save tokens with priority: Redis > File System > Memory
 async function saveTokens(tokens: TokenStorageData): Promise<void> {
   console.log('💾 Attempting to save tokens...');
   
-  // Try KV first (for production)
-  if (isKvAvailable()) {
+  // Try Redis first (for production)
+  const redis = getRedisClient();
+  if (redis) {
     try {
-      await kv.set('google_tokens', tokens);
-      console.log('💾 Tokens saved successfully to KV storage');
+      await redis.set('google_tokens', tokens);
+      console.log('💾 Tokens saved successfully to Redis storage');
       return;
     } catch (error) {
-      console.error('❌ Error saving tokens to KV:', error);
+      console.error('❌ Error saving tokens to Redis:', error);
     }
   }
 

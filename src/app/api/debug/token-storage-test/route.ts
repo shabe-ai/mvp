@@ -43,7 +43,7 @@ export async function GET() {
     return NextResponse.json({
       environment: process.env.NODE_ENV,
       isServerless: process.env.VERCEL === '1' || process.env.NODE_ENV === 'production',
-      kvAvailable: !!(process.env.KV_URL && process.env.KV_REST_API_TOKEN),
+      redisAvailable: !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN),
       testResults: {
         tokenSet: true,
         hasToken,
