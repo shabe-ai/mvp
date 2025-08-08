@@ -1051,24 +1051,33 @@ Respond naturally and conversationally. If the user asks to send an email to som
     const lastAssistantMessage = messages[messages.length - 2];
     console.log('📋 Last assistant message:', { role: lastAssistantMessage?.role, action: lastAssistantMessage?.action, contactName: lastAssistantMessage?.contactName });
     
-    const isEmailContextResponse = lastAssistantMessage?.role === 'assistant' && 
-                                  lastAssistantMessage?.action === "prompt_email_context";
+    // Alternative detection: Check if the last assistant message asked for email context
+    const lastAssistantContent = lastAssistantMessage?.content?.toLowerCase() || '';
+    const askedForEmailContext = lastAssistantContent.includes("what would you like to say in the email") ||
+                                lastAssistantContent.includes("provide any other context for the email");
     
-    console.log('🎯 Is email context response:', isEmailContextResponse);
+    console.log('🎯 Asked for email context:', askedForEmailContext);
     
-    if (isEmailContextResponse) {
-      // User is providing email context after being prompted
-      const contactName = lastAssistantMessage.contactName;
-      const contactId = lastAssistantMessage.contactId;
+    if (askedForEmailContext && lastAssistantMessage?.role === 'assistant') {
+      // Extract contact name from the assistant's message
+      const contactNameMatch = lastAssistantContent.match(/send an email to ([^.]+)/i);
+      const contactName = contactNameMatch ? contactNameMatch[1].trim() : null;
       
-      console.log('🔍 Detected email context response. ContactName:', contactName, 'ContactId:', contactId);
+      console.log('🔍 Detected email context response. ContactName from message:', contactName);
       
-      const matchingContact = contacts.find(contact => contact._id === contactId);
-      if (matchingContact) {
-        console.log('📧 Creating email with provided context for:', contactName);
-        return await draftEmail(matchingContact, context, message);
-      } else {
-        console.log('❌ Could not find matching contact for ID:', contactId);
+      if (contactName) {
+        const matchingContact = contacts.find(contact => {
+          const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
+          return fullName.includes(contactName.toLowerCase()) || 
+                 contactName.toLowerCase().includes(fullName);
+        });
+        
+        if (matchingContact) {
+          console.log('📧 Creating email with provided context for:', contactName);
+          return await draftEmail(matchingContact, context, message);
+        } else {
+          console.log('❌ Could not find matching contact for name:', contactName);
+        }
       }
     }
     
