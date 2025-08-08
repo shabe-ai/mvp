@@ -1598,44 +1598,134 @@ function getClarificationMessage(dataType: string, records: DatabaseRecord[]): s
   return `I found ${records.length} ${dataType} that might match your search. Could you please provide more specific details to help me find the exact ${dataType} you're looking for?`;
 }
 
-// Chart generation handler (existing logic)
+// Chart generation handler with actual CRM data
 async function handleChart(userMessage: string, sessionFiles: Array<{ name: string; content: string }>, userId?: string) {
-  // Implementation from existing code
-  const chartPrompt = `
-    Generate a chart based on the user's request.
-    
-    User request: "${userMessage}"
-    Available data: ${sessionFiles.length > 0 ? 'Session files available' : 'No session files'}
-    
-    Return ONLY a JSON object with chart specification:
-    {
-      "chartType": "bar|line|pie|area",
-      "data": [...],
-      "xAxis": "field_name",
-      "yAxis": "field_name",
-      "title": "Chart Title"
-    }
-  `;
-  
   try {
-    const response = await openaiClient.chatCompletionsCreate({
-      model: "gpt-4",
-      messages: [{ role: "system", content: chartPrompt }],
-      temperature: 0.1,
-      max_tokens: 1000
-    }, {
-      userId: userId || 'unknown',
-      operation: 'chart_generation',
-      model: 'gpt-4'
-    });
+    console.log('📊 Starting chart generation for user:', userId);
     
-    const result = JSON.parse(response.choices[0]?.message?.content || "{}");
-    return {
-      message: "I've generated a chart for you.",
-      chartSpec: result
+    if (!userId) {
+      throw new Error('User ID is required for chart generation');
+    }
+    
+    // Get user's team and data
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    
+    // Determine what data to fetch based on user request
+    const lowerMessage = userMessage.toLowerCase();
+    let chartData: any[] = [];
+    let chartType = 'bar';
+    let title = 'Chart';
+    
+    if (lowerMessage.includes('deal') && lowerMessage.includes('stage')) {
+      // Deals by stage chart
+      console.log('📊 Generating deals by stage chart');
+      const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+      
+      // Group deals by stage
+      const stageGroups: Record<string, number> = {};
+      deals.forEach(deal => {
+        const stage = deal.stage || 'Unknown';
+        stageGroups[stage] = (stageGroups[stage] || 0) + 1;
+      });
+      
+      chartData = Object.entries(stageGroups).map(([stage, count]) => ({
+        stage,
+        count,
+        name: stage
+      }));
+      
+      title = 'Deals by Stage';
+      chartType = 'bar';
+      
+    } else if (lowerMessage.includes('contact')) {
+      // Contacts chart
+      console.log('📊 Generating contacts chart');
+      const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+      
+      // Group contacts by lead status
+      const statusGroups: Record<string, number> = {};
+      contacts.forEach(contact => {
+        const status = contact.leadStatus || 'new';
+        statusGroups[status] = (statusGroups[status] || 0) + 1;
+      });
+      
+      chartData = Object.entries(statusGroups).map(([status, count]) => ({
+        status,
+        count,
+        name: status
+      }));
+      
+      title = 'Contacts by Lead Status';
+      chartType = 'pie';
+      
+    } else if (lowerMessage.includes('account')) {
+      // Accounts chart
+      console.log('📊 Generating accounts chart');
+      const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+      
+      // Group accounts by industry
+      const industryGroups: Record<string, number> = {};
+      accounts.forEach(account => {
+        const industry = account.industry || 'Unknown';
+        industryGroups[industry] = (industryGroups[industry] || 0) + 1;
+      });
+      
+      chartData = Object.entries(industryGroups).map(([industry, count]) => ({
+        industry,
+        count,
+        name: industry
+      }));
+      
+      title = 'Accounts by Industry';
+      chartType = 'pie';
+      
+    } else {
+      // Default to deals by stage if unclear
+      console.log('📊 Defaulting to deals by stage chart');
+      const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+      
+      const stageGroups: Record<string, number> = {};
+      deals.forEach(deal => {
+        const stage = deal.stage || 'Unknown';
+        stageGroups[stage] = (stageGroups[stage] || 0) + 1;
+      });
+      
+      chartData = Object.entries(stageGroups).map(([stage, count]) => ({
+        stage,
+        count,
+        name: stage
+      }));
+      
+      title = 'Deals by Stage';
+      chartType = 'bar';
+    }
+    
+    console.log('📊 Chart data generated:', { chartData, chartType, title });
+    
+    if (chartData.length === 0) {
+      return {
+        message: "No data available to create a chart. Please add some records to your CRM first.",
+        error: true
+      };
+    }
+    
+    // Create chart specification
+    const chartSpec = {
+      chartType,
+      data: chartData,
+      title,
+      xAxis: chartType === 'bar' ? (chartData[0].stage ? 'stage' : chartData[0].status ? 'status' : chartData[0].industry ? 'industry' : 'name') : undefined,
+      yAxis: chartType === 'bar' ? 'count' : undefined
     };
+    
+    return {
+      message: `I've generated a ${title.toLowerCase()} chart for you.`,
+      chartSpec
+    };
+    
   } catch (error) {
-    console.error('Chart generation error:', error);
+    console.error('❌ Chart generation error:', error);
     return {
       message: "I encountered an error while generating the chart. Please try again.",
       error: true
