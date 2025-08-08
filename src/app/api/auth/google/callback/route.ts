@@ -12,6 +12,8 @@ const oauth2Client = new google.auth.OAuth2(
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('🚨 CALLBACK ENDPOINT CALLED - URL:', request.url);
+    
     const { searchParams } = new URL(request.url);
     const code = searchParams.get('code');
     const error = searchParams.get('error');
