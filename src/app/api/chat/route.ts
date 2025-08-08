@@ -896,7 +896,7 @@ Respond naturally and conversationally. If the user asks to send an email to som
       if (!userId) {
         return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
       }
-      return await handleChartGeneration(message, {}, [], userId);
+      return await handleChartGeneration(message, {}, context.sessionFiles, userId);
     }
     
     // Check if the user wants to view data (contacts, deals, accounts, etc.)
@@ -1406,14 +1406,133 @@ function getClarificationMessage(dataType: string, records: DatabaseRecord[]): s
   return `I found ${records.length} ${dataType} that might match your search. Could you please provide more specific details to help me find the exact ${dataType} you're looking for?`;
 }
 
+// Function to generate charts from uploaded file data
+async function generateChartFromFileData(userMessage: string, sessionFiles: Array<{ name: string; content: string }>) {
+  try {
+    console.log('📊 Generating chart from file data');
+    
+    // Get the first file content for analysis
+    const fileContent = sessionFiles[0].content;
+    const fileName = sessionFiles[0].name;
+    
+    console.log('📁 Analyzing file:', fileName, 'Content length:', fileContent.length);
+    
+    // Use OpenAI to analyze the file content and generate chart data
+    const analysisPrompt = `
+Analyze the following data from a file named "${fileName}" and determine what type of chart would be most appropriate. Then extract the data in a format suitable for charting.
+
+File Content:
+${fileContent}
+
+User Request: "${userMessage}"
+
+Your task:
+1. Identify what type of data this is (sales data, financial data, survey results, etc.)
+2. Determine the best chart type (bar, line, pie, etc.)
+3. Extract the key data points for visualization
+4. Structure the data for a chart
+
+Respond with a JSON object in this exact format:
+{
+  "chartType": "bar|line|pie|area",
+  "title": "Chart Title",
+  "data": [
+    {"name": "Category1", "value": 100, "label": "Category1"},
+    {"name": "Category2", "value": 200, "label": "Category2"}
+  ],
+  "xAxisKey": "name",
+  "yAxisKey": "value",
+  "description": "Brief description of what the chart shows"
+}
+
+Important:
+- For bar/line charts: use "name" for categories and "value" for numbers
+- For pie charts: use "name" for labels and "value" for amounts
+- Extract actual numbers from the data, don't make them up
+- Choose the most relevant data points (max 10-15 data points)
+- If the data contains multiple possible charts, pick the most relevant one based on the user's request
+`;
+
+    const completion = await openaiClient.chatCompletionsCreate({
+      model: 'gpt-4',
+      messages: [{ role: 'user', content: analysisPrompt }],
+      temperature: 0.1,
+      max_tokens: 1000
+    }, {
+      userId: 'file-chart-analysis',
+      operation: 'file_chart_generation',
+      model: 'gpt-4'
+    });
+
+    const response = completion.choices[0]?.message?.content;
+    if (!response) {
+      throw new Error('No response from OpenAI');
+    }
+
+    console.log('🤖 OpenAI chart analysis response:', response);
+
+    // Parse the JSON response
+    let chartAnalysis;
+    try {
+      chartAnalysis = JSON.parse(response);
+    } catch (parseError) {
+      console.error('❌ Failed to parse OpenAI response:', parseError);
+      throw new Error('Failed to analyze file data for charting');
+    }
+
+    // Validate the response structure
+    if (!chartAnalysis.chartType || !chartAnalysis.data || !Array.isArray(chartAnalysis.data)) {
+      throw new Error('Invalid chart analysis response structure');
+    }
+
+    // Create chart specification compatible with ChartDisplay component
+    const chartSpec = {
+      chartType: chartAnalysis.chartType,
+      data: chartAnalysis.data,
+      title: chartAnalysis.title,
+      chartConfig: {
+        width: 600,
+        height: 400,
+        margin: { top: 20, right: 30, left: 20, bottom: 60 },
+        xAxis: { dataKey: chartAnalysis.xAxisKey || 'name' },
+        yAxis: { dataKey: chartAnalysis.yAxisKey || 'value' }
+      }
+    };
+
+    console.log('📊 Generated chart spec from file:', chartSpec);
+
+    return {
+      message: `I've analyzed your uploaded file "${fileName}" and created a ${chartAnalysis.chartType} chart. ${chartAnalysis.description || ''}`,
+      chartSpec
+    };
+
+  } catch (error) {
+    console.error('❌ File chart generation error:', error);
+    return {
+      message: "I encountered an error while analyzing your uploaded file for chart generation. Please ensure the file contains structured data that can be visualized.",
+      error: true
+    };
+  }
+}
+
 // Chart generation handler with actual CRM data
 async function handleChart(userMessage: string, sessionFiles: Array<{ name: string; content: string }>, userId?: string) {
   try {
     console.log('📊 Starting chart generation for user:', userId);
+    console.log('📜 Session files available:', sessionFiles.length);
     
     if (!userId) {
       throw new Error('User ID is required for chart generation');
     }
+    
+    // Check if we have uploaded files to analyze first
+    if (sessionFiles && sessionFiles.length > 0) {
+      console.log('📊 Analyzing uploaded file data for chart generation');
+      return await generateChartFromFileData(userMessage, sessionFiles);
+    }
+    
+    // If no files, fall back to CRM data analysis
+    console.log('📊 No files found, analyzing CRM data');
     
     // Get user's team and data
     const teams = await convex.query(api.crm.getTeamsByUser, { userId });
