@@ -7,7 +7,7 @@ export async function GET() {
     const TOKEN_FILE = path.join(process.cwd(), '.tokens.json');
     const TOKEN_BACKUP_FILE = path.join(process.cwd(), '.tokens.backup.json');
     
-    let tokens = {};
+    let tokens: { [key: string]: any } = {};
     
     // Check if token files exist
     if (fs.existsSync(TOKEN_FILE)) {
