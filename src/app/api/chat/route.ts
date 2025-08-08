@@ -290,7 +290,7 @@ Return ONLY a JSON object: { "recipient": "...", "subject": "...", "content_type
 // Main intent classification function
 async function classifyIntent(message: string, context: UserContext): Promise<IntentResult> {
   // Step 0: Check if this is a contact update (highest priority)
-  if (isContactUpdateMessage(message, context)) {
+      if (isContactUpdateMessage(message)) {
     console.log('Contact update detected:', message);
     return {
       action: 'updateContact',
@@ -418,10 +418,10 @@ async function handleObjectCreation(message: string, entities: Record<string, un
   const isContinuation = lastMessage?.action === "prompt_details";
   
   // Also check if this is an update to a recently created contact
-  const isContactUpdate = isContactUpdateMessage(message, context);
+      const isContactUpdate = isContactUpdateMessage(message);
   
   if (isContactUpdate) {
-    return await handleContactUpdate(message);
+    return await handleContactUpdate(message, userId);
   } else if (isContinuation) {
     // This is a continuation - extract details from the current message
     const objectType = lastMessage.objectType || 'contact';
@@ -590,38 +590,105 @@ function extractObjectDetailsFromNaturalLanguage(message: string): Record<string
   return details;
 }
 
-function isContactUpdateMessage(message: string, context: UserContext): boolean {
+function isContactUpdateMessage(message: string): boolean {
   const lowerMessage = message.toLowerCase();
   
   // Check if the message contains update keywords
-  const hasUpdateKeywords = lowerMessage.includes('company') || 
+  const hasUpdateKeywords = lowerMessage.includes('update') || 
+                           lowerMessage.includes('change') || 
+                           lowerMessage.includes('modify') ||
+                           lowerMessage.includes('edit') ||
+                           lowerMessage.includes('company') || 
                            lowerMessage.includes('phone') || 
                            lowerMessage.includes('title') || 
                            lowerMessage.includes('address') ||
+                           lowerMessage.includes('email') ||
                            lowerMessage.includes('=');
   
-  // Check if the last few messages were about contact creation
-  const recentMessages = context.conversationHistory.slice(-3);
-  const hasRecentContactCreation = recentMessages.some(msg => 
-    msg.content?.toLowerCase().includes('contact') && 
-    (msg.content?.toLowerCase().includes('created') || msg.content?.toLowerCase().includes('add'))
-  );
+  // Check if the message contains a name (for contact identification)
+  const hasName = /\b(john|jane|smith|jones|brown|wilson|taylor|anderson|thomas|jackson)\b/i.test(message);
   
-  return hasUpdateKeywords && hasRecentContactCreation;
+  // Check if the message contains field updates
+  const hasFieldUpdate = lowerMessage.includes('to ') || 
+                        lowerMessage.includes('email to ') ||
+                        lowerMessage.includes('phone to ') ||
+                        lowerMessage.includes('title to ') ||
+                        lowerMessage.includes('company to ');
+  
+  return hasUpdateKeywords && (hasName || hasFieldUpdate);
 }
 
-async function handleContactUpdate(message: string) {
-  // Extract the update details from the message
-  const updateDetails = extractObjectDetailsFromNaturalLanguage(message);
-  
-  // For now, we'll just acknowledge the update
-  // In a full implementation, we would update the contact in the database
-  const updateFields = Object.keys(updateDetails).join(', ');
-
+async function handleContactUpdate(message: string, userId: string) {
+  try {
+    // Extract contact name and field updates from the message
+    const lowerMessage = message.toLowerCase();
+    
+    // Extract name (look for patterns like "john smith", "john", "smith")
+    const nameMatch = message.match(/\b([A-Z][a-z]+)\s+([A-Z][a-z]+)\b/) || 
+                     message.match(/\b([A-Z][a-z]+)\b/);
+    const contactName = nameMatch ? nameMatch[0] : null;
+    
+    // Extract field and value (e.g., "email to johnsmith@acme.com")
+    const fieldMatch = lowerMessage.match(/(email|phone|title|company)\s+to\s+([^\s]+)/);
+    const field = fieldMatch ? fieldMatch[1] : null;
+    const value = fieldMatch ? fieldMatch[2] : null;
+    
+    if (!contactName || !field || !value) {
+      return NextResponse.json({
+        message: "I couldn't understand the update request. Please specify the contact name and what field to update. For example: 'update john smith's email to johnsmith@acme.com'",
+        error: true
+      });
+    }
+    
+    // Find the contact in the database
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+    
+    const matchingContact = contacts.find(contact => {
+      const contactName = contact.firstName && contact.lastName 
+        ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
+        : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
+      const searchName = contactName.toLowerCase();
+      
+      return contactName.includes(searchName) || 
+             searchName.includes(contactName) ||
+             contactName.split(' ').some((part: string) => searchName.includes(part)) ||
+             searchName.split(' ').some((part: string) => contactName.includes(part));
+    });
+    
+    if (!matchingContact) {
+      return NextResponse.json({
+        message: `I couldn't find a contact named "${contactName}" in your database. Please check the spelling or create the contact first.`,
+        error: true
+      });
+    }
+    
+    // Update the contact in the database
+    const updateData: Record<string, string> = {};
+    if (field === 'email') updateData.email = value;
+    if (field === 'phone') updateData.phone = value;
+    if (field === 'title') updateData.title = value;
+    if (field === 'company') updateData.company = value;
+    
+    // Call Convex mutation to update the contact
+    await convex.mutation(api.crm.updateContact, {
+      contactId: matchingContact._id,
+      updates: updateData
+    });
+    
     return NextResponse.json({
-    message: `I've updated the contact with the following information: ${updateFields}. The contact has been saved with all the details you provided.`,
-    action: "contact_updated"
-  });
+      message: `I've successfully updated ${contactName}'s ${field} to ${value}.`,
+      action: "contact_updated"
+    });
+    
+  } catch (error) {
+    console.error('Error updating contact:', error);
+    return NextResponse.json({
+      message: "I encountered an error while updating the contact. Please try again.",
+      error: true
+    });
+  }
 }
 
 function hasRequiredDetails(details: Record<string, string>, objectType: string): boolean {
@@ -1367,7 +1434,7 @@ export async function POST(req: NextRequest) {
         return await handleObjectCreation(lastUserMessage, intent.entities || {}, userId, context);
         
       case 'updateContact':
-        return await handleContactUpdate(lastUserMessage);
+        return await handleContactUpdate(lastUserMessage, userId);
         
       case 'queryDatabase':
       case 'query_database':
