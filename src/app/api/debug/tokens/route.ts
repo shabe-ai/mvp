@@ -1,57 +1,32 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import { TokenStorage } from '@/lib/tokenStorage';
 
 export async function GET() {
   try {
-    const session = await auth();
-    const userId = session?.userId;
-
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User not authenticated' },
-        { status: 401 }
-      );
-    }
-
-    // Get all tokens for debugging
+    // Get all stored tokens
     const allTokens = TokenStorage.getAllTokens();
-    const userTokenInfo = TokenStorage.getTokenInfo(userId);
-    const hasValidToken = await TokenStorage.hasValidToken(userId);
-    const isPersistent = TokenStorage.isPersistentConnection(userId);
-
+    const userId = 'user_30yNzzaqY36tW07nKprV52twdEQ';
+    const tokenInfo = TokenStorage.getTokenInfo(userId);
+    const hasToken = await TokenStorage.hasValidToken(userId);
+    
     return NextResponse.json({
-      currentUser: {
-        userId,
-        hasValidToken,
-        isPersistent,
-        tokenInfo: userTokenInfo ? {
-          hasRefreshToken: !!userTokenInfo.refreshToken,
-          email: userTokenInfo.email,
-          createdAt: userTokenInfo.createdAt,
-          lastRefreshed: userTokenInfo.lastRefreshed,
-          expiresAt: userTokenInfo.expiresAt,
-          isExpired: Date.now() > userTokenInfo.expiresAt
-        } : null
-      },
-      allTokens: Object.keys(allTokens).map(userId => ({
-        userId,
-        hasToken: !!allTokens[userId],
-        hasRefreshToken: !!allTokens[userId]?.refreshToken,
-        email: allTokens[userId]?.email,
-        isExpired: allTokens[userId] ? Date.now() > allTokens[userId].expiresAt : true
-      })),
-      summary: {
-        totalTokens: Object.keys(allTokens).length,
-        persistentConnections: Object.values(allTokens).filter(token => !!token.refreshToken).length,
-        expiredTokens: Object.values(allTokens).filter(token => Date.now() > token.expiresAt).length
-      }
+      allTokens: Object.keys(allTokens),
+      hasTokenForUser: hasToken,
+      tokenInfo: tokenInfo ? {
+        hasAccessToken: !!tokenInfo.accessToken,
+        hasRefreshToken: !!tokenInfo.refreshToken,
+        email: tokenInfo.email,
+        createdAt: tokenInfo.createdAt,
+        lastRefreshed: tokenInfo.lastRefreshed,
+        expiresAt: tokenInfo.expiresAt
+      } : null,
+      userId: userId,
+      timestamp: new Date().toISOString()
     });
-
   } catch (error) {
-    console.error('❌ Error debugging tokens:', error);
+    console.error('❌ Error checking tokens:', error);
     return NextResponse.json(
-      { error: 'Failed to debug tokens' },
+      { error: 'Failed to check tokens', details: error },
       { status: 500 }
     );
   }
