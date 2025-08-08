@@ -959,13 +959,21 @@ async function handleChartGeneration(message: string, entities: Record<string, u
   return NextResponse.json(result);
 }
 
-async function handleGeneralConversation(message: string, messages: Message[], context: UserContext) {
+async function handleGeneralConversation(message: string, messages: Message[], context: UserContext, userId?: string) {
   try {
     // Get user's data for context
-    const userId = context.userProfile?.email || 'unknown';
-    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    const actualUserId = userId || context.userProfile?.email || 'unknown';
+    console.log('🔍 Getting data for user:', actualUserId);
+    
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId: actualUserId });
+    console.log('📋 Teams found:', teams.length);
+    
     const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    console.log('🏢 Using team ID:', teamId);
+    
     const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+    console.log('👥 Contacts found:', contacts.length);
+    
     const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
     const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
     const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
@@ -1589,7 +1597,7 @@ export async function POST(req: NextRequest) {
 
     // Use LLM-driven approach instead of rigid rule-based routing
     // Let the LLM handle the conversation naturally and decide what actions to take
-    return await handleGeneralConversation(lastUserMessage, messages, context);
+    return await handleGeneralConversation(lastUserMessage, messages, context, userId);
 
   } catch (error) {
     console.error('❌ Chat API error:', error);
