@@ -98,6 +98,7 @@ interface Message {
   action?: string;
   objectType?: string;
   partialDetails?: Record<string, string>;
+  data?: FormattedRecord[];
 }
 
 // Fast pattern matching for common intents (0-5ms latency)
@@ -314,16 +315,82 @@ async function classifyIntent(message: string, context: UserContext): Promise<In
 }
 
 // Action handlers
+// Function to resolve pronouns by looking at conversation context
+function resolvePronoun(pronoun: string, context: UserContext): string | null {
+  const pronouns = {
+    'him': ['male', 'he'],
+    'her': ['female', 'she'], 
+    'them': ['they', 'them'],
+    'his': ['male', 'he'],
+    'hers': ['female', 'she'],
+    'theirs': ['they', 'them']
+  };
+  
+  // Look through recent conversation history for mentioned contacts
+  const recentMessages = context.conversationHistory.slice(-5); // Last 5 messages
+  
+  for (const message of recentMessages) {
+    if (message.role === 'assistant' && message.data) {
+      // Check if the assistant mentioned a contact in the data
+      const records = message.data as FormattedRecord[];
+      if (records && records.length > 0) {
+        const contact = records[0];
+        const contactName = contact.name.toLowerCase();
+        
+        // Simple gender detection based on common names (this could be improved)
+        const maleNames = ['john', 'mike', 'david', 'james', 'robert', 'william', 'richard', 'thomas', 'chris', 'daniel'];
+        const femaleNames = ['sarah', 'emily', 'jane', 'lisa', 'mary', 'jennifer', 'jessica', 'ashley', 'amanda', 'michelle'];
+        
+        const firstName = contactName.split(' ')[0];
+        const isMale = maleNames.includes(firstName);
+        const isFemale = femaleNames.includes(firstName);
+        
+        // Check if pronoun matches the contact's likely gender
+        const pronounKey = pronoun.toLowerCase() as keyof typeof pronouns;
+        if (pronouns[pronounKey]) {
+          const pronounTypes = pronouns[pronounKey];
+          if ((isMale && pronounTypes.includes('male')) || 
+              (isFemale && pronounTypes.includes('female')) ||
+              (!isMale && !isFemale)) { // Default case for unknown gender
+            return contact.name;
+          }
+        }
+      }
+    }
+  }
+  
+  return null;
+}
+
 async function handleEmailRequest(message: string, entities: EmailEntities, userId: string, context: UserContext) {
   // Extract recipient from message or entities
   const emailEntities = await extractEmailEntities(message, context);
-  const recipient = entities.recipient || emailEntities.recipient;
+  let recipient = entities.recipient || emailEntities.recipient;
   
+  // If no recipient found, check if it's a pronoun and try to resolve it
   if (!recipient) {
-    return NextResponse.json({
-      message: "I couldn't identify who you want to send an email to. Please specify the recipient's name.",
-      error: true
-    });
+    const lowerMessage = message.toLowerCase();
+    const pronounMatch = lowerMessage.match(/\b(him|her|them|his|hers|theirs)\b/);
+    
+    if (pronounMatch) {
+      const pronoun = pronounMatch[1];
+      const resolvedName = resolvePronoun(pronoun, context);
+      
+      if (resolvedName) {
+        recipient = resolvedName;
+        console.log(`🔍 Resolved pronoun "${pronoun}" to contact: ${resolvedName}`);
+      } else {
+        return NextResponse.json({
+          message: "I couldn't identify who you want to send an email to. Please specify the recipient's name.",
+          error: true
+        });
+      }
+    } else {
+      return NextResponse.json({
+        message: "I couldn't identify who you want to send an email to. Please specify the recipient's name.",
+        error: true
+      });
+    }
   }
   
   // Check if contact exists
@@ -355,8 +422,8 @@ async function handleEmailRequest(message: string, entities: EmailEntities, user
         suggestedContactName: recipient,
         action: "create_contact"
       });
-        }
-      } catch (error) {
+    }
+  } catch (error) {
     console.error('Error checking contacts:', error);
     return NextResponse.json({
       message: "I encountered an error while checking your contacts. Please try again.",
