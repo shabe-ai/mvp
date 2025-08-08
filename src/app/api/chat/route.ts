@@ -1085,6 +1085,9 @@ Respond naturally and conversationally. If the user asks to send an email to som
     const lowerMessage = message.toLowerCase();
     if (lowerMessage.includes('chart') || lowerMessage.includes('graph') || lowerMessage.includes('visualization')) {
       console.log('📊 Chart request detected, calling chart generation');
+      if (!userId) {
+        return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      }
       return await handleChartGeneration(message, {}, [], userId);
     }
     
@@ -1092,6 +1095,9 @@ Respond naturally and conversationally. If the user asks to send an email to som
     if (lowerMessage.includes('view') || lowerMessage.includes('show') || lowerMessage.includes('list') || lowerMessage.includes('see')) {
       if (lowerMessage.includes('contact') || lowerMessage.includes('deal') || lowerMessage.includes('account') || lowerMessage.includes('activity')) {
         console.log('📋 Data view request detected, calling database query');
+        if (!userId) {
+          return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+        }
         return await handleDatabaseQuery(message, {}, userId);
       }
     }
@@ -1099,6 +1105,9 @@ Respond naturally and conversationally. If the user asks to send an email to som
     // Check if the user wants to update a contact
     if (lowerMessage.includes('update') && (lowerMessage.includes('email') || lowerMessage.includes('phone') || lowerMessage.includes('contact'))) {
       console.log('✏️ Contact update request detected');
+      if (!userId) {
+        return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      }
       return await handleContactUpdate(message, userId);
     }
     
