@@ -31,10 +31,7 @@ const oauth2Client = new google.auth.OAuth2(
   `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/auth/google/callback`
 );
 
-// Check if we're in a serverless environment (Vercel)
-function isServerlessEnvironment(): boolean {
-  return process.env.VERCEL === '1' || process.env.NODE_ENV === 'production';
-}
+
 
 // Check if Redis is available
 function isRedisAvailable(): boolean {
@@ -62,7 +59,7 @@ function isFileSystemWritable(): boolean {
     fs.writeFileSync(testFile, 'test');
     fs.unlinkSync(testFile);
     return true;
-  } catch (error) {
+  } catch {
     console.log('⚠️ File system is read-only, using Redis storage');
     return false;
   }

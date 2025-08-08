@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
 import { TokenData } from '@/lib/tokenStorage';
+import fs from 'fs';
+import path from 'path';
 
 export async function GET() {
   try {
     console.log('🔍 Checking for token files...');
     
     // Check if token files exist
-    const fs = require('fs');
-    const path = require('path');
-    
     const tokenFile = path.join(process.cwd(), '.tokens.json');
     const backupFile = path.join(process.cwd(), '.tokens.backup.json');
     

@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import { google } from 'googleapis';
 import { TokenStorage } from '@/lib/tokenStorage';
 
 export async function GET() {

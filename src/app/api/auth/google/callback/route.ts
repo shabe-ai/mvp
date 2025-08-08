@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { auth } from '@clerk/nextjs/server';
 import { TokenStorage } from '@/lib/tokenStorage';
 
 // Initialize Google OAuth2 client
