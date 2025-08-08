@@ -4,9 +4,9 @@ import { TokenStorage } from '@/lib/tokenStorage';
 export async function GET() {
   try {
     // Get all stored tokens
-    const allTokens = TokenStorage.getAllTokens();
+    const allTokens = await TokenStorage.getAllTokens();
     const userId = 'user_30yNzzaqY36tW07nKprV52twdEQ';
-    const tokenInfo = TokenStorage.getTokenInfo(userId);
+    const tokenInfo = await TokenStorage.getTokenInfo(userId);
     const hasToken = await TokenStorage.hasValidToken(userId);
     
     return NextResponse.json({
