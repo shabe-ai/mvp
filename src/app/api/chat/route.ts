@@ -620,6 +620,9 @@ function isContactUpdateMessage(message: string): boolean {
 
 async function handleContactUpdate(message: string, userId: string) {
   try {
+    console.log('🔍 Starting contact update for message:', message);
+    console.log('👤 User ID:', userId);
+    
     // Extract contact name and field updates from the message
     const lowerMessage = message.toLowerCase();
     
@@ -633,7 +636,10 @@ async function handleContactUpdate(message: string, userId: string) {
     const field = fieldMatch ? fieldMatch[1] : null;
     const value = fieldMatch ? fieldMatch[2] : null;
     
+    console.log('📝 Extracted data:', { contactName, field, value });
+    
     if (!contactName || !field || !value) {
+      console.log('❌ Missing required data for contact update');
       return NextResponse.json({
         message: "I couldn't understand the update request. Please specify the contact name and what field to update. For example: 'update john smith's email to johnsmith@acme.com'",
         error: true
@@ -641,28 +647,42 @@ async function handleContactUpdate(message: string, userId: string) {
     }
     
     // Find the contact in the database
+    console.log('🔍 Looking up teams for user...');
     const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    console.log('📋 Teams found:', teams.length);
+    
     const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    console.log('🏢 Using team ID:', teamId);
+    
+    console.log('🔍 Looking up contacts for team...');
     const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+    console.log('👥 Contacts found:', contacts.length);
+    console.log('📋 Contact names:', contacts.map(c => `${c.firstName} ${c.lastName}`));
     
     const matchingContact = contacts.find(contact => {
-      const contactName = contact.firstName && contact.lastName 
+      const contactFullName = contact.firstName && contact.lastName 
         ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
         : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
       const searchName = contactName.toLowerCase();
       
-      return contactName.includes(searchName) || 
-             searchName.includes(contactName) ||
-             contactName.split(' ').some((part: string) => searchName.includes(part)) ||
-             searchName.split(' ').some((part: string) => contactName.includes(part));
+      const matches = contactFullName.includes(searchName) || 
+             searchName.includes(contactFullName) ||
+             contactFullName.split(' ').some((part: string) => searchName.includes(part)) ||
+             searchName.split(' ').some((part: string) => contactFullName.includes(part));
+      
+      console.log(`🔍 Checking "${contactFullName}" against "${searchName}": ${matches}`);
+      return matches;
     });
     
     if (!matchingContact) {
+      console.log('❌ No matching contact found');
       return NextResponse.json({
         message: `I couldn't find a contact named "${contactName}" in your database. Please check the spelling or create the contact first.`,
         error: true
       });
     }
+    
+    console.log('✅ Found matching contact:', matchingContact);
     
     // Update the contact in the database
     const updateData: Record<string, string> = {};
@@ -671,19 +691,23 @@ async function handleContactUpdate(message: string, userId: string) {
     if (field === 'title') updateData.title = value;
     if (field === 'company') updateData.company = value;
     
+    console.log('📝 Update data:', updateData);
+    
     // Call Convex mutation to update the contact
+    console.log('🔄 Calling Convex mutation...');
     await convex.mutation(api.crm.updateContact, {
       contactId: matchingContact._id,
       updates: updateData
     });
     
+    console.log('✅ Contact update successful');
     return NextResponse.json({
       message: `I've successfully updated ${contactName}'s ${field} to ${value}.`,
       action: "contact_updated"
     });
     
   } catch (error) {
-    console.error('Error updating contact:', error);
+    console.error('❌ Error updating contact:', error);
     return NextResponse.json({
       message: "I encountered an error while updating the contact. Please try again.",
       error: true
