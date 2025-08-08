@@ -290,7 +290,7 @@ Return ONLY a JSON object: { "recipient": "...", "subject": "...", "content_type
 // Main intent classification function
 async function classifyIntent(message: string, context: UserContext): Promise<IntentResult> {
   // Step 0: Check if this is a contact update (highest priority)
-  if (isContactUpdateMessage(message, context)) {
+      if (isContactUpdateMessage(message)) {
     console.log('Contact update detected:', message);
     return {
       action: 'updateContact',
@@ -418,7 +418,7 @@ async function handleObjectCreation(message: string, entities: Record<string, un
   const isContinuation = lastMessage?.action === "prompt_details";
   
   // Also check if this is an update to a recently created contact
-  const isContactUpdate = isContactUpdateMessage(message, context);
+      const isContactUpdate = isContactUpdateMessage(message);
   
   if (isContactUpdate) {
     return await handleContactUpdate(message, userId);
@@ -590,7 +590,7 @@ function extractObjectDetailsFromNaturalLanguage(message: string): Record<string
   return details;
 }
 
-function isContactUpdateMessage(message: string, context: UserContext): boolean {
+function isContactUpdateMessage(message: string): boolean {
   const lowerMessage = message.toLowerCase();
   
   // Check if the message contains update keywords
@@ -665,7 +665,7 @@ async function handleContactUpdate(message: string, userId: string) {
     }
     
     // Update the contact in the database
-    const updateData: any = {};
+    const updateData: Record<string, string> = {};
     if (field === 'email') updateData.email = value;
     if (field === 'phone') updateData.phone = value;
     if (field === 'title') updateData.title = value;
