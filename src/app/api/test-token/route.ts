@@ -4,35 +4,37 @@ import { TokenStorage } from '@/lib/tokenStorage';
 
 export async function GET() {
   try {
-    const session = await auth();
-    const userId = session?.userId;
-
-    console.log('🔍 Test token - Session:', { userId: userId ? 'present' : 'missing' });
-
-    // Use hardcoded userId for testing since session isn't working
-    const testUserId = userId || 'user_30yNzzaqY36tW07nKprV52twdEQ';
+    const { userId } = await auth();
     
-    // Test token storage with async methods
-    const hasToken = await TokenStorage.hasValidToken(testUserId);
-    const token = await TokenStorage.getToken(testUserId);
-    const tokenInfo = TokenStorage.getTokenInfo(testUserId);
-    const persistentConnection = TokenStorage.isPersistentConnection(testUserId);
-
-    return NextResponse.json({
-      userId: testUserId,
+    // Use hardcoded userId as fallback if Clerk session is not available
+    const targetUserId = userId || 'user_30yNzzaqY36tW07nKprV52twdEQ';
+    
+    console.log('🔍 Testing token for user:', targetUserId);
+    console.log('🔍 Clerk userId:', userId);
+    
+    const hasToken = await TokenStorage.hasValidToken(targetUserId);
+    const token = await TokenStorage.getToken(targetUserId);
+    const tokenInfo = await TokenStorage.getTokenInfo(targetUserId);
+    
+    console.log('🔍 Token test results:', {
       hasToken,
-      hasRefreshToken: !!tokenInfo?.refreshToken,
       tokenExists: !!token,
-      tokenPreview: token ? `${token.substring(0, 10)}...` : null,
-      connectionStatus: hasToken ? 'connected' : 'disconnected',
-      persistentConnection,
-      userEmail: tokenInfo?.email,
-      tokenCreatedAt: tokenInfo?.createdAt,
-      lastRefreshed: tokenInfo?.lastRefreshed,
-      sessionUserId: userId,
-      usingFallbackUserId: !userId
+      tokenInfo: tokenInfo ? {
+        hasAccessToken: !!tokenInfo.accessToken,
+        hasRefreshToken: !!tokenInfo.refreshToken,
+        email: tokenInfo.email
+      } : null
     });
-
+    
+    return NextResponse.json({
+      hasToken,
+      token: token ? '***' : null,
+      userEmail: tokenInfo?.email,
+      userId: targetUserId,
+      authenticated: !!userId,
+      clerkUserId: userId
+    });
+    
   } catch (error) {
     console.error('❌ Error testing token:', error);
     return NextResponse.json(

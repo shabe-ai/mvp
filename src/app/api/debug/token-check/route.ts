@@ -5,30 +5,44 @@ export async function GET() {
   try {
     const userId = 'user_30yNzzaqY36tW07nKprV52twdEQ';
     
-    // Test token storage with async methods
+    console.log('🔍 Debug token check for user:', userId);
+    
     const hasToken = await TokenStorage.hasValidToken(userId);
     const token = await TokenStorage.getToken(userId);
-    const tokenInfo = TokenStorage.getTokenInfo(userId);
-    const persistentConnection = TokenStorage.isPersistentConnection(userId);
-
+    const tokenInfo = await TokenStorage.getTokenInfo(userId);
+    const allTokens = await TokenStorage.getAllTokens();
+    
+    console.log('🔍 Debug token results:', {
+      hasToken,
+      tokenExists: !!token,
+      tokenInfo: tokenInfo ? {
+        hasAccessToken: !!tokenInfo.accessToken,
+        hasRefreshToken: !!tokenInfo.refreshToken,
+        email: tokenInfo.email
+      } : null,
+      totalTokens: Object.keys(allTokens).length
+    });
+    
     return NextResponse.json({
       userId,
       hasToken,
-      hasRefreshToken: !!tokenInfo?.refreshToken,
-      tokenExists: !!token,
-      tokenPreview: token ? `${token.substring(0, 10)}...` : null,
-      connectionStatus: hasToken ? 'connected' : 'disconnected',
-      persistentConnection,
+      token: token ? '***' : null,
       userEmail: tokenInfo?.email,
-      tokenCreatedAt: tokenInfo?.createdAt,
-      lastRefreshed: tokenInfo?.lastRefreshed,
+      tokenInfo: tokenInfo ? {
+        hasAccessToken: !!tokenInfo.accessToken,
+        hasRefreshToken: !!tokenInfo.refreshToken,
+        email: tokenInfo.email,
+        createdAt: tokenInfo.createdAt,
+        expiresAt: tokenInfo.expiresAt
+      } : null,
+      totalTokens: Object.keys(allTokens).length,
       timestamp: new Date().toISOString()
     });
-
+    
   } catch (error) {
-    console.error('❌ Error checking tokens:', error);
+    console.error('❌ Error in debug token check:', error);
     return NextResponse.json(
-      { error: 'Failed to check tokens', details: error },
+      { error: 'Failed to check token', details: error },
       { status: 500 }
     );
   }

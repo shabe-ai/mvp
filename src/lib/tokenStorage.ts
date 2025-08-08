@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { google } from 'googleapis';
+import { Redis } from '@upstash/redis';
 
-// File-based token storage for persistence
+// File-based token storage for local development
 const TOKEN_FILE = path.join(process.cwd(), '.tokens.json');
 const TOKEN_BACKUP_FILE = path.join(process.cwd(), '.tokens.backup.json');
 
@@ -30,24 +31,65 @@ const oauth2Client = new google.auth.OAuth2(
   `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/auth/google/callback`
 );
 
+
+
+// Check if Redis is available
+function isRedisAvailable(): boolean {
+  return !!(process.env.KV_REST_API_URL && process.env.KV_REST_API_TOKEN);
+}
+
+// Initialize Redis client
+function getRedisClient(): Redis | null {
+  if (!isRedisAvailable()) {
+    return null;
+  }
+  
+  try {
+    return Redis.fromEnv();
+  } catch (error) {
+    console.error('❌ Error initializing Redis client:', error);
+    return null;
+  }
+}
+
 // Check if file system is writable
 function isFileSystemWritable(): boolean {
   try {
-    // Try to write a test file
     const testFile = path.join(process.cwd(), '.test-write');
     fs.writeFileSync(testFile, 'test');
     fs.unlinkSync(testFile);
     return true;
-  } catch (error) {
-    console.log('⚠️ File system is read-only, using memory storage fallback');
+  } catch {
+    console.log('⚠️ File system is read-only, using Redis storage');
     return false;
   }
 }
 
-// Load tokens from file with backup recovery
-function loadTokens(): TokenStorageData {
+// Load tokens with priority: Redis > Environment Variable > File System > Memory
+async function loadTokens(): Promise<TokenStorageData> {
+  // Try Redis first (for production)
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      const kvTokens = await redis.get('google_tokens');
+      if (kvTokens) {
+        console.log('📁 Loaded tokens from Redis storage');
+        return kvTokens as TokenStorageData;
+      }
+    } catch (error) {
+      console.error('❌ Error loading tokens from Redis:', error);
+    }
+  }
+
+  // Try environment variable as fallback
+  const envTokens = loadTokensFromEnv();
+  if (Object.keys(envTokens).length > 0) {
+    console.log('📁 Loaded tokens from environment variable');
+    return envTokens;
+  }
+
+  // Try file system (for local development)
   try {
-    // Try primary file first
     if (fs.existsSync(TOKEN_FILE)) {
       const data = fs.readFileSync(TOKEN_FILE, 'utf8');
       const tokens = JSON.parse(data);
@@ -55,19 +97,16 @@ function loadTokens(): TokenStorageData {
       return tokens;
     }
     
-    // Try backup file if primary doesn't exist
     if (fs.existsSync(TOKEN_BACKUP_FILE)) {
       const data = fs.readFileSync(TOKEN_BACKUP_FILE, 'utf8');
       const tokens = JSON.parse(data);
       console.log('📁 Loaded tokens from backup file');
-      // Restore primary file
       saveTokens(tokens);
       return tokens;
     }
   } catch (error) {
     console.error('❌ Error loading tokens from file:', error);
     
-    // Try backup file if primary file is corrupted
     try {
       if (fs.existsSync(TOKEN_BACKUP_FILE)) {
         const data = fs.readFileSync(TOKEN_BACKUP_FILE, 'utf8');
@@ -81,39 +120,44 @@ function loadTokens(): TokenStorageData {
     }
   }
   
-  // If file system fails, try environment variable
-  const envTokens = loadTokensFromEnv();
-  if (Object.keys(envTokens).length > 0) {
-    return envTokens;
-  }
-  
   // Finally, try memory storage
+  console.log('📁 Using memory storage (no persistent tokens found)');
   return memoryTokens;
 }
 
-// Save tokens to file with backup
-function saveTokens(tokens: TokenStorageData): void {
+// Save tokens with priority: Redis > File System > Memory
+async function saveTokens(tokens: TokenStorageData): Promise<void> {
+  console.log('💾 Attempting to save tokens...');
+  
+  // Try Redis first (for production)
+  const redis = getRedisClient();
+  if (redis) {
+    try {
+      await redis.set('google_tokens', tokens);
+      console.log('💾 Tokens saved successfully to Redis storage');
+      return;
+    } catch (error) {
+      console.error('❌ Error saving tokens to Redis:', error);
+    }
+  }
+
+  // Try file system (for local development)
   try {
-    // Check if file system is writable
     if (!isFileSystemWritable()) {
       console.log('⚠️ File system is read-only, storing in memory');
-      // Store in memory as fallback
       memoryTokens = tokens;
       console.log('💾 Tokens saved to memory storage');
       return;
     }
     
-    // Create backup first
     if (fs.existsSync(TOKEN_FILE)) {
       fs.copyFileSync(TOKEN_FILE, TOKEN_BACKUP_FILE);
     }
     
-    // Save to primary file
     fs.writeFileSync(TOKEN_FILE, JSON.stringify(tokens, null, 2));
     console.log('💾 Tokens saved successfully to file');
   } catch (error) {
     console.error('❌ Error saving tokens to file:', error);
-    // Try memory storage as fallback
     try {
       memoryTokens = tokens;
       console.log('💾 Tokens saved to memory storage as fallback');
@@ -123,7 +167,7 @@ function saveTokens(tokens: TokenStorageData): void {
   }
 }
 
-// Load tokens from environment variable if file system fails
+// Load tokens from environment variable
 function loadTokensFromEnv(): TokenStorageData {
   try {
     const envTokens = process.env.GOOGLE_TOKENS;
@@ -150,14 +194,14 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
     
     if (newAccessToken) {
       // Update stored tokens with new access token
-      const tokens = loadTokens();
+      const tokens = await loadTokens();
       const tokenData = tokens[userId];
       
       if (tokenData) {
         tokenData.accessToken = newAccessToken;
         tokenData.expiresAt = Date.now() + (((credentials as { credentials: { expires_in?: number } }).credentials.expires_in || 3600) * 1000);
         tokenData.lastRefreshed = Date.now();
-        saveTokens(tokens);
+        await saveTokens(tokens);
         
         console.log('🔄 Access token refreshed for user:', userId);
         return newAccessToken;
@@ -171,10 +215,10 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
 }
 
 export class TokenStorage {
-  static setToken(userId: string, accessToken: string, refreshToken?: string, expiresIn: number = 3600, email?: string): void {
+  static async setToken(userId: string, accessToken: string, refreshToken?: string, expiresIn: number = 3600, email?: string): Promise<void> {
     console.log('🚨 SETTOKEN CALLED - userId:', userId, 'hasAccessToken:', !!accessToken, 'hasRefreshToken:', !!refreshToken);
     
-    const tokens = loadTokens();
+    const tokens = await loadTokens();
     const expiresAt = Date.now() + (expiresIn * 1000);
     const now = Date.now();
     
@@ -187,7 +231,7 @@ export class TokenStorage {
       userId,
       email
     };
-    saveTokens(tokens);
+    await saveTokens(tokens);
     
     console.log('🔐 Token stored for user:', userId);
     console.log('🔐 Has refresh token:', !!refreshToken);
@@ -198,7 +242,7 @@ export class TokenStorage {
   static async getToken(userId: string): Promise<string | null> {
     console.log('🔍 Looking for token for user:', userId);
     
-    const tokens = loadTokens();
+    const tokens = await loadTokens();
     const tokenData = tokens[userId];
     
     if (!tokenData) {
@@ -220,14 +264,14 @@ export class TokenStorage {
         } else {
           // Refresh failed, remove the token
           delete tokens[userId];
-          saveTokens(tokens);
+          await saveTokens(tokens);
           console.log('❌ Token refresh failed, removed token for user:', userId);
           return null;
         }
       } else {
         // No refresh token, remove the expired token
         delete tokens[userId];
-        saveTokens(tokens);
+        await saveTokens(tokens);
         console.log('❌ No refresh token available, removed expired token for user:', userId);
         return null;
       }
@@ -237,10 +281,10 @@ export class TokenStorage {
     return tokenData.accessToken;
   }
 
-  static removeToken(userId: string): void {
-    const tokens = loadTokens();
+  static async removeToken(userId: string): Promise<void> {
+    const tokens = await loadTokens();
     delete tokens[userId];
-    saveTokens(tokens);
+    await saveTokens(tokens);
     console.log('🗑️ Token removed for user:', userId);
   }
 
@@ -249,26 +293,26 @@ export class TokenStorage {
     return token !== null;
   }
 
-  static getRefreshToken(userId: string): string | null {
-    const tokens = loadTokens();
+  static async getRefreshToken(userId: string): Promise<string | null> {
+    const tokens = await loadTokens();
     const tokenData = tokens[userId];
     return tokenData?.refreshToken || null;
   }
 
   // Get all stored tokens (for debugging)
-  static getAllTokens(): TokenStorageData {
-    return loadTokens();
+  static async getAllTokens(): Promise<TokenStorageData> {
+    return await loadTokens();
   }
 
   // Get token info for a specific user
-  static getTokenInfo(userId: string): TokenData | null {
-    const tokens = loadTokens();
+  static async getTokenInfo(userId: string): Promise<TokenData | null> {
+    const tokens = await loadTokens();
     return tokens[userId] || null;
   }
 
   // Check if connection is persistent (has refresh token)
-  static isPersistentConnection(userId: string): boolean {
-    const tokens = loadTokens();
+  static async isPersistentConnection(userId: string): Promise<boolean> {
+    const tokens = await loadTokens();
     const tokenData = tokens[userId];
     return !!(tokenData && tokenData.refreshToken);
   }

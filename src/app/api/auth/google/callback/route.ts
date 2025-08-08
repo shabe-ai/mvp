@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
-import { auth } from '@clerk/nextjs/server';
 import { TokenStorage } from '@/lib/tokenStorage';
 
 // Initialize Google OAuth2 client
@@ -112,7 +111,7 @@ export async function GET(request: NextRequest) {
     });
     
     try {
-      TokenStorage.setToken(
+      await TokenStorage.setToken(
         userId, 
         tokens.access_token, 
         tokens.refresh_token || undefined, // Store refresh token for persistent connections
