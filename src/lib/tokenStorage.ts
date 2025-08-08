@@ -116,6 +116,8 @@ async function refreshAccessToken(userId: string, refreshToken: string): Promise
 
 export class TokenStorage {
   static setToken(userId: string, accessToken: string, refreshToken?: string, expiresIn: number = 3600, email?: string): void {
+    console.log('🚨 SETTOKEN CALLED - userId:', userId, 'hasAccessToken:', !!accessToken, 'hasRefreshToken:', !!refreshToken);
+    
     const tokens = loadTokens();
     const expiresAt = Date.now() + (expiresIn * 1000);
     const now = Date.now();
