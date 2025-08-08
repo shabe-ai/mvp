@@ -13,7 +13,7 @@ export async function GET() {
     
     // Test token storage directly
     console.log('🔐 Testing token storage...');
-    TokenStorage.setToken(
+    await TokenStorage.setToken(
       testUserId,
       testAccessToken,
       testRefreshToken,
@@ -24,7 +24,7 @@ export async function GET() {
     // Test token retrieval
     const hasToken = await TokenStorage.hasValidToken(testUserId);
     const token = await TokenStorage.getToken(testUserId);
-    const tokenInfo = TokenStorage.getTokenInfo(testUserId);
+    const tokenInfo = await TokenStorage.getTokenInfo(testUserId);
     
     console.log('🔍 Token test results:', {
       hasToken,
@@ -39,7 +39,7 @@ export async function GET() {
     });
     
     // Clean up
-    TokenStorage.removeToken(testUserId);
+    await TokenStorage.removeToken(testUserId);
     
     return NextResponse.json({
       testUserId,
