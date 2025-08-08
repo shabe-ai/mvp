@@ -99,6 +99,8 @@ interface Message {
   objectType?: string;
   partialDetails?: Record<string, string>;
   data?: FormattedRecord[];
+  contactName?: string;
+  contactId?: string;
 }
 
 // Fast pattern matching for common intents (0-5ms latency)
@@ -1035,6 +1037,22 @@ Respond naturally and conversationally. If the user asks to send an email to som
 
     const aiResponse = response.choices[0]?.message?.content || "I'm here to help! What would you like to do?";
 
+    // Check if this is a follow-up to an email context prompt
+    const lastMessage = messages[messages.length - 2];
+    const isEmailContextResponse = lastMessage?.action === "prompt_email_context";
+    
+    if (isEmailContextResponse) {
+      // User is providing email context after being prompted
+      const contactName = lastMessage.contactName;
+      const contactId = lastMessage.contactId;
+      
+      const matchingContact = contacts.find(contact => contact._id === contactId);
+      if (matchingContact) {
+        console.log('📧 Creating email with provided context for:', contactName);
+        return await draftEmail(matchingContact, context);
+      }
+    }
+    
     // Check if the user wants to send an email and go directly to email preview
     const lowerMessage = message.toLowerCase();
     if (lowerMessage.includes('send') && lowerMessage.includes('email')) {
@@ -1051,8 +1069,29 @@ Respond naturally and conversationally. If the user asks to send an email to som
         });
 
         if (matchingContact) {
-          console.log('📧 Going directly to email preview for:', contactName);
-          return await draftEmail(matchingContact, context);
+          // Check if the user provided context for the email content
+          const hasEmailContext = message.toLowerCase().includes('thank') || 
+                                message.toLowerCase().includes('follow up') ||
+                                message.toLowerCase().includes('meeting') ||
+                                message.toLowerCase().includes('call') ||
+                                message.toLowerCase().includes('discuss') ||
+                                message.toLowerCase().includes('about') ||
+                                message.toLowerCase().includes('regarding') ||
+                                message.toLowerCase().includes('subject') ||
+                                message.toLowerCase().includes('content');
+          
+          if (hasEmailContext) {
+            console.log('📧 Going directly to email preview for:', contactName);
+            return await draftEmail(matchingContact, context);
+          } else {
+            // Ask for more context
+            return NextResponse.json({
+              message: `I'd be happy to send an email to ${contactName}. What would you like to say in the email? For example:\n\n• "Thank him for the meeting yesterday"\n• "Follow up on our discussion"\n• "Schedule a call for next week"\n• Or provide any other context for the email content.`,
+              action: "prompt_email_context",
+              contactName: contactName,
+              contactId: matchingContact._id
+            });
+          }
         }
       }
     }
