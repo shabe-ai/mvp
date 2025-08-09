@@ -1511,8 +1511,13 @@ Important:
 
   } catch (error) {
     console.error('❌ File chart generation error:', error);
+    console.error('❌ Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      type: typeof error
+    });
     return {
-      message: "I encountered an error while analyzing your uploaded file for chart generation. Please ensure the file contains structured data that can be visualized.",
+      message: `I encountered an error while analyzing your uploaded file for chart generation: ${error instanceof Error ? error.message : String(error)}. Please ensure the file contains structured data that can be visualized.`,
       error: true
     };
   }
