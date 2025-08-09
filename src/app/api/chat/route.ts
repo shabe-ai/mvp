@@ -524,7 +524,7 @@ async function handleContactUpdate(message: string, userId: string) {
     
     if (!contactName || !field || !value) {
       console.log('❌ Missing required data for contact update');
-      return NextResponse.json({
+    return NextResponse.json({
         message: "I couldn't understand the update request. Please specify the contact name and what field to update. For example: 'update john smith's email to johnsmith@acme.com'",
         error: true
       });
@@ -587,8 +587,8 @@ async function handleContactUpdate(message: string, userId: string) {
     console.log('✅ Contact update successful');
     return NextResponse.json({
       message: `I've successfully updated ${contactName}'s ${field} to ${value}.`,
-      action: "contact_updated"
-    });
+    action: "contact_updated"
+  });
     
   } catch (error) {
     console.error('❌ Error updating contact:', error);
@@ -830,18 +830,18 @@ async function handleGeneralConversation(message: string, messages: Message[], c
 Respond naturally and conversationally. If the user asks to send an email to someone, tell them you'll draft an email and ask if they'd like you to proceed.`;
 
     const response = await openaiClient.chatCompletionsCreate({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
+    model: "gpt-4",
+    messages: [
+      {
+        role: "system",
           content: systemPrompt
-        },
+      },
         ...messages.map(msg => ({
-          role: msg.role as "user" | "assistant",
+        role: msg.role as "user" | "assistant",
           content: msg.content
         }))
-      ],
-      temperature: 0.7,
+    ],
+    temperature: 0.7,
       max_tokens: 1500
     }, {
       userId: context.userProfile?.name || 'unknown',
@@ -928,15 +928,18 @@ Please analyze the ACTUAL file content above and respond based on what you see i
         });
 
         const aiResponse = response.choices[0]?.message?.content || "I can help you analyze your uploaded files.";
-        
-        return NextResponse.json({
+
+  return NextResponse.json({
           message: aiResponse
         });
       }
     }
     
     // Check if the user wants to create a chart
-    if (lowerMessage.includes('chart') || lowerMessage.includes('graph') || lowerMessage.includes('visualization')) {
+    if (lowerMessage.includes('chart') || lowerMessage.includes('graph') || lowerMessage.includes('visualization') ||
+        (lowerMessage.includes('deals') && lowerMessage.includes('stage')) ||
+        (lowerMessage.includes('contacts') && lowerMessage.includes('status')) ||
+        (lowerMessage.includes('accounts') && lowerMessage.includes('industry'))) {
       console.log('📊 Chart request detected, calling chart generation');
       console.log('📂 Context sessionFiles:', context.sessionFiles?.map(f => ({ name: f.name, contentLength: f.content?.length })));
       if (!userId) {
@@ -1481,8 +1484,8 @@ Your task:
 4. Structure the data for a chart
 
 Respond with a JSON object in this exact format:
-{
-  "chartType": "bar|line|pie|area",
+    {
+      "chartType": "bar|line|pie|area",
   "title": "Chart Title",
   "data": [
     {"name": "Category1", "value": 100, "label": "Category1"},
