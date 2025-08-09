@@ -893,6 +893,7 @@ Respond naturally and conversationally. If the user asks to send an email to som
     const lowerMessage = message.toLowerCase();
     if (lowerMessage.includes('chart') || lowerMessage.includes('graph') || lowerMessage.includes('visualization')) {
       console.log('📊 Chart request detected, calling chart generation');
+      console.log('📂 Context sessionFiles:', context.sessionFiles?.map(f => ({ name: f.name, contentLength: f.content?.length })));
       if (!userId) {
         return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
       }
@@ -1410,12 +1411,14 @@ function getClarificationMessage(dataType: string, records: DatabaseRecord[]): s
 async function generateChartFromFileData(userMessage: string, sessionFiles: Array<{ name: string; content: string }>) {
   try {
     console.log('📊 Generating chart from file data');
+    console.log('📂 Available sessionFiles:', sessionFiles.map(f => ({ name: f.name, contentLength: f.content?.length })));
     
     // Get the first file content for analysis
     const fileContent = sessionFiles[0].content;
     const fileName = sessionFiles[0].name;
     
     console.log('📁 Analyzing file:', fileName, 'Content length:', fileContent.length);
+    console.log('📄 First 500 characters of file content:', fileContent.substring(0, 500));
     
     // Use OpenAI to analyze the file content and generate chart data
     const analysisPrompt = `
