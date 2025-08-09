@@ -889,8 +889,53 @@ Respond naturally and conversationally. If the user asks to send an email to som
       }
     }
     
-    // Check if the user wants to create a chart
+    // Check if the user is asking about uploaded files
     const lowerMessage = message.toLowerCase();
+    if (context.sessionFiles && context.sessionFiles.length > 0) {
+      if (lowerMessage.includes('file') || lowerMessage.includes('upload') || lowerMessage.includes('data')) {
+        console.log('📁 File-related query detected with sessionFiles');
+        console.log('📂 Available sessionFiles:', context.sessionFiles.map(f => ({ name: f.name, contentLength: f.content?.length })));
+        
+        // Include actual file content in the system prompt for file-related questions
+        const fileInfo = context.sessionFiles.map(file => 
+          `File: ${file.name}\nContent: ${file.content.substring(0, 1000)}${file.content.length > 1000 ? '...' : ''}`
+        ).join('\n\n');
+        
+        const fileSystemPrompt = `You are Shabe AI, a helpful assistant. The user has uploaded files and is asking about them. Here are the actual uploaded files:
+
+${fileInfo}
+
+Please analyze the ACTUAL file content above and respond based on what you see in the files. Do not make assumptions or reference data that isn't in the uploaded files.`;
+
+        const response = await openaiClient.chatCompletionsCreate({
+          model: "gpt-4",
+          messages: [
+            {
+              role: "system",
+              content: fileSystemPrompt
+            },
+            {
+              role: "user", 
+              content: message
+            }
+          ],
+          temperature: 0.7,
+          max_tokens: 1500
+        }, {
+          userId: context.userProfile?.name || 'unknown',
+          operation: 'file_analysis',
+          model: 'gpt-4'
+        });
+
+        const aiResponse = response.choices[0]?.message?.content || "I can help you analyze your uploaded files.";
+        
+        return NextResponse.json({
+          message: aiResponse
+        });
+      }
+    }
+    
+    // Check if the user wants to create a chart
     if (lowerMessage.includes('chart') || lowerMessage.includes('graph') || lowerMessage.includes('visualization')) {
       console.log('📊 Chart request detected, calling chart generation');
       console.log('📂 Context sessionFiles:', context.sessionFiles?.map(f => ({ name: f.name, contentLength: f.content?.length })));
