@@ -1578,21 +1578,26 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       throw new Error('User ID is required for chart generation');
     }
     
-    // Check if we have uploaded files to analyze first
-    if (sessionFiles && sessionFiles.length > 0) {
+    // Determine what data to fetch based on user request
+    const lowerMessage = userMessage.toLowerCase();
+    
+    // Check if user specifically wants CRM data (deals, contacts, accounts)
+    const wantsCrmData = lowerMessage.includes('deal') || lowerMessage.includes('contact') || 
+                        lowerMessage.includes('account') || lowerMessage.includes('crm') ||
+                        lowerMessage.includes('sales') || lowerMessage.includes('pipeline');
+    
+    // Check if we have uploaded files and user wants file data
+    if (sessionFiles && sessionFiles.length > 0 && !wantsCrmData) {
       console.log('📊 Analyzing uploaded file data for chart generation');
       return await generateChartFromFileData(userMessage, sessionFiles);
     }
     
-    // If no files, fall back to CRM data analysis
-    console.log('📊 No files found, analyzing CRM data');
+    // Analyze CRM data (either no files or user wants CRM data specifically)
+    console.log('📊 Analyzing CRM data for chart generation');
     
     // Get user's team and data
     const teams = await convex.query(api.crm.getTeamsByUser, { userId });
     const teamId = teams.length > 0 ? teams[0]._id : 'default';
-    
-    // Determine what data to fetch based on user request
-    const lowerMessage = userMessage.toLowerCase();
     let chartData: Array<{ stage?: string; status?: string; industry?: string; count: number; name: string }> = [];
     let chartType = 'bar';
     let title = 'Chart';
