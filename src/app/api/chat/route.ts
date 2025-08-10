@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { convex } from "@/lib/convex";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { openaiClient } from "@/lib/openaiClient";
 import { logError, addBreadcrumb } from "@/lib/errorLogger";
 
@@ -98,9 +99,12 @@ interface Message {
   action?: string;
   objectType?: string;
   partialDetails?: Record<string, string>;
+  details?: Record<string, string>;
   data?: FormattedRecord[];
   contactName?: string;
   contactId?: string;
+  field?: string;
+  value?: string;
 }
 
 // Fast pattern matching for common intents (0-5ms latency)
@@ -439,20 +443,32 @@ function extractObjectDetails(message: string): Record<string, string> {
 function extractObjectDetailsFromNaturalLanguage(message: string): Record<string, string> {
   const details: Record<string, string> = {};
   
-  // For natural language input like "Howard Hall howard.hall@1414ventures.com"
-  // Try to extract name and email from the message
-  
   // Look for email pattern
   const emailMatch = message.match(/([^\s@]+@[^\s@]+\.[^\s@]+)/i);
   if (emailMatch) {
     details.email = emailMatch[1].trim();
   }
   
-  // Extract name - everything before the email
-  if (emailMatch) {
+  // Extract name - look for patterns like "named X", "name X", or just names after command words
+  let nameMatch = message.match(/named\s+([^\s@,]+(?:\s+[^\s@,]+)*)/i) ||
+                 message.match(/name\s+([^\s@,]+(?:\s+[^\s@,]+)*)/i);
+  
+  if (nameMatch) {
+    details.name = nameMatch[1].trim();
+  } else if (emailMatch) {
+    // If no "named" pattern found, try to extract name from before the email
+    // but exclude common command words
     const beforeEmail = message.substring(0, emailMatch.index).trim();
     if (beforeEmail) {
-      details.name = beforeEmail;
+      // Remove common command words
+      const cleanedName = beforeEmail
+        .replace(/\b(create|add|new|contact|person|named|name)\b/gi, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      if (cleanedName) {
+        details.name = cleanedName;
+      }
     }
   } else {
     // If no email found, try to extract just a name
@@ -499,6 +515,94 @@ function isContactUpdateMessage(message: string): boolean {
                         lowerMessage.includes('company to ');
   
   return hasUpdateKeywords && (hasName || hasFieldUpdate);
+}
+
+async function handleContactUpdateWithConfirmation(message: string, userId: string) {
+  try {
+    console.log('🔍 Starting contact update for message:', message);
+    console.log('👤 User ID:', userId);
+    
+    // Extract contact name and field updates from the message
+    const lowerMessage = message.toLowerCase();
+    
+    // Extract name (look for patterns like "john smith", "john", "smith")
+    // Handle both uppercase and lowercase names
+    const nameMatch = message.match(/\b([A-Za-z]+)\s+([A-Za-z]+)\b/) || 
+                     message.match(/\b([A-Za-z]+)\b/);
+    const contactName = nameMatch ? nameMatch[0] : null;
+    
+    // Extract field and value (e.g., "email to johnsmith@acme.com")
+    const fieldMatch = lowerMessage.match(/(email|phone|title|company)\s+to\s+([^\s]+)/);
+    const field = fieldMatch ? fieldMatch[1] : null;
+    const value = fieldMatch ? fieldMatch[2] : null;
+    
+    console.log('📝 Extracted data:', { contactName, field, value });
+    
+    if (!contactName || !field || !value) {
+      console.log('❌ Missing required data for contact update');
+    return NextResponse.json({
+        message: "I couldn't understand the update request. Please specify the contact name and what field to update. For example: 'update john smith's email to johnsmith@acme.com'",
+        error: true
+      });
+    }
+    
+    // Find the contact in the database
+    console.log('🔍 Looking up teams for user...');
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    console.log('📋 Teams found:', teams.length);
+    
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    console.log('🏢 Using team ID:', teamId);
+    
+    console.log('🔍 Looking up contacts for team...');
+    const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+    console.log('👥 Contacts found:', contacts.length);
+    console.log('📋 Contact names:', contacts.map(c => `${c.firstName} ${c.lastName}`));
+    
+    const matchingContact = contacts.find(contact => {
+      const contactFullName = contact.firstName && contact.lastName 
+        ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
+        : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
+      const searchName = contactName.toLowerCase();
+      
+      const matches = contactFullName.includes(searchName) || 
+             searchName.includes(contactFullName) ||
+             contactFullName.split(' ').some((part: string) => searchName.includes(part)) ||
+             searchName.split(' ').some((part: string) => contactFullName.includes(part));
+      
+      console.log(`🔍 Checking "${contactFullName}" against "${searchName}": ${matches}`);
+      return matches;
+    });
+    
+    if (!matchingContact) {
+      console.log('❌ No matching contact found');
+      return NextResponse.json({
+        message: `I couldn't find a contact named "${contactName}" in your database. Please check the spelling or create the contact first.`,
+        error: true
+      });
+    }
+    
+    console.log('✅ Found matching contact:', matchingContact);
+    
+    // Ask for confirmation before updating
+    const confirmationMessage = `Please confirm the contact update:\n\n**Contact:** ${matchingContact.firstName} ${matchingContact.lastName}\n**Field:** ${field}\n**New Value:** ${value}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+    
+    return NextResponse.json({
+      message: confirmationMessage,
+      action: "confirm_update",
+      contactId: matchingContact._id,
+      field: field,
+      value: value,
+      contactName: `${matchingContact.firstName} ${matchingContact.lastName}`
+    });
+    
+  } catch (error) {
+    console.error('Contact update failed:', error);
+    return NextResponse.json({
+      message: "I encountered an error while processing the contact update. Please try again.",
+      error: true
+    });
+  }
 }
 
 async function handleContactUpdate(message: string, userId: string) {
@@ -611,6 +715,53 @@ function hasRequiredDetails(details: Record<string, string>, objectType: string)
       return !!details.subject;
     default:
       return false;
+  }
+}
+
+function getConfirmationMessage(objectType: string, details: Record<string, string>): string {
+  switch (objectType) {
+    case 'contact':
+      const contactInfo = [
+        `**Name:** ${details.name}`,
+        `**Email:** ${details.email}`,
+        details.company ? `**Company:** ${details.company}` : null,
+        details.title ? `**Title:** ${details.title}` : null,
+        details.phone ? `**Phone:** ${details.phone}` : null
+      ].filter(Boolean).join('\n');
+      
+      return `Please confirm the contact details before I create the record:\n\n${contactInfo}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+    case 'account':
+      const accountInfo = [
+        `**Name:** ${details.name}`,
+        details.industry ? `**Industry:** ${details.industry}` : null,
+        details.website ? `**Website:** ${details.website}` : null,
+        details.phone ? `**Phone:** ${details.phone}` : null
+      ].filter(Boolean).join('\n');
+      
+      return `Please confirm the account details before I create the record:\n\n${accountInfo}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+    case 'deal':
+      const dealInfo = [
+        `**Name:** ${details.name}`,
+        details.stage ? `**Stage:** ${details.stage}` : null,
+        details.amount ? `**Amount:** $${details.amount}` : null,
+        details.company ? `**Company:** ${details.company}` : null
+      ].filter(Boolean).join('\n');
+      
+      return `Please confirm the deal details before I create the record:\n\n${dealInfo}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+    case 'activity':
+      const activityInfo = [
+        `**Subject:** ${details.subject}`,
+        details.activityType ? `**Type:** ${details.activityType}` : null,
+        details.dueDate ? `**Due Date:** ${details.dueDate}` : null
+      ].filter(Boolean).join('\n');
+      
+      return `Please confirm the activity details before I create the record:\n\n${activityInfo}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+    default:
+      return `Please confirm the ${objectType} details before I create the record. Is this correct? Please respond with "yes" to confirm or "no" to cancel.`;
   }
 }
 
@@ -917,8 +1068,15 @@ Respond naturally and conversationally. If the user asks to send an email to som
         
         // Check if we now have enough details
         if (hasRequiredDetails(combinedDetails, lastMessage.objectType)) {
-          console.log('✅ Sufficient details found, creating object');
-          return await createObject(combinedDetails, lastMessage.objectType, userId);
+          // Ask for confirmation before creating
+          const confirmationMessage = getConfirmationMessage(lastMessage.objectType, combinedDetails);
+          console.log('✅ Sufficient details found, asking for confirmation');
+          return NextResponse.json({
+            message: confirmationMessage,
+            action: "confirm_creation",
+            objectType: lastMessage.objectType,
+            details: combinedDetails
+          });
         } else {
           // Still missing details
           const prompt = getCreationPrompt(lastMessage.objectType, combinedDetails);
@@ -928,6 +1086,99 @@ Respond naturally and conversationally. If the user asks to send an email to som
             action: "prompt_creation_details",
             objectType: lastMessage.objectType,
             partialDetails: combinedDetails
+          });
+        }
+      }
+    }
+    
+    // Check if this is a confirmation response
+    const askedForConfirmation = lastAssistantContent.includes("confirm") ||
+                                lastAssistantContent.includes("correct") ||
+                                lastAssistantContent.includes("Is this correct");
+    
+    console.log('🎯 Asked for confirmation:', askedForConfirmation);
+    
+    if (askedForConfirmation && lastAssistantMessage?.role === 'assistant') {
+      // Check if the last message had objectType and details (for creation)
+      const lastMessage = messages[messages.length - 2];
+      if (lastMessage?.objectType && lastMessage?.details) {
+        console.log('🔍 Detected creation confirmation response');
+        
+        if (!userId) {
+          return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+        }
+        
+        // Check if user confirmed
+        const lowerResponse = message.toLowerCase().trim();
+        if (lowerResponse === 'yes' || lowerResponse === 'y' || lowerResponse === 'confirm') {
+          console.log('✅ User confirmed, creating object');
+          return await createObject(lastMessage.details, lastMessage.objectType, userId);
+        } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
+          console.log('❌ User cancelled');
+          return NextResponse.json({
+            message: "Creation cancelled. What would you like to do instead?",
+            action: "creation_cancelled"
+          });
+        } else {
+          console.log('❓ Unclear response, asking for clarification');
+          return NextResponse.json({
+            message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
+            action: "confirm_creation",
+            objectType: lastMessage.objectType,
+            details: lastMessage.details
+          });
+        }
+      }
+      
+      // Check if the last message had contactId and field (for updates)
+      if (lastMessage?.contactId && lastMessage?.field && lastMessage?.value) {
+        console.log('🔍 Detected update confirmation response');
+        
+        if (!userId) {
+          return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+        }
+        
+        // Check if user confirmed
+        const lowerResponse = message.toLowerCase().trim();
+        if (lowerResponse === 'yes' || lowerResponse === 'y' || lowerResponse === 'confirm') {
+          console.log('✅ User confirmed, updating contact');
+          
+          // Update the contact in the database
+          const updateData: Record<string, string> = {};
+          if (lastMessage.field === 'email') updateData.email = lastMessage.value;
+          if (lastMessage.field === 'phone') updateData.phone = lastMessage.value;
+          if (lastMessage.field === 'title') updateData.title = lastMessage.value;
+          if (lastMessage.field === 'company') updateData.company = lastMessage.value;
+          
+          console.log('📝 Update data:', updateData);
+          
+          // Call Convex mutation to update the contact
+          console.log('🔄 Calling Convex mutation...');
+          await convex.mutation(api.crm.updateContact, {
+            contactId: lastMessage.contactId as Id<"contacts">,
+            updates: updateData
+          });
+          
+          console.log('✅ Contact update successful');
+          return NextResponse.json({
+            message: `I've successfully updated ${lastMessage.contactName}'s ${lastMessage.field} to ${lastMessage.value}.`,
+            action: "contact_updated"
+          });
+        } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
+          console.log('❌ User cancelled update');
+          return NextResponse.json({
+            message: "Update cancelled. What would you like to do instead?",
+            action: "update_cancelled"
+          });
+        } else {
+          console.log('❓ Unclear response, asking for clarification');
+          return NextResponse.json({
+            message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
+            action: "confirm_update",
+            contactId: lastMessage.contactId,
+            field: lastMessage.field,
+            value: lastMessage.value,
+            contactName: lastMessage.contactName
           });
         }
       }
@@ -1009,7 +1260,7 @@ Please analyze the ACTUAL file content above and respond based on what you see i
       if (!userId) {
         return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
       }
-      return await handleContactUpdate(message, userId);
+      return await handleContactUpdateWithConfirmation(message, userId);
     }
     
     // Check if the user wants to create a new object (contact, account, deal, activity)
@@ -1027,8 +1278,15 @@ Please analyze the ACTUAL file content above and respond based on what you see i
       
       // Check if we have enough details to create the object
       if (hasRequiredDetails(details, objectType)) {
-        console.log('✅ Sufficient details found, creating object');
-        return await createObject(details, objectType, userId);
+        // Ask for confirmation before creating
+        const confirmationMessage = getConfirmationMessage(objectType, details);
+        console.log('✅ Sufficient details found, asking for confirmation');
+        return NextResponse.json({
+          message: confirmationMessage,
+          action: "confirm_creation",
+          objectType: objectType,
+          details: details
+        });
       } else {
         // Ask for missing details
         const prompt = getCreationPrompt(objectType, details);
