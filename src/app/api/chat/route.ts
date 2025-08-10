@@ -1157,8 +1157,7 @@ Respond naturally and conversationally. If the user asks to send an email to som
     
     if (askedForCreationDetails && lastAssistantMessage?.role === 'assistant') {
       // Check if the last message had objectType and partialDetails
-      const lastMessage = messages[messages.length - 1];
-      if (lastMessage?.objectType && lastMessage?.partialDetails) {
+      if (lastAssistantMessage?.objectType && lastAssistantMessage?.partialDetails) {
         console.log('🔍 Detected creation details response');
         
         if (!userId) {
@@ -1170,28 +1169,28 @@ Respond naturally and conversationally. If the user asks to send an email to som
         console.log('📝 Additional details extracted:', additionalDetails);
         
         // Combine with previous partial details
-        const combinedDetails = { ...lastMessage.partialDetails, ...additionalDetails };
+        const combinedDetails = { ...lastAssistantMessage.partialDetails, ...additionalDetails };
         console.log('📝 Combined details:', combinedDetails);
         
         // Check if we now have enough details
-        if (hasRequiredDetails(combinedDetails, lastMessage.objectType)) {
+        if (hasRequiredDetails(combinedDetails, lastAssistantMessage.objectType)) {
           // Ask for confirmation before creating
-          const confirmationMessage = getConfirmationMessage(lastMessage.objectType, combinedDetails);
+          const confirmationMessage = getConfirmationMessage(lastAssistantMessage.objectType, combinedDetails);
           console.log('✅ Sufficient details found, asking for confirmation');
           return NextResponse.json({
             message: confirmationMessage,
             action: "confirm_creation",
-            objectType: lastMessage.objectType,
+            objectType: lastAssistantMessage.objectType,
             details: combinedDetails
           });
         } else {
           // Still missing details
-          const prompt = getCreationPrompt(lastMessage.objectType, combinedDetails);
+          const prompt = getCreationPrompt(lastAssistantMessage.objectType, combinedDetails);
           console.log('❓ Still missing details, prompting again');
           return NextResponse.json({
             message: prompt,
             action: "prompt_creation_details",
-            objectType: lastMessage.objectType,
+            objectType: lastAssistantMessage.objectType,
             partialDetails: combinedDetails
           });
         }
@@ -1340,7 +1339,7 @@ Respond naturally and conversationally. If the user asks to send an email to som
       }
       
       // Check if the last message had accountId and field (for account updates)
-      if (lastMessage?.accountId && lastMessage?.field && lastMessage?.value) {
+      if (lastAssistantMessage?.accountId && lastAssistantMessage?.field && lastAssistantMessage?.value) {
         console.log('🔍 Detected account update confirmation response');
         
         if (!userId) {
@@ -1354,24 +1353,24 @@ Respond naturally and conversationally. If the user asks to send an email to som
           
           // Update the account in the database
           const updateData: Record<string, string> = {};
-          if (lastMessage.field === 'industry') updateData.industry = lastMessage.value;
-          if (lastMessage.field === 'website') updateData.website = lastMessage.value;
-          if (lastMessage.field === 'phone') updateData.phone = lastMessage.value;
-          if (lastMessage.field === 'revenue') updateData.annualRevenue = lastMessage.value;
-          if (lastMessage.field === 'employees') updateData.employeeCount = lastMessage.value;
+          if (lastAssistantMessage.field === 'industry') updateData.industry = lastAssistantMessage.value;
+          if (lastAssistantMessage.field === 'website') updateData.website = lastAssistantMessage.value;
+          if (lastAssistantMessage.field === 'phone') updateData.phone = lastAssistantMessage.value;
+          if (lastAssistantMessage.field === 'revenue') updateData.annualRevenue = lastAssistantMessage.value;
+          if (lastAssistantMessage.field === 'employees') updateData.employeeCount = lastAssistantMessage.value;
           
           console.log('📝 Update data:', updateData);
           
           // Call Convex mutation to update the account
           console.log('🔄 Calling Convex mutation...');
           await convex.mutation(api.crm.updateAccount, {
-            accountId: lastMessage.accountId as Id<"accounts">,
+            accountId: lastAssistantMessage.accountId as Id<"accounts">,
             updates: updateData
           });
           
           console.log('✅ Account update successful');
           return NextResponse.json({
-            message: `I've successfully updated ${lastMessage.accountName}'s ${lastMessage.field} to ${lastMessage.value}.`,
+            message: `I've successfully updated ${lastAssistantMessage.accountName}'s ${lastAssistantMessage.field} to ${lastAssistantMessage.value}.`,
             action: "account_updated"
           });
         } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
@@ -1385,16 +1384,16 @@ Respond naturally and conversationally. If the user asks to send an email to som
           return NextResponse.json({
             message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
             action: "confirm_update",
-            accountId: lastMessage.accountId,
-            field: lastMessage.field,
-            value: lastMessage.value,
-            accountName: lastMessage.accountName
+            accountId: lastAssistantMessage.accountId,
+            field: lastAssistantMessage.field,
+            value: lastAssistantMessage.value,
+            accountName: lastAssistantMessage.accountName
           });
         }
       }
       
       // Check if the last message had accountId and action for account delete confirmation
-      if (lastMessage?.accountId && lastMessage?.action === 'confirm_delete') {
+      if (lastAssistantMessage?.accountId && lastAssistantMessage?.action === 'confirm_delete') {
         console.log('🔍 Detected account delete confirmation response');
         
         if (!userId) {
@@ -1410,12 +1409,12 @@ Respond naturally and conversationally. If the user asks to send an email to som
             // Call Convex mutation to delete the account
             console.log('🔄 Calling Convex deleteAccount mutation...');
             await convex.mutation(api.crm.deleteAccount, {
-              accountId: lastMessage.accountId as Id<"accounts">
+              accountId: lastAssistantMessage.accountId as Id<"accounts">
             });
             
             console.log('✅ Account deletion successful');
             return NextResponse.json({
-              message: `I've successfully deleted the account ${lastMessage.accountName}.`,
+              message: `I've successfully deleted the account ${lastAssistantMessage.accountName}.`,
               action: "account_deleted"
             });
           } catch (error) {
@@ -1436,14 +1435,14 @@ Respond naturally and conversationally. If the user asks to send an email to som
           return NextResponse.json({
             message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
             action: "confirm_delete",
-            accountId: lastMessage.accountId,
-            accountName: lastMessage.accountName
+            accountId: lastAssistantMessage.accountId,
+            accountName: lastAssistantMessage.accountName
           });
         }
       }
       
       // Check if the last message had dealId and field (for deal updates)
-      if (lastMessage?.dealId && lastMessage?.field && lastMessage?.value) {
+      if (lastAssistantMessage?.dealId && lastAssistantMessage?.field && lastAssistantMessage?.value) {
         console.log('🔍 Detected deal update confirmation response');
         
         if (!userId) {
@@ -1457,23 +1456,23 @@ Respond naturally and conversationally. If the user asks to send an email to som
           
           // Update the deal in the database
           const updateData: Record<string, string> = {};
-          if (lastMessage.field === 'stage') updateData.stage = lastMessage.value;
-          if (lastMessage.field === 'amount') updateData.amount = lastMessage.value;
-          if (lastMessage.field === 'probability') updateData.probability = lastMessage.value;
-          if (lastMessage.field === 'close date') updateData.closeDate = lastMessage.value;
+          if (lastAssistantMessage.field === 'stage') updateData.stage = lastAssistantMessage.value;
+          if (lastAssistantMessage.field === 'amount') updateData.amount = lastAssistantMessage.value;
+          if (lastAssistantMessage.field === 'probability') updateData.probability = lastAssistantMessage.value;
+          if (lastAssistantMessage.field === 'close date') updateData.closeDate = lastAssistantMessage.value;
           
           console.log('📝 Update data:', updateData);
           
           // Call Convex mutation to update the deal
           console.log('🔄 Calling Convex mutation...');
           await convex.mutation(api.crm.updateDeal, {
-            dealId: lastMessage.dealId as Id<"deals">,
+            dealId: lastAssistantMessage.dealId as Id<"deals">,
             updates: updateData
           });
           
           console.log('✅ Deal update successful');
           return NextResponse.json({
-            message: `I've successfully updated ${lastMessage.dealName}'s ${lastMessage.field} to ${lastMessage.value}.`,
+            message: `I've successfully updated ${lastAssistantMessage.dealName}'s ${lastAssistantMessage.field} to ${lastAssistantMessage.value}.`,
             action: "deal_updated"
           });
         } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
@@ -1487,16 +1486,16 @@ Respond naturally and conversationally. If the user asks to send an email to som
           return NextResponse.json({
             message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
             action: "confirm_update",
-            dealId: lastMessage.dealId,
-            field: lastMessage.field,
-            value: lastMessage.value,
-            dealName: lastMessage.dealName
+            dealId: lastAssistantMessage.dealId,
+            field: lastAssistantMessage.field,
+            value: lastAssistantMessage.value,
+            dealName: lastAssistantMessage.dealName
           });
         }
       }
       
       // Check if the last message had dealId and action for deal delete confirmation
-      if (lastMessage?.dealId && lastMessage?.action === 'confirm_delete') {
+      if (lastAssistantMessage?.dealId && lastAssistantMessage?.action === 'confirm_delete') {
         console.log('🔍 Detected deal delete confirmation response');
         
         if (!userId) {
@@ -1512,12 +1511,12 @@ Respond naturally and conversationally. If the user asks to send an email to som
             // Call Convex mutation to delete the deal
             console.log('🔄 Calling Convex deleteDeal mutation...');
             await convex.mutation(api.crm.deleteDeal, {
-              dealId: lastMessage.dealId as Id<"deals">
+              dealId: lastAssistantMessage.dealId as Id<"deals">
             });
             
             console.log('✅ Deal deletion successful');
             return NextResponse.json({
-              message: `I've successfully deleted the deal ${lastMessage.dealName}.`,
+              message: `I've successfully deleted the deal ${lastAssistantMessage.dealName}.`,
               action: "deal_deleted"
             });
           } catch (error) {
@@ -1538,14 +1537,14 @@ Respond naturally and conversationally. If the user asks to send an email to som
           return NextResponse.json({
             message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
             action: "confirm_delete",
-            dealId: lastMessage.dealId,
-            dealName: lastMessage.dealName
+            dealId: lastAssistantMessage.dealId,
+            dealName: lastAssistantMessage.dealName
           });
         }
       }
       
       // Check if the last message had activityId and field (for activity updates)
-      if (lastMessage?.activityId && lastMessage?.field && lastMessage?.value) {
+      if (lastAssistantMessage?.activityId && lastAssistantMessage?.field && lastAssistantMessage?.value) {
         console.log('🔍 Detected activity update confirmation response');
         
         if (!userId) {
@@ -1559,23 +1558,23 @@ Respond naturally and conversationally. If the user asks to send an email to som
           
           // Update the activity in the database
           const updateData: Record<string, string> = {};
-          if (lastMessage.field === 'status') updateData.status = lastMessage.value;
-          if (lastMessage.field === 'type') updateData.type = lastMessage.value;
-          if (lastMessage.field === 'subject') updateData.subject = lastMessage.value;
-          if (lastMessage.field === 'description') updateData.description = lastMessage.value;
+          if (lastAssistantMessage.field === 'status') updateData.status = lastAssistantMessage.value;
+          if (lastAssistantMessage.field === 'type') updateData.type = lastAssistantMessage.value;
+          if (lastAssistantMessage.field === 'subject') updateData.subject = lastAssistantMessage.value;
+          if (lastAssistantMessage.field === 'description') updateData.description = lastAssistantMessage.value;
           
           console.log('📝 Update data:', updateData);
           
           // Call Convex mutation to update the activity
           console.log('🔄 Calling Convex mutation...');
           await convex.mutation(api.crm.updateActivity, {
-            activityId: lastMessage.activityId as Id<"activities">,
+            activityId: lastAssistantMessage.activityId as Id<"activities">,
             updates: updateData
           });
           
           console.log('✅ Activity update successful');
           return NextResponse.json({
-            message: `I've successfully updated ${lastMessage.activitySubject}'s ${lastMessage.field} to ${lastMessage.value}.`,
+            message: `I've successfully updated ${lastAssistantMessage.activitySubject}'s ${lastAssistantMessage.field} to ${lastAssistantMessage.value}.`,
             action: "activity_updated"
           });
         } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
@@ -1589,16 +1588,16 @@ Respond naturally and conversationally. If the user asks to send an email to som
           return NextResponse.json({
             message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
             action: "confirm_update",
-            activityId: lastMessage.activityId,
-            field: lastMessage.field,
-            value: lastMessage.value,
-            activitySubject: lastMessage.activitySubject
+            activityId: lastAssistantMessage.activityId,
+            field: lastAssistantMessage.field,
+            value: lastAssistantMessage.value,
+            activitySubject: lastAssistantMessage.activitySubject
           });
         }
       }
       
       // Check if the last message had activityId and action for activity delete confirmation
-      if (lastMessage?.activityId && lastMessage?.action === 'confirm_delete') {
+      if (lastAssistantMessage?.activityId && lastAssistantMessage?.action === 'confirm_delete') {
         console.log('🔍 Detected activity delete confirmation response');
         
         if (!userId) {
@@ -1614,12 +1613,12 @@ Respond naturally and conversationally. If the user asks to send an email to som
             // Call Convex mutation to delete the activity
             console.log('🔄 Calling Convex deleteActivity mutation...');
             await convex.mutation(api.crm.deleteActivity, {
-              activityId: lastMessage.activityId as Id<"activities">
+              activityId: lastAssistantMessage.activityId as Id<"activities">
             });
             
             console.log('✅ Activity deletion successful');
             return NextResponse.json({
-              message: `I've successfully deleted the activity ${lastMessage.activitySubject}.`,
+              message: `I've successfully deleted the activity ${lastAssistantMessage.activitySubject}.`,
               action: "activity_deleted"
             });
           } catch (error) {
@@ -1640,8 +1639,8 @@ Respond naturally and conversationally. If the user asks to send an email to som
           return NextResponse.json({
             message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
             action: "confirm_delete",
-            activityId: lastMessage.activityId,
-            activitySubject: lastMessage.activitySubject
+            activityId: lastAssistantMessage.activityId,
+            activitySubject: lastAssistantMessage.activitySubject
           });
         }
       }
