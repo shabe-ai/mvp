@@ -1114,7 +1114,14 @@ Respond naturally and conversationally. If the user asks to send an email to som
     console.log('📋 Messages length:', messages.length);
     console.log('📋 Last few messages:', messages.slice(-3).map(m => ({ role: m.role, action: m.action, content: m.content?.substring(0, 50) + '...' })));
     
-    const lastAssistantMessage = messages[messages.length - 2];
+    // Find the last assistant message by looking backwards through the messages array
+    let lastAssistantMessage = null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'assistant') {
+        lastAssistantMessage = messages[i];
+        break;
+      }
+    }
     console.log('📋 Last assistant message:', { role: lastAssistantMessage?.role, action: lastAssistantMessage?.action, contactName: lastAssistantMessage?.contactName });
     
     // Alternative detection: Check if the last assistant message asked for email context
