@@ -105,6 +105,7 @@ interface Message {
   contactId?: string;
   field?: string;
   value?: string;
+  contactEmail?: string;
 }
 
 // Fast pattern matching for common intents (0-5ms latency)
@@ -695,9 +696,109 @@ async function handleContactUpdate(message: string, userId: string) {
   });
     
   } catch (error) {
-    console.error('❌ Error updating contact:', error);
+    console.error('Contact update failed:', error);
     return NextResponse.json({
-      message: "I encountered an error while updating the contact. Please try again.",
+      message: "I encountered an error while processing the contact update. Please try again.",
+      error: true
+    });
+  }
+}
+
+async function handleContactDeleteWithConfirmation(message: string, userId: string) {
+  try {
+    console.log('🔍 Starting contact deletion for message:', message);
+    console.log('👤 User ID:', userId);
+    
+    // Extract contact identifier from the message
+    const lowerMessage = message.toLowerCase();
+    
+    // Look for email pattern first (most specific)
+    const emailMatch = message.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
+    let contactIdentifier = emailMatch ? emailMatch[0] : null;
+    let identifierType = 'email';
+    
+    // If no email found, look for name pattern
+    if (!contactIdentifier) {
+      const nameMatch = message.match(/\b([A-Za-z]+)\s+([A-Za-z]+)\b/) || 
+                       message.match(/\b([A-Za-z]+)\b/);
+      contactIdentifier = nameMatch ? nameMatch[0] : null;
+      identifierType = 'name';
+    }
+    
+    console.log('📝 Extracted identifier:', { contactIdentifier, identifierType });
+    
+    if (!contactIdentifier) {
+      console.log('❌ No contact identifier found');
+      return NextResponse.json({
+        message: "I couldn't understand the delete request. Please specify the contact by name or email. For example: 'delete contact john smith' or 'delete contact johnsmith@example.com'",
+        error: true
+      });
+    }
+    
+    // Find the contact in the database
+    console.log('🔍 Looking up teams for user...');
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    console.log('📋 Teams found:', teams.length);
+    
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    console.log('🏢 Using team ID:', teamId);
+    
+    console.log('🔍 Looking up contacts for team...');
+    const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+    console.log('👥 Contacts found:', contacts.length);
+    
+    let matchingContact = null;
+    
+    if (identifierType === 'email') {
+      // Search by email
+      matchingContact = contacts.find(contact => 
+        contact.email?.toLowerCase() === contactIdentifier.toLowerCase()
+      );
+    } else {
+      // Search by name
+      matchingContact = contacts.find(contact => {
+        const contactFullName = contact.firstName && contact.lastName 
+          ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
+          : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
+        const searchName = contactIdentifier.toLowerCase();
+        
+        return contactFullName.includes(searchName) || 
+               searchName.includes(contactFullName) ||
+               contactFullName.split(' ').some((part: string) => searchName.includes(part)) ||
+               searchName.split(' ').some((part: string) => contactFullName.includes(part));
+      });
+    }
+    
+    if (!matchingContact) {
+      console.log('❌ No matching contact found');
+      return NextResponse.json({
+        message: `I couldn't find a contact with ${identifierType} "${contactIdentifier}" in your database. Please check the spelling or try a different identifier.`,
+        error: true
+      });
+    }
+    
+    console.log('✅ Found matching contact:', matchingContact);
+    
+    // Ask for confirmation before deleting
+    const contactName = `${matchingContact.firstName} ${matchingContact.lastName}`.trim();
+    const contactEmail = matchingContact.email || 'No email';
+    
+    const confirmationMessage = `To confirm, you'd like to delete the contact associated with the ${identifierType} ${contactIdentifier}. Please note that this action is irreversible. Are you sure you want to proceed?`;
+    
+    return NextResponse.json({
+      message: confirmationMessage,
+      action: "confirm_delete",
+      contactId: matchingContact._id,
+      contactName: contactName,
+      contactEmail: contactEmail,
+      identifierType: identifierType,
+      identifier: contactIdentifier
+    });
+    
+  } catch (error) {
+    console.error('Contact deletion failed:', error);
+    return NextResponse.json({
+      message: "I encountered an error while processing the contact deletion. Please try again.",
       error: true
     });
   }
@@ -1182,6 +1283,56 @@ Respond naturally and conversationally. If the user asks to send an email to som
           });
         }
       }
+      
+      // Check if the last message had contactId and action for delete confirmation
+      if (lastMessage?.contactId && lastMessage?.action === 'confirm_delete') {
+        console.log('🔍 Detected delete confirmation response');
+        
+        if (!userId) {
+          return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+        }
+        
+        // Check if user confirmed
+        const lowerResponse = message.toLowerCase().trim();
+        if (lowerResponse === 'yes' || lowerResponse === 'y' || lowerResponse === 'confirm') {
+          console.log('✅ User confirmed, deleting contact');
+          
+          try {
+            // Call Convex mutation to delete the contact
+            console.log('🔄 Calling Convex deleteContact mutation...');
+            await convex.mutation(api.crm.deleteContact, {
+              contactId: lastMessage.contactId as Id<"contacts">
+            });
+            
+            console.log('✅ Contact deletion successful');
+            return NextResponse.json({
+              message: `I've successfully deleted the contact ${lastMessage.contactName} (${lastMessage.contactEmail}).`,
+              action: "contact_deleted"
+            });
+          } catch (error) {
+            console.error('❌ Contact deletion failed:', error);
+            return NextResponse.json({
+              message: "I encountered an error while deleting the contact. Please try again.",
+              error: true
+            });
+          }
+        } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
+          console.log('❌ User cancelled deletion');
+          return NextResponse.json({
+            message: "Deletion cancelled. What would you like to do instead?",
+            action: "delete_cancelled"
+          });
+        } else {
+          console.log('❓ Unclear response, asking for clarification');
+          return NextResponse.json({
+            message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
+            action: "confirm_delete",
+            contactId: lastMessage.contactId,
+            contactName: lastMessage.contactName,
+            contactEmail: lastMessage.contactEmail
+          });
+        }
+      }
     }
     
     // Check if the user is asking about uploaded files
@@ -1261,6 +1412,15 @@ Please analyze the ACTUAL file content above and respond based on what you see i
         return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
       }
       return await handleContactUpdateWithConfirmation(message, userId);
+    }
+    
+    // Check if the user wants to delete a contact
+    if (lowerMessage.includes('delete') && lowerMessage.includes('contact')) {
+      console.log('🗑️ Contact deletion request detected');
+      if (!userId) {
+        return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      }
+      return await handleContactDeleteWithConfirmation(message, userId);
     }
     
     // Check if the user wants to create a new object (contact, account, deal, activity)
