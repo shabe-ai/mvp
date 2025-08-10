@@ -37,6 +37,21 @@ interface Message {
     };
   };
   narrative?: string;
+  // CRUD operation metadata
+  contactId?: string;
+  contactName?: string;
+  contactEmail?: string;
+  accountId?: string;
+  accountName?: string;
+  dealId?: string;
+  dealName?: string;
+  activityId?: string;
+  activitySubject?: string;
+  field?: string;
+  value?: string;
+  objectType?: string;
+  details?: Record<string, string>;
+  partialDetails?: Record<string, string>;
 }
 
 interface ChatProps {
@@ -242,9 +257,24 @@ export default function Chat({ onAction }: ChatProps = {}) {
               data: data.data,
               needsClarification: data.needsClarification,
               clarificationQuestion: data.clarificationQuestion,
-        fields: data.fields,
-        chartSpec: data.chartSpec,
-        narrative: data.narrative,
+              fields: data.fields,
+              chartSpec: data.chartSpec,
+              narrative: data.narrative,
+              // CRUD operation metadata
+              contactId: data.contactId,
+              contactName: data.contactName,
+              contactEmail: data.contactEmail,
+              accountId: data.accountId,
+              accountName: data.accountName,
+              dealId: data.dealId,
+              dealName: data.dealName,
+              activityId: data.activityId,
+              activitySubject: data.activitySubject,
+              field: data.field,
+              value: data.value,
+              objectType: data.objectType,
+              details: data.details,
+              partialDetails: data.partialDetails,
         };
 
         setMessages(prev => [...prev, assistantMessage]);
