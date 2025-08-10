@@ -39,7 +39,11 @@ interface Message {
   narrative?: string;
 }
 
-export default function Chat() {
+interface ChatProps {
+  onAction?: (action: string, data?: unknown) => void;
+}
+
+export default function Chat({ onAction }: ChatProps = {}) {
   const { user, isLoaded } = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -244,6 +248,14 @@ export default function Chat() {
         };
 
         setMessages(prev => [...prev, assistantMessage]);
+
+      // Notify parent of any actions that occurred
+      if (data.action && onAction) {
+        onAction(data.action, {
+          recordId: data.contactId || data.accountId || data.dealId,
+          ...data
+        });
+      }
 
       // Handle email draft if present
       if (data.emailDraft) {

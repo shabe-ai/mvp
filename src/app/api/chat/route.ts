@@ -1097,8 +1097,13 @@ async function handleDatabaseOperation(userMessage: string, userId: string): Pro
       userMessage
     });
     
+    // Check if user explicitly asked for "all" records
+    const lowerUserMessage = userMessage.toLowerCase();
+    const requestedAll = lowerUserMessage.includes('all') || lowerUserMessage.includes('view') && !extractFilterTerms(userMessage).length;
+    
     // If filtering returns too many results or ambiguous results, ask for clarification
-    if (filteredRecords.length > 3) {
+    // BUT NOT if user explicitly asked for "all" records
+    if (filteredRecords.length > 3 && !requestedAll) {
       const clarificationMessage = getClarificationMessage(dataType, filteredRecords);
       return {
         message: clarificationMessage,
