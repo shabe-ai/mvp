@@ -464,12 +464,12 @@ function extractObjectDetailsFromNaturalLanguage(message: string): Record<string
     details.name = nameMatch[1].trim();
   } else if (emailMatch) {
     // If no "named" pattern found, try to extract name from before the email
-    // but exclude common command words
+    // but exclude common command words more carefully
     const beforeEmail = message.substring(0, emailMatch.index).trim();
     if (beforeEmail) {
-      // Remove common command words
+      // Remove common command words but be more careful about preserving the actual name
       const cleanedName = beforeEmail
-        .replace(/\b(create|add|new|contact|person|named|name)\b/gi, '')
+        .replace(/\b(create|add|new|contact|person)\b/gi, '') // Don't remove "name" or "named" as they might be part of the actual name
         .replace(/\s+/g, ' ')
         .trim();
       
@@ -479,11 +479,23 @@ function extractObjectDetailsFromNaturalLanguage(message: string): Record<string
     }
   } else {
     // If no email found, try to extract just a name
-    const words = message.trim().split(/\s+/);
-    if (words.length >= 2) {
-      details.name = words.slice(0, 2).join(' '); // Take first two words as name
-    } else if (words.length === 1) {
-      details.name = words[0];
+    // Look for patterns like "Name X Y" or just names
+    const namePattern = message.match(/(?:name|named)\s+([^\s@,]+(?:\s+[^\s@,]+)*)/i);
+    if (namePattern) {
+      details.name = namePattern[1].trim();
+    } else {
+      // Fallback: take words that look like names (not command words)
+      const words = message.trim().split(/\s+/);
+      const nameWords = words.filter(word => 
+        !/\b(create|add|new|contact|person|email|company|phone|title)\b/i.test(word) &&
+        word.length > 1
+      );
+      
+      if (nameWords.length >= 2) {
+        details.name = nameWords.slice(0, 2).join(' '); // Take first two name-like words
+      } else if (nameWords.length === 1) {
+        details.name = nameWords[0];
+      }
     }
   }
   
@@ -1227,9 +1239,55 @@ Respond naturally and conversationally. If the user asks to send an email to som
           return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
         }
         
-        // Check if user confirmed
+        // Check if user confirmed, cancelled, or provided corrections
         const lowerResponse = message.toLowerCase().trim();
-        if (lowerResponse === 'yes' || lowerResponse === 'y' || lowerResponse === 'confirm') {
+        
+        // Check for corrections first (before yes/no)
+        const correctionPatterns = [
+          /(?:the|change|update|correct|fix)\s+(?:name|email|company|phone|title)\s+(?:should\s+be|to|is)\s+(.+)/i,
+          /(?:name|email|company|phone|title)\s+(?:should\s+be|is)\s+(.+)/i,
+          /(?:it's|it is)\s+(.+)/i
+        ];
+        
+        let isCorrection = false;
+        let correctedDetails = { ...lastAssistantMessage.details };
+        
+        for (const pattern of correctionPatterns) {
+          const match = message.match(pattern);
+          if (match) {
+            isCorrection = true;
+            const correction = match[1].trim();
+            
+            // Determine which field is being corrected based on context
+            if (message.toLowerCase().includes('name')) {
+              correctedDetails.name = correction;
+            } else if (message.toLowerCase().includes('email')) {
+              correctedDetails.email = correction;
+            } else if (message.toLowerCase().includes('company')) {
+              correctedDetails.company = correction;
+            } else if (message.toLowerCase().includes('phone')) {
+              correctedDetails.phone = correction;
+            } else if (message.toLowerCase().includes('title')) {
+              correctedDetails.title = correction;
+            } else {
+              // If no specific field mentioned, assume it's the name if it looks like a name
+              if (!correction.includes('@') && !correction.includes('.com')) {
+                correctedDetails.name = correction;
+              }
+            }
+            break;
+          }
+        }
+        
+        if (isCorrection) {
+          console.log('🔧 User provided correction, updating details:', correctedDetails);
+          return NextResponse.json({
+            message: `Please confirm the corrected contact details before I create the record:\n\n**Name:** ${correctedDetails.name || 'Not specified'}\n**Email:** ${correctedDetails.email || 'Not specified'}\n**Company:** ${correctedDetails.company || 'Not specified'}\n**Phone:** ${correctedDetails.phone || 'Not specified'}\n**Title:** ${correctedDetails.title || 'Not specified'}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`,
+            action: "confirm_creation",
+            objectType: lastAssistantMessage.objectType,
+            details: correctedDetails
+          });
+        } else if (lowerResponse === 'yes' || lowerResponse === 'y' || lowerResponse === 'confirm') {
           console.log('✅ User confirmed, creating object');
           return await createObject(lastAssistantMessage.details, lastAssistantMessage.objectType, userId);
         } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
