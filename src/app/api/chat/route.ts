@@ -889,6 +889,50 @@ Respond naturally and conversationally. If the user asks to send an email to som
       }
     }
     
+    // Check if this is a follow-up to a creation details prompt
+    const askedForCreationDetails = lastAssistantContent.includes("please provide") ||
+                                   lastAssistantContent.includes("need the") ||
+                                   lastAssistantContent.includes("missing details") ||
+                                   lastAssistantContent.includes("provide the");
+    
+    console.log('🎯 Asked for creation details:', askedForCreationDetails);
+    
+    if (askedForCreationDetails && lastAssistantMessage?.role === 'assistant') {
+      // Check if the last message had objectType and partialDetails
+      const lastMessage = messages[messages.length - 2];
+      if (lastMessage?.objectType && lastMessage?.partialDetails) {
+        console.log('🔍 Detected creation details response');
+        
+        if (!userId) {
+          return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+        }
+        
+        // Extract additional details from the current message
+        const additionalDetails = extractObjectDetailsFromNaturalLanguage(message);
+        console.log('📝 Additional details extracted:', additionalDetails);
+        
+        // Combine with previous partial details
+        const combinedDetails = { ...lastMessage.partialDetails, ...additionalDetails };
+        console.log('📝 Combined details:', combinedDetails);
+        
+        // Check if we now have enough details
+        if (hasRequiredDetails(combinedDetails, lastMessage.objectType)) {
+          console.log('✅ Sufficient details found, creating object');
+          return await createObject(combinedDetails, lastMessage.objectType, userId);
+        } else {
+          // Still missing details
+          const prompt = getCreationPrompt(lastMessage.objectType, combinedDetails);
+          console.log('❓ Still missing details, prompting again');
+          return NextResponse.json({
+            message: prompt,
+            action: "prompt_creation_details",
+            objectType: lastMessage.objectType,
+            partialDetails: combinedDetails
+          });
+        }
+      }
+    }
+    
     // Check if the user is asking about uploaded files
     const lowerMessage = message.toLowerCase();
     if (context.sessionFiles && context.sessionFiles.length > 0) {
@@ -966,6 +1010,36 @@ Please analyze the ACTUAL file content above and respond based on what you see i
         return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
       }
       return await handleContactUpdate(message, userId);
+    }
+    
+    // Check if the user wants to create a new object (contact, account, deal, activity)
+    if (lowerMessage.includes('create') || lowerMessage.includes('add') || lowerMessage.includes('new')) {
+      const objectType = determineObjectType(message);
+      console.log('🆕 Object creation request detected:', objectType);
+      
+      if (!userId) {
+        return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      }
+      
+      // Extract details from the message
+      const details = extractObjectDetailsFromNaturalLanguage(message);
+      console.log('📝 Extracted details:', details);
+      
+      // Check if we have enough details to create the object
+      if (hasRequiredDetails(details, objectType)) {
+        console.log('✅ Sufficient details found, creating object');
+        return await createObject(details, objectType, userId);
+      } else {
+        // Ask for missing details
+        const prompt = getCreationPrompt(objectType, details);
+        console.log('❓ Missing details, prompting user');
+        return NextResponse.json({
+          message: prompt,
+          action: "prompt_creation_details",
+          objectType: objectType,
+          partialDetails: details
+        });
+      }
     }
     
     // Check if the user wants to send an email and go directly to email preview
