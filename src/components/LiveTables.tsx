@@ -67,7 +67,7 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
       bgColor: 'bg-blue-50',
       columns: ['name', 'email', 'company', 'title', 'leadStatus'],
       formatters: {
-        name: (record: DataRecord) => `${record.firstName || ''} ${record.lastName || ''}`.trim() || 'N/A',
+        name: (record: DataRecord) => record.name || 'N/A',
         email: (record: DataRecord) => record.email || 'N/A',
         company: (record: DataRecord) => record.company || 'N/A',
         title: (record: DataRecord) => record.title || 'N/A',
