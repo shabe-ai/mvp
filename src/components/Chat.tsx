@@ -451,8 +451,8 @@ export default function Chat({ onAction }: ChatProps = {}) {
   }
 
   return (
-    <div style={{ width: '100%', background: '#fff' }} className="flex-1 min-h-0 flex flex-col">
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-6 pb-4" style={{ width: '100%' }}>
+    <div style={{ width: '100%', background: '#fff' }} className="flex-1 min-h-0 flex flex-col h-full">
+      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-6 pb-4" style={{ width: '100%', maxHeight: 'calc(100vh - 200px)' }}>
         {isInitializing ? (
           <div className="flex items-center justify-center py-8">
             <div className="flex items-center gap-2">

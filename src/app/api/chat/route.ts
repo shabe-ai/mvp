@@ -1122,7 +1122,14 @@ Respond naturally and conversationally. If the user asks to send an email to som
         break;
       }
     }
-    console.log('📋 Last assistant message:', { role: lastAssistantMessage?.role, action: lastAssistantMessage?.action, contactName: lastAssistantMessage?.contactName });
+    console.log('📋 Last assistant message:', { 
+      role: lastAssistantMessage?.role, 
+      action: lastAssistantMessage?.action, 
+      contactName: lastAssistantMessage?.contactName,
+      contactId: lastAssistantMessage?.contactId,
+      contactEmail: lastAssistantMessage?.contactEmail,
+      content: lastAssistantMessage?.content?.substring(0, 100) + '...'
+    });
     
     // Alternative detection: Check if the last assistant message asked for email context
     const lastAssistantContent = lastAssistantMessage?.content?.toLowerCase() || '';
@@ -1296,6 +1303,7 @@ Respond naturally and conversationally. If the user asks to send an email to som
       }
       
       // Check if the last message had contactId and action for delete confirmation
+      console.log('🔍 Checking for delete confirmation - contactId:', lastAssistantMessage?.contactId, 'action:', lastAssistantMessage?.action);
       if (lastAssistantMessage?.contactId && lastAssistantMessage?.action === 'confirm_delete') {
         console.log('🔍 Detected delete confirmation response');
         
