@@ -105,6 +105,13 @@ interface Message {
   contactId?: string;
   field?: string;
   value?: string;
+  contactEmail?: string;
+  accountId?: string;
+  accountName?: string;
+  dealId?: string;
+  dealName?: string;
+  activityId?: string;
+  activitySubject?: string;
 }
 
 // Fast pattern matching for common intents (0-5ms latency)
@@ -695,9 +702,109 @@ async function handleContactUpdate(message: string, userId: string) {
   });
     
   } catch (error) {
-    console.error('❌ Error updating contact:', error);
+    console.error('Contact update failed:', error);
     return NextResponse.json({
-      message: "I encountered an error while updating the contact. Please try again.",
+      message: "I encountered an error while processing the contact update. Please try again.",
+      error: true
+    });
+  }
+}
+
+async function handleContactDeleteWithConfirmation(message: string, userId: string) {
+  try {
+    console.log('🔍 Starting contact deletion for message:', message);
+    console.log('👤 User ID:', userId);
+    
+    // Extract contact identifier from the message
+    const lowerMessage = message.toLowerCase();
+    
+    // Look for email pattern first (most specific)
+    const emailMatch = message.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/);
+    let contactIdentifier = emailMatch ? emailMatch[0] : null;
+    let identifierType = 'email';
+    
+    // If no email found, look for name pattern
+    if (!contactIdentifier) {
+      const nameMatch = message.match(/\b([A-Za-z]+)\s+([A-Za-z]+)\b/) || 
+                       message.match(/\b([A-Za-z]+)\b/);
+      contactIdentifier = nameMatch ? nameMatch[0] : null;
+      identifierType = 'name';
+    }
+    
+    console.log('📝 Extracted identifier:', { contactIdentifier, identifierType });
+    
+    if (!contactIdentifier) {
+      console.log('❌ No contact identifier found');
+      return NextResponse.json({
+        message: "I couldn't understand the delete request. Please specify the contact by name or email. For example: 'delete contact john smith' or 'delete contact johnsmith@example.com'",
+        error: true
+      });
+    }
+    
+    // Find the contact in the database
+    console.log('🔍 Looking up teams for user...');
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    console.log('📋 Teams found:', teams.length);
+    
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    console.log('🏢 Using team ID:', teamId);
+    
+    console.log('🔍 Looking up contacts for team...');
+    const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+    console.log('👥 Contacts found:', contacts.length);
+    
+    let matchingContact = null;
+    
+    if (identifierType === 'email') {
+      // Search by email
+      matchingContact = contacts.find(contact => 
+        contact.email?.toLowerCase() === contactIdentifier.toLowerCase()
+      );
+    } else {
+      // Search by name
+      matchingContact = contacts.find(contact => {
+        const contactFullName = contact.firstName && contact.lastName 
+          ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
+          : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
+        const searchName = contactIdentifier.toLowerCase();
+        
+        return contactFullName.includes(searchName) || 
+               searchName.includes(contactFullName) ||
+               contactFullName.split(' ').some((part: string) => searchName.includes(part)) ||
+               searchName.split(' ').some((part: string) => contactFullName.includes(part));
+      });
+    }
+    
+    if (!matchingContact) {
+      console.log('❌ No matching contact found');
+      return NextResponse.json({
+        message: `I couldn't find a contact with ${identifierType} "${contactIdentifier}" in your database. Please check the spelling or try a different identifier.`,
+        error: true
+      });
+    }
+    
+    console.log('✅ Found matching contact:', matchingContact);
+    
+    // Ask for confirmation before deleting
+    const contactName = `${matchingContact.firstName} ${matchingContact.lastName}`.trim();
+    const contactEmail = matchingContact.email || 'No email';
+    
+    const confirmationMessage = `To confirm, you'd like to delete the contact associated with the ${identifierType} ${contactIdentifier}. Please note that this action is irreversible. Are you sure you want to proceed?`;
+    
+    return NextResponse.json({
+      message: confirmationMessage,
+      action: "confirm_delete",
+      contactId: matchingContact._id,
+      contactName: contactName,
+      contactEmail: contactEmail,
+      identifierType: identifierType,
+      identifier: contactIdentifier
+    });
+    
+  } catch (error) {
+    console.error('Contact deletion failed:', error);
+    return NextResponse.json({
+      message: "I encountered an error while processing the contact deletion. Please try again.",
       error: true
     });
   }
@@ -1182,6 +1289,363 @@ Respond naturally and conversationally. If the user asks to send an email to som
           });
         }
       }
+      
+      // Check if the last message had contactId and action for delete confirmation
+      if (lastMessage?.contactId && lastMessage?.action === 'confirm_delete') {
+        console.log('🔍 Detected delete confirmation response');
+        
+        if (!userId) {
+          return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+        }
+        
+        // Check if user confirmed
+        const lowerResponse = message.toLowerCase().trim();
+        if (lowerResponse === 'yes' || lowerResponse === 'y' || lowerResponse === 'confirm') {
+          console.log('✅ User confirmed, deleting contact');
+          
+          try {
+            // Call Convex mutation to delete the contact
+            console.log('🔄 Calling Convex deleteContact mutation...');
+            await convex.mutation(api.crm.deleteContact, {
+              contactId: lastMessage.contactId as Id<"contacts">
+            });
+            
+            console.log('✅ Contact deletion successful');
+            return NextResponse.json({
+              message: `I've successfully deleted the contact ${lastMessage.contactName} (${lastMessage.contactEmail}).`,
+              action: "contact_deleted"
+            });
+          } catch (error) {
+            console.error('❌ Contact deletion failed:', error);
+            return NextResponse.json({
+              message: "I encountered an error while deleting the contact. Please try again.",
+              error: true
+            });
+          }
+        } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
+          console.log('❌ User cancelled deletion');
+          return NextResponse.json({
+            message: "Deletion cancelled. What would you like to do instead?",
+            action: "delete_cancelled"
+          });
+        } else {
+          console.log('❓ Unclear response, asking for clarification');
+          return NextResponse.json({
+            message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
+            action: "confirm_delete",
+            contactId: lastMessage.contactId,
+            contactName: lastMessage.contactName,
+            contactEmail: lastMessage.contactEmail
+          });
+        }
+      }
+      
+      // Check if the last message had accountId and field (for account updates)
+      if (lastMessage?.accountId && lastMessage?.field && lastMessage?.value) {
+        console.log('🔍 Detected account update confirmation response');
+        
+        if (!userId) {
+          return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+        }
+        
+        // Check if user confirmed
+        const lowerResponse = message.toLowerCase().trim();
+        if (lowerResponse === 'yes' || lowerResponse === 'y' || lowerResponse === 'confirm') {
+          console.log('✅ User confirmed, updating account');
+          
+          // Update the account in the database
+          const updateData: Record<string, string> = {};
+          if (lastMessage.field === 'industry') updateData.industry = lastMessage.value;
+          if (lastMessage.field === 'website') updateData.website = lastMessage.value;
+          if (lastMessage.field === 'phone') updateData.phone = lastMessage.value;
+          if (lastMessage.field === 'revenue') updateData.annualRevenue = lastMessage.value;
+          if (lastMessage.field === 'employees') updateData.employeeCount = lastMessage.value;
+          
+          console.log('📝 Update data:', updateData);
+          
+          // Call Convex mutation to update the account
+          console.log('🔄 Calling Convex mutation...');
+          await convex.mutation(api.crm.updateAccount, {
+            accountId: lastMessage.accountId as Id<"accounts">,
+            updates: updateData
+          });
+          
+          console.log('✅ Account update successful');
+          return NextResponse.json({
+            message: `I've successfully updated ${lastMessage.accountName}'s ${lastMessage.field} to ${lastMessage.value}.`,
+            action: "account_updated"
+          });
+        } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
+          console.log('❌ User cancelled update');
+          return NextResponse.json({
+            message: "Update cancelled. What would you like to do instead?",
+            action: "update_cancelled"
+          });
+        } else {
+          console.log('❓ Unclear response, asking for clarification');
+          return NextResponse.json({
+            message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
+            action: "confirm_update",
+            accountId: lastMessage.accountId,
+            field: lastMessage.field,
+            value: lastMessage.value,
+            accountName: lastMessage.accountName
+          });
+        }
+      }
+      
+      // Check if the last message had accountId and action for account delete confirmation
+      if (lastMessage?.accountId && lastMessage?.action === 'confirm_delete') {
+        console.log('🔍 Detected account delete confirmation response');
+        
+        if (!userId) {
+          return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+        }
+        
+        // Check if user confirmed
+        const lowerResponse = message.toLowerCase().trim();
+        if (lowerResponse === 'yes' || lowerResponse === 'y' || lowerResponse === 'confirm') {
+          console.log('✅ User confirmed, deleting account');
+          
+          try {
+            // Call Convex mutation to delete the account
+            console.log('🔄 Calling Convex deleteAccount mutation...');
+            await convex.mutation(api.crm.deleteAccount, {
+              accountId: lastMessage.accountId as Id<"accounts">
+            });
+            
+            console.log('✅ Account deletion successful');
+            return NextResponse.json({
+              message: `I've successfully deleted the account ${lastMessage.accountName}.`,
+              action: "account_deleted"
+            });
+          } catch (error) {
+            console.error('❌ Account deletion failed:', error);
+            return NextResponse.json({
+              message: "I encountered an error while deleting the account. Please try again.",
+              error: true
+            });
+          }
+        } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
+          console.log('❌ User cancelled deletion');
+          return NextResponse.json({
+            message: "Deletion cancelled. What would you like to do instead?",
+            action: "delete_cancelled"
+          });
+        } else {
+          console.log('❓ Unclear response, asking for clarification');
+          return NextResponse.json({
+            message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
+            action: "confirm_delete",
+            accountId: lastMessage.accountId,
+            accountName: lastMessage.accountName
+          });
+        }
+      }
+      
+      // Check if the last message had dealId and field (for deal updates)
+      if (lastMessage?.dealId && lastMessage?.field && lastMessage?.value) {
+        console.log('🔍 Detected deal update confirmation response');
+        
+        if (!userId) {
+          return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+        }
+        
+        // Check if user confirmed
+        const lowerResponse = message.toLowerCase().trim();
+        if (lowerResponse === 'yes' || lowerResponse === 'y' || lowerResponse === 'confirm') {
+          console.log('✅ User confirmed, updating deal');
+          
+          // Update the deal in the database
+          const updateData: Record<string, string> = {};
+          if (lastMessage.field === 'stage') updateData.stage = lastMessage.value;
+          if (lastMessage.field === 'amount') updateData.amount = lastMessage.value;
+          if (lastMessage.field === 'probability') updateData.probability = lastMessage.value;
+          if (lastMessage.field === 'close date') updateData.closeDate = lastMessage.value;
+          
+          console.log('📝 Update data:', updateData);
+          
+          // Call Convex mutation to update the deal
+          console.log('🔄 Calling Convex mutation...');
+          await convex.mutation(api.crm.updateDeal, {
+            dealId: lastMessage.dealId as Id<"deals">,
+            updates: updateData
+          });
+          
+          console.log('✅ Deal update successful');
+          return NextResponse.json({
+            message: `I've successfully updated ${lastMessage.dealName}'s ${lastMessage.field} to ${lastMessage.value}.`,
+            action: "deal_updated"
+          });
+        } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
+          console.log('❌ User cancelled update');
+          return NextResponse.json({
+            message: "Update cancelled. What would you like to do instead?",
+            action: "update_cancelled"
+          });
+        } else {
+          console.log('❓ Unclear response, asking for clarification');
+          return NextResponse.json({
+            message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
+            action: "confirm_update",
+            dealId: lastMessage.dealId,
+            field: lastMessage.field,
+            value: lastMessage.value,
+            dealName: lastMessage.dealName
+          });
+        }
+      }
+      
+      // Check if the last message had dealId and action for deal delete confirmation
+      if (lastMessage?.dealId && lastMessage?.action === 'confirm_delete') {
+        console.log('🔍 Detected deal delete confirmation response');
+        
+        if (!userId) {
+          return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+        }
+        
+        // Check if user confirmed
+        const lowerResponse = message.toLowerCase().trim();
+        if (lowerResponse === 'yes' || lowerResponse === 'y' || lowerResponse === 'confirm') {
+          console.log('✅ User confirmed, deleting deal');
+          
+          try {
+            // Call Convex mutation to delete the deal
+            console.log('🔄 Calling Convex deleteDeal mutation...');
+            await convex.mutation(api.crm.deleteDeal, {
+              dealId: lastMessage.dealId as Id<"deals">
+            });
+            
+            console.log('✅ Deal deletion successful');
+            return NextResponse.json({
+              message: `I've successfully deleted the deal ${lastMessage.dealName}.`,
+              action: "deal_deleted"
+            });
+          } catch (error) {
+            console.error('❌ Deal deletion failed:', error);
+            return NextResponse.json({
+              message: "I encountered an error while deleting the deal. Please try again.",
+              error: true
+            });
+          }
+        } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
+          console.log('❌ User cancelled deletion');
+          return NextResponse.json({
+            message: "Deletion cancelled. What would you like to do instead?",
+            action: "delete_cancelled"
+          });
+        } else {
+          console.log('❓ Unclear response, asking for clarification');
+          return NextResponse.json({
+            message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
+            action: "confirm_delete",
+            dealId: lastMessage.dealId,
+            dealName: lastMessage.dealName
+          });
+        }
+      }
+      
+      // Check if the last message had activityId and field (for activity updates)
+      if (lastMessage?.activityId && lastMessage?.field && lastMessage?.value) {
+        console.log('🔍 Detected activity update confirmation response');
+        
+        if (!userId) {
+          return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+        }
+        
+        // Check if user confirmed
+        const lowerResponse = message.toLowerCase().trim();
+        if (lowerResponse === 'yes' || lowerResponse === 'y' || lowerResponse === 'confirm') {
+          console.log('✅ User confirmed, updating activity');
+          
+          // Update the activity in the database
+          const updateData: Record<string, string> = {};
+          if (lastMessage.field === 'status') updateData.status = lastMessage.value;
+          if (lastMessage.field === 'type') updateData.type = lastMessage.value;
+          if (lastMessage.field === 'subject') updateData.subject = lastMessage.value;
+          if (lastMessage.field === 'description') updateData.description = lastMessage.value;
+          
+          console.log('📝 Update data:', updateData);
+          
+          // Call Convex mutation to update the activity
+          console.log('🔄 Calling Convex mutation...');
+          await convex.mutation(api.crm.updateActivity, {
+            activityId: lastMessage.activityId as Id<"activities">,
+            updates: updateData
+          });
+          
+          console.log('✅ Activity update successful');
+          return NextResponse.json({
+            message: `I've successfully updated ${lastMessage.activitySubject}'s ${lastMessage.field} to ${lastMessage.value}.`,
+            action: "activity_updated"
+          });
+        } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
+          console.log('❌ User cancelled update');
+          return NextResponse.json({
+            message: "Update cancelled. What would you like to do instead?",
+            action: "update_cancelled"
+          });
+        } else {
+          console.log('❓ Unclear response, asking for clarification');
+          return NextResponse.json({
+            message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
+            action: "confirm_update",
+            activityId: lastMessage.activityId,
+            field: lastMessage.field,
+            value: lastMessage.value,
+            activitySubject: lastMessage.activitySubject
+          });
+        }
+      }
+      
+      // Check if the last message had activityId and action for activity delete confirmation
+      if (lastMessage?.activityId && lastMessage?.action === 'confirm_delete') {
+        console.log('🔍 Detected activity delete confirmation response');
+        
+        if (!userId) {
+          return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+        }
+        
+        // Check if user confirmed
+        const lowerResponse = message.toLowerCase().trim();
+        if (lowerResponse === 'yes' || lowerResponse === 'y' || lowerResponse === 'confirm') {
+          console.log('✅ User confirmed, deleting activity');
+          
+          try {
+            // Call Convex mutation to delete the activity
+            console.log('🔄 Calling Convex deleteActivity mutation...');
+            await convex.mutation(api.crm.deleteActivity, {
+              activityId: lastMessage.activityId as Id<"activities">
+            });
+            
+            console.log('✅ Activity deletion successful');
+            return NextResponse.json({
+              message: `I've successfully deleted the activity ${lastMessage.activitySubject}.`,
+              action: "activity_deleted"
+            });
+          } catch (error) {
+            console.error('❌ Activity deletion failed:', error);
+            return NextResponse.json({
+              message: "I encountered an error while deleting the activity. Please try again.",
+              error: true
+            });
+          }
+        } else if (lowerResponse === 'no' || lowerResponse === 'n' || lowerResponse === 'cancel') {
+          console.log('❌ User cancelled deletion');
+          return NextResponse.json({
+            message: "Deletion cancelled. What would you like to do instead?",
+            action: "delete_cancelled"
+          });
+        } else {
+          console.log('❓ Unclear response, asking for clarification');
+          return NextResponse.json({
+            message: "I didn't understand your response. Please respond with 'yes' to confirm or 'no' to cancel.",
+            action: "confirm_delete",
+            activityId: lastMessage.activityId,
+            activitySubject: lastMessage.activitySubject
+          });
+        }
+      }
     }
     
     // Check if the user is asking about uploaded files
@@ -1261,6 +1725,69 @@ Please analyze the ACTUAL file content above and respond based on what you see i
         return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
       }
       return await handleContactUpdateWithConfirmation(message, userId);
+    }
+    
+    // Check if the user wants to delete a contact
+    if (lowerMessage.includes('delete') && lowerMessage.includes('contact')) {
+      console.log('🗑️ Contact deletion request detected');
+      if (!userId) {
+        return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      }
+      return await handleContactDeleteWithConfirmation(message, userId);
+    }
+    
+    // Check if the user wants to update an account
+    if (lowerMessage.includes('update') && lowerMessage.includes('account')) {
+      console.log('✏️ Account update request detected');
+      if (!userId) {
+        return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      }
+      return await handleAccountUpdateWithConfirmation(message, userId);
+    }
+    
+    // Check if the user wants to delete an account
+    if (lowerMessage.includes('delete') && lowerMessage.includes('account')) {
+      console.log('🗑️ Account deletion request detected');
+      if (!userId) {
+        return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      }
+      return await handleAccountDeleteWithConfirmation(message, userId);
+    }
+    
+    // Check if the user wants to update a deal
+    if (lowerMessage.includes('update') && lowerMessage.includes('deal')) {
+      console.log('✏️ Deal update request detected');
+      if (!userId) {
+        return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      }
+      return await handleDealUpdateWithConfirmation(message, userId);
+    }
+    
+    // Check if the user wants to delete a deal
+    if (lowerMessage.includes('delete') && lowerMessage.includes('deal')) {
+      console.log('🗑️ Deal deletion request detected');
+      if (!userId) {
+        return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      }
+      return await handleDealDeleteWithConfirmation(message, userId);
+    }
+    
+    // Check if the user wants to update an activity
+    if (lowerMessage.includes('update') && lowerMessage.includes('activity')) {
+      console.log('✏️ Activity update request detected');
+      if (!userId) {
+        return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      }
+      return await handleActivityUpdateWithConfirmation(message, userId);
+    }
+    
+    // Check if the user wants to delete an activity
+    if (lowerMessage.includes('delete') && lowerMessage.includes('activity')) {
+      console.log('🗑️ Activity deletion request detected');
+      if (!userId) {
+        return NextResponse.json({ error: 'User not authenticated' }, { status: 401 });
+      }
+      return await handleActivityDeleteWithConfirmation(message, userId);
     }
     
     // Check if the user wants to create a new object (contact, account, deal, activity)
@@ -2129,5 +2656,455 @@ export async function POST(req: NextRequest) {
       { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
     );
+  }
+}
+
+async function handleAccountUpdateWithConfirmation(message: string, userId: string) {
+  try {
+    console.log('🔍 Starting account update for message:', message);
+    console.log('👤 User ID:', userId);
+    
+    // Extract account name and field updates from the message
+    const lowerMessage = message.toLowerCase();
+    
+    // Extract name (look for patterns like "acme corp", "acme")
+    const nameMatch = message.match(/\b([A-Za-z]+(?:\s+[A-Za-z]+)*)\b/);
+    const accountName = nameMatch ? nameMatch[0] : null;
+    
+    // Extract field and value (e.g., "industry to technology")
+    const fieldMatch = lowerMessage.match(/(industry|website|phone|revenue|employees)\s+to\s+([^\s]+(?:\s+[^\s]+)*)/);
+    const field = fieldMatch ? fieldMatch[1] : null;
+    const value = fieldMatch ? fieldMatch[2] : null;
+    
+    console.log('📝 Extracted data:', { accountName, field, value });
+    
+    if (!accountName || !field || !value) {
+      console.log('❌ Missing required data for account update');
+      return NextResponse.json({
+        message: "I couldn't understand the update request. Please specify the account name and what field to update. For example: 'update acme corp industry to technology'",
+        error: true
+      });
+    }
+    
+    // Find the account in the database
+    console.log('🔍 Looking up teams for user...');
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    console.log('📋 Teams found:', teams.length);
+    
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    console.log('🏢 Using team ID:', teamId);
+    
+    console.log('🔍 Looking up accounts for team...');
+    const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+    console.log('🏢 Accounts found:', accounts.length);
+    
+    const matchingAccount = accounts.find(account => {
+      const accountNameLower = account.name?.toLowerCase() || '';
+      const searchName = accountName.toLowerCase();
+      
+      return accountNameLower.includes(searchName) || 
+             searchName.includes(accountNameLower) ||
+             accountNameLower.split(' ').some((part: string) => searchName.includes(part)) ||
+             searchName.split(' ').some((part: string) => accountNameLower.includes(part));
+    });
+    
+    if (!matchingAccount) {
+      console.log('❌ No matching account found');
+      return NextResponse.json({
+        message: `I couldn't find an account named "${accountName}" in your database. Please check the spelling or create the account first.`,
+        error: true
+      });
+    }
+    
+    console.log('✅ Found matching account:', matchingAccount);
+    
+    // Ask for confirmation before updating
+    const confirmationMessage = `Please confirm the account update:\n\n**Account:** ${matchingAccount.name}\n**Field:** ${field}\n**New Value:** ${value}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+    
+    return NextResponse.json({
+      message: confirmationMessage,
+      action: "confirm_update",
+      accountId: matchingAccount._id,
+      field: field,
+      value: value,
+      accountName: matchingAccount.name
+    });
+    
+  } catch (error) {
+    console.error('Account update failed:', error);
+    return NextResponse.json({
+      message: "I encountered an error while processing the account update. Please try again.",
+      error: true
+    });
+  }
+}
+
+async function handleAccountDeleteWithConfirmation(message: string, userId: string) {
+  try {
+    console.log('🔍 Starting account deletion for message:', message);
+    console.log('👤 User ID:', userId);
+    
+    // Extract account name from the message
+    const nameMatch = message.match(/\b([A-Za-z]+(?:\s+[A-Za-z]+)*)\b/);
+    const accountName = nameMatch ? nameMatch[0] : null;
+    
+    console.log('📝 Extracted account name:', accountName);
+    
+    if (!accountName) {
+      console.log('❌ No account name found');
+      return NextResponse.json({
+        message: "I couldn't understand the delete request. Please specify the account by name. For example: 'delete account acme corp'",
+        error: true
+      });
+    }
+    
+    // Find the account in the database
+    console.log('🔍 Looking up teams for user...');
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    console.log('📋 Teams found:', teams.length);
+    
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    console.log('🏢 Using team ID:', teamId);
+    
+    console.log('🔍 Looking up accounts for team...');
+    const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+    console.log('🏢 Accounts found:', accounts.length);
+    
+    const matchingAccount = accounts.find(account => {
+      const accountNameLower = account.name?.toLowerCase() || '';
+      const searchName = accountName.toLowerCase();
+      
+      return accountNameLower.includes(searchName) || 
+             searchName.includes(accountNameLower) ||
+             accountNameLower.split(' ').some((part: string) => searchName.includes(part)) ||
+             searchName.split(' ').some((part: string) => accountNameLower.includes(part));
+    });
+    
+    if (!matchingAccount) {
+      console.log('❌ No matching account found');
+      return NextResponse.json({
+        message: `I couldn't find an account named "${accountName}" in your database. Please check the spelling or try a different name.`,
+        error: true
+      });
+    }
+    
+    console.log('✅ Found matching account:', matchingAccount);
+    
+    // Ask for confirmation before deleting
+    const confirmationMessage = `To confirm, you'd like to delete the account "${matchingAccount.name}". Please note that this action is irreversible. Are you sure you want to proceed?`;
+    
+    return NextResponse.json({
+      message: confirmationMessage,
+      action: "confirm_delete",
+      accountId: matchingAccount._id,
+      accountName: matchingAccount.name
+    });
+    
+  } catch (error) {
+    console.error('Account deletion failed:', error);
+    return NextResponse.json({
+      message: "I encountered an error while processing the account deletion. Please try again.",
+      error: true
+    });
+  }
+}
+
+async function handleDealUpdateWithConfirmation(message: string, userId: string) {
+  try {
+    console.log('🔍 Starting deal update for message:', message);
+    console.log('👤 User ID:', userId);
+    
+    // Extract deal name and field updates from the message
+    const lowerMessage = message.toLowerCase();
+    
+    // Extract name (look for patterns like "acme deal", "enterprise license")
+    const nameMatch = message.match(/\b([A-Za-z]+(?:\s+[A-Za-z]+)*)\b/);
+    const dealName = nameMatch ? nameMatch[0] : null;
+    
+    // Extract field and value (e.g., "stage to proposal", "amount to 50000")
+    const fieldMatch = lowerMessage.match(/(stage|amount|probability|close date)\s+to\s+([^\s]+(?:\s+[^\s]+)*)/);
+    const field = fieldMatch ? fieldMatch[1] : null;
+    const value = fieldMatch ? fieldMatch[2] : null;
+    
+    console.log('📝 Extracted data:', { dealName, field, value });
+    
+    if (!dealName || !field || !value) {
+      console.log('❌ Missing required data for deal update');
+      return NextResponse.json({
+        message: "I couldn't understand the update request. Please specify the deal name and what field to update. For example: 'update acme deal stage to proposal'",
+        error: true
+      });
+    }
+    
+    // Find the deal in the database
+    console.log('🔍 Looking up teams for user...');
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    console.log('📋 Teams found:', teams.length);
+    
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    console.log('🏢 Using team ID:', teamId);
+    
+    console.log('🔍 Looking up deals for team...');
+    const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+    console.log('💰 Deals found:', deals.length);
+    
+    const matchingDeal = deals.find(deal => {
+      const dealNameLower = deal.name?.toLowerCase() || '';
+      const searchName = dealName.toLowerCase();
+      
+      return dealNameLower.includes(searchName) || 
+             searchName.includes(dealNameLower) ||
+             dealNameLower.split(' ').some((part: string) => searchName.includes(part)) ||
+             searchName.split(' ').some((part: string) => dealNameLower.includes(part));
+    });
+    
+    if (!matchingDeal) {
+      console.log('❌ No matching deal found');
+      return NextResponse.json({
+        message: `I couldn't find a deal named "${dealName}" in your database. Please check the spelling or create the deal first.`,
+        error: true
+      });
+    }
+    
+    console.log('✅ Found matching deal:', matchingDeal);
+    
+    // Ask for confirmation before updating
+    const confirmationMessage = `Please confirm the deal update:\n\n**Deal:** ${matchingDeal.name}\n**Field:** ${field}\n**New Value:** ${value}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+    
+    return NextResponse.json({
+      message: confirmationMessage,
+      action: "confirm_update",
+      dealId: matchingDeal._id,
+      field: field,
+      value: value,
+      dealName: matchingDeal.name
+    });
+    
+  } catch (error) {
+    console.error('Deal update failed:', error);
+    return NextResponse.json({
+      message: "I encountered an error while processing the deal update. Please try again.",
+      error: true
+    });
+  }
+}
+
+async function handleDealDeleteWithConfirmation(message: string, userId: string) {
+  try {
+    console.log('🔍 Starting deal deletion for message:', message);
+    console.log('👤 User ID:', userId);
+    
+    // Extract deal name from the message
+    const nameMatch = message.match(/\b([A-Za-z]+(?:\s+[A-Za-z]+)*)\b/);
+    const dealName = nameMatch ? nameMatch[0] : null;
+    
+    console.log('📝 Extracted deal name:', dealName);
+    
+    if (!dealName) {
+      console.log('❌ No deal name found');
+      return NextResponse.json({
+        message: "I couldn't understand the delete request. Please specify the deal by name. For example: 'delete deal acme enterprise'",
+        error: true
+      });
+    }
+    
+    // Find the deal in the database
+    console.log('🔍 Looking up teams for user...');
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    console.log('📋 Teams found:', teams.length);
+    
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    console.log('🏢 Using team ID:', teamId);
+    
+    console.log('🔍 Looking up deals for team...');
+    const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+    console.log('💰 Deals found:', deals.length);
+    
+    const matchingDeal = deals.find(deal => {
+      const dealNameLower = deal.name?.toLowerCase() || '';
+      const searchName = dealName.toLowerCase();
+      
+      return dealNameLower.includes(searchName) || 
+             searchName.includes(dealNameLower) ||
+             dealNameLower.split(' ').some((part: string) => searchName.includes(part)) ||
+             searchName.split(' ').some((part: string) => dealNameLower.includes(part));
+    });
+    
+    if (!matchingDeal) {
+      console.log('❌ No matching deal found');
+      return NextResponse.json({
+        message: `I couldn't find a deal named "${dealName}" in your database. Please check the spelling or try a different name.`,
+        error: true
+      });
+    }
+    
+    console.log('✅ Found matching deal:', matchingDeal);
+    
+    // Ask for confirmation before deleting
+    const confirmationMessage = `To confirm, you'd like to delete the deal "${matchingDeal.name}". Please note that this action is irreversible. Are you sure you want to proceed?`;
+    
+    return NextResponse.json({
+      message: confirmationMessage,
+      action: "confirm_delete",
+      dealId: matchingDeal._id,
+      dealName: matchingDeal.name
+    });
+    
+  } catch (error) {
+    console.error('Deal deletion failed:', error);
+    return NextResponse.json({
+      message: "I encountered an error while processing the deal deletion. Please try again.",
+      error: true
+    });
+  }
+}
+
+async function handleActivityUpdateWithConfirmation(message: string, userId: string) {
+  try {
+    console.log('🔍 Starting activity update for message:', message);
+    console.log('👤 User ID:', userId);
+    
+    // Extract activity subject and field updates from the message
+    const lowerMessage = message.toLowerCase();
+    
+    // Extract subject (look for patterns like "follow up call", "product demo")
+    const subjectMatch = message.match(/\b([A-Za-z]+(?:\s+[A-Za-z]+)*)\b/);
+    const activitySubject = subjectMatch ? subjectMatch[0] : null;
+    
+    // Extract field and value (e.g., "status to completed", "type to meeting")
+    const fieldMatch = lowerMessage.match(/(status|type|subject|description)\s+to\s+([^\s]+(?:\s+[^\s]+)*)/);
+    const field = fieldMatch ? fieldMatch[1] : null;
+    const value = fieldMatch ? fieldMatch[2] : null;
+    
+    console.log('📝 Extracted data:', { activitySubject, field, value });
+    
+    if (!activitySubject || !field || !value) {
+      console.log('❌ Missing required data for activity update');
+      return NextResponse.json({
+        message: "I couldn't understand the update request. Please specify the activity subject and what field to update. For example: 'update follow up call status to completed'",
+        error: true
+      });
+    }
+    
+    // Find the activity in the database
+    console.log('🔍 Looking up teams for user...');
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    console.log('📋 Teams found:', teams.length);
+    
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    console.log('🏢 Using team ID:', teamId);
+    
+    console.log('🔍 Looking up activities for team...');
+    const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+    console.log('📅 Activities found:', activities.length);
+    
+    const matchingActivity = activities.find(activity => {
+      const activitySubjectLower = activity.subject?.toLowerCase() || '';
+      const searchSubject = activitySubject.toLowerCase();
+      
+      return activitySubjectLower.includes(searchSubject) || 
+             searchSubject.includes(activitySubjectLower) ||
+             activitySubjectLower.split(' ').some((part: string) => searchSubject.includes(part)) ||
+             searchSubject.split(' ').some((part: string) => activitySubjectLower.includes(part));
+    });
+    
+    if (!matchingActivity) {
+      console.log('❌ No matching activity found');
+      return NextResponse.json({
+        message: `I couldn't find an activity with subject "${activitySubject}" in your database. Please check the spelling or create the activity first.`,
+        error: true
+      });
+    }
+    
+    console.log('✅ Found matching activity:', matchingActivity);
+    
+    // Ask for confirmation before updating
+    const confirmationMessage = `Please confirm the activity update:\n\n**Activity:** ${matchingActivity.subject}\n**Field:** ${field}\n**New Value:** ${value}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+    
+    return NextResponse.json({
+      message: confirmationMessage,
+      action: "confirm_update",
+      activityId: matchingActivity._id,
+      field: field,
+      value: value,
+      activitySubject: matchingActivity.subject
+    });
+    
+  } catch (error) {
+    console.error('Activity update failed:', error);
+    return NextResponse.json({
+      message: "I encountered an error while processing the activity update. Please try again.",
+      error: true
+    });
+  }
+}
+
+async function handleActivityDeleteWithConfirmation(message: string, userId: string) {
+  try {
+    console.log('🔍 Starting activity deletion for message:', message);
+    console.log('👤 User ID:', userId);
+    
+    // Extract activity subject from the message
+    const subjectMatch = message.match(/\b([A-Za-z]+(?:\s+[A-Za-z]+)*)\b/);
+    const activitySubject = subjectMatch ? subjectMatch[0] : null;
+    
+    console.log('📝 Extracted activity subject:', activitySubject);
+    
+    if (!activitySubject) {
+      console.log('❌ No activity subject found');
+      return NextResponse.json({
+        message: "I couldn't understand the delete request. Please specify the activity by subject. For example: 'delete activity follow up call'",
+        error: true
+      });
+    }
+    
+    // Find the activity in the database
+    console.log('🔍 Looking up teams for user...');
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    console.log('📋 Teams found:', teams.length);
+    
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    console.log('🏢 Using team ID:', teamId);
+    
+    console.log('🔍 Looking up activities for team...');
+    const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+    console.log('📅 Activities found:', activities.length);
+    
+    const matchingActivity = activities.find(activity => {
+      const activitySubjectLower = activity.subject?.toLowerCase() || '';
+      const searchSubject = activitySubject.toLowerCase();
+      
+      return activitySubjectLower.includes(searchSubject) || 
+             searchSubject.includes(activitySubjectLower) ||
+             activitySubjectLower.split(' ').some((part: string) => searchSubject.includes(part)) ||
+             searchSubject.split(' ').some((part: string) => activitySubjectLower.includes(part));
+    });
+    
+    if (!matchingActivity) {
+      console.log('❌ No matching activity found');
+      return NextResponse.json({
+        message: `I couldn't find an activity with subject "${activitySubject}" in your database. Please check the spelling or try a different subject.`,
+        error: true
+      });
+    }
+    
+    console.log('✅ Found matching activity:', matchingActivity);
+    
+    // Ask for confirmation before deleting
+    const confirmationMessage = `To confirm, you'd like to delete the activity "${matchingActivity.subject}". Please note that this action is irreversible. Are you sure you want to proceed?`;
+    
+    return NextResponse.json({
+      message: confirmationMessage,
+      action: "confirm_delete",
+      activityId: matchingActivity._id,
+      activitySubject: matchingActivity.subject
+    });
+    
+  } catch (error) {
+    console.error('Activity deletion failed:', error);
+    return NextResponse.json({
+      message: "I encountered an error while processing the activity deletion. Please try again.",
+      error: true
+    });
   }
 }
