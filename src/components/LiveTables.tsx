@@ -37,6 +37,15 @@ interface DataRecord {
   [key: string]: unknown;
 }
 
+interface TableConfig {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  color: string;
+  bgColor: string;
+  columns: string[];
+  formatters: Record<string, (record: DataRecord) => string>;
+}
+
 interface LiveTablesProps {
   onRecordSelect?: (record: DataRecord, type: TableType) => void;
   highlightedRecordId?: string;
@@ -50,7 +59,7 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
   const [searchTerm, setSearchTerm] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const tableConfigs = {
+  const tableConfigs: Record<TableType, TableConfig> = {
     contacts: {
       icon: Users,
       label: 'Contacts',
@@ -157,8 +166,8 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
   const filteredData = data.filter(record => {
     if (!searchTerm) return true;
     
-    const config = tableConfigs[activeTable];
-    return config.columns.some(column => {
+    const config: TableConfig = tableConfigs[activeTable];
+    return config.columns.some((column: string) => {
       const value = config.formatters[column](record);
       return value.toLowerCase().includes(searchTerm.toLowerCase());
     });
