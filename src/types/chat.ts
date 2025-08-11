@@ -34,7 +34,12 @@ export interface ConversationResponse {
   message: string;
   chartSpec?: any;
   enhancedChart?: boolean;
-  data?: any[];
+  data?: any[] | {
+    records: any[];
+    type: string;
+    count: number;
+    displayFormat: string;
+  };
   suggestions?: string[];
   nextSteps?: string[];
   conversationContext?: {
