@@ -261,12 +261,12 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
         ) : (
           <div className="overflow-auto h-full">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-[#f3e89a]/10 border-b border-[#d9d2c7]">
+              <thead className="sticky top-0 bg-white border-b border-[#d9d2c7] shadow-sm z-10">
                 <tr>
                   {currentConfig.columns.map((column) => (
                     <th
                       key={column}
-                      className="text-left p-3 font-medium text-gray-700 capitalize"
+                      className="text-left p-3 font-medium text-gray-700 capitalize bg-white"
                     >
                       {column}
                     </th>
