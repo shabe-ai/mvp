@@ -139,7 +139,7 @@ export class DataIntentHandler implements IntentHandler {
     
     return {
       message: result.message,
-      data: result.data?.records,
+      data: result.data,
       suggestions: conversationManager.getSuggestions(),
       conversationContext: {
         phase: conversationManager.getState().currentContext.conversationPhase.current,
