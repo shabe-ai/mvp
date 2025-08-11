@@ -1,5 +1,6 @@
 import { openaiClient } from '@/lib/openaiClient';
 import { ConversationState } from './conversationManager';
+import { nlpProcessor, Entity, ContextualReference } from './nlpProcessor';
 
 export interface Intent {
   action: 'create_chart' | 'modify_chart' | 'analyze_data' | 'export_data' | 'explore_data' | 'view_data' | 'send_email' | 'create_contact' | 'update_contact' | 'delete_contact' | 'general_conversation';
@@ -11,6 +12,14 @@ export interface Intent {
     context?: 'existing' | 'new' | 'modification' | 'reference';
     action?: 'show' | 'hide' | 'change' | 'analyze' | 'export' | 'predict';
     target?: string; // What the user is referring to (e.g., "the chart", "deals data")
+    contactName?: string;
+    field?: string;
+    value?: string;
+    date?: string;
+    amount?: string;
+    email?: string;
+    phone?: string;
+    company?: string;
   };
   context: {
     referringTo?: 'current_chart' | 'previous_chart' | 'new_request' | 'existing_data';
@@ -21,6 +30,12 @@ export interface Intent {
     isAmbiguous: boolean;
     needsClarification: boolean;
     clarificationQuestion?: string;
+  };
+  nlpData?: {
+    entities: Entity[];
+    references: ContextualReference[];
+    needsClarification: boolean;
+    clarificationMessage?: string;
   };
 }
 
@@ -40,8 +55,38 @@ export class IntentClassifier {
     try {
       console.log('🧠 Starting intent classification for:', message);
       
+      // First, process the message with NLP to extract entities and resolve references
+      const nlpResult = await nlpProcessor.processMessage(message, conversationState.metadata.userId);
+      
+      console.log('🧠 NLP processing result:', {
+        entities: nlpResult.entities.length,
+        references: nlpResult.references.length,
+        needsClarification: nlpResult.needsClarification
+      });
+      
+      // If NLP needs clarification, return early with clarification intent
+      if (nlpResult.needsClarification) {
+        return {
+          action: 'general_conversation',
+          confidence: 0.3,
+          entities: {},
+          context: { referringTo: 'new_request' },
+          metadata: {
+            isAmbiguous: true,
+            needsClarification: true,
+            clarificationQuestion: nlpResult.clarificationMessage
+          },
+          nlpData: {
+            entities: nlpResult.entities,
+            references: nlpResult.references,
+            needsClarification: true,
+            clarificationMessage: nlpResult.clarificationMessage
+          }
+        };
+      }
+      
       const conversationContext = this.buildConversationContext(conversationState);
-      const prompt = this.buildClassificationPrompt(message, conversationContext);
+      const prompt = this.buildClassificationPrompt(message, conversationContext, nlpResult);
       
       const response = await openaiClient.chatCompletionsCreate({
         model: "gpt-4",
@@ -67,7 +112,7 @@ export class IntentClassifier {
       
       console.log('🧠 Intent classification result:', result);
       
-      return this.validateAndEnhanceIntent(result, message, conversationState);
+      return this.validateAndEnhanceIntent(result, message, conversationState, nlpResult);
       
     } catch (error) {
       console.error('❌ Intent classification error:', error);
@@ -97,19 +142,28 @@ export class IntentClassifier {
     return context;
   }
 
-  private buildClassificationPrompt(message: string, conversationContext: string): string {
+  private buildClassificationPrompt(message: string, conversationContext: string, nlpResult: any): string {
+    const entityInfo = nlpResult.entities.length > 0 
+      ? `\n**Extracted Entities:**\n${nlpResult.entities.map((e: any) => `- ${e.type}: "${e.value}" (confidence: ${e.confidence})`).join('\n')}`
+      : '\n**No specific entities extracted**';
+    
+    const referenceInfo = nlpResult.references.length > 0
+      ? `\n**Contextual References:**\n${nlpResult.references.map((r: any) => `- ${r.type}: "${r.value}" (${r.possibleMatches.length} possible matches)`).join('\n')}`
+      : '\n**No contextual references found**';
+
     return `
 Analyze this message in the context of our conversation and classify the user's intent.
 
 ${conversationContext}
 
-User message: "${message}"
+User message: "${message}"${entityInfo}${referenceInfo}
 
 Classify the intent and extract entities. Consider:
 1. What action does the user want to perform?
 2. What data or chart are they referring to?
 3. Are they referring to an existing chart or requesting something new?
 4. What specific entities (chart type, data type, dimension) are mentioned?
+5. Use the extracted entities to enhance your understanding
 
 Return a JSON object with this exact structure:
 {
@@ -121,7 +175,15 @@ Return a JSON object with this exact structure:
     "dimension": "stage|status|industry|type|source|probability",
     "context": "existing|new|modification|reference",
     "action": "show|hide|change|analyze|export|predict",
-    "target": "string describing what user is referring to"
+    "target": "string describing what user is referring to",
+    "contactName": "extracted contact name",
+    "field": "field to update",
+    "value": "new value",
+    "date": "extracted date",
+    "amount": "extracted amount",
+    "email": "extracted email",
+    "phone": "extracted phone",
+    "company": "extracted company"
   },
   "context": {
     "referringTo": "current_chart|previous_chart|new_request|existing_data",
@@ -139,10 +201,11 @@ Be specific and accurate. If the user is referring to an existing chart (using "
 If the user mentions a chart type (line, bar, pie, etc.), extract it as chartType.
 If the user mentions data types (deals, contacts, accounts), extract them as dataType.
 If the user mentions dimensions (stage, status, industry), extract them as dimension.
+Use the extracted entities to populate the appropriate fields (contactName, field, value, etc.).
 `;
   }
 
-  private validateAndEnhanceIntent(result: any, message: string, conversationState: ConversationState): Intent {
+  private validateAndEnhanceIntent(result: any, message: string, conversationState: ConversationState, nlpResult: any): Intent {
     // Validate required fields
     const intent: Intent = {
       action: result.action || 'general_conversation',
@@ -153,7 +216,15 @@ If the user mentions dimensions (stage, status, industry), extract them as dimen
         dimension: result.entities?.dimension,
         context: result.entities?.context,
         action: result.entities?.action,
-        target: result.entities?.target
+        target: result.entities?.target,
+        contactName: result.entities?.contactName,
+        field: result.entities?.field,
+        value: result.entities?.value,
+        date: result.entities?.date,
+        amount: result.entities?.amount,
+        email: result.entities?.email,
+        phone: result.entities?.phone,
+        company: result.entities?.company
       },
       context: {
         referringTo: result.context?.referringTo,
@@ -164,11 +235,23 @@ If the user mentions dimensions (stage, status, industry), extract them as dimen
         isAmbiguous: result.metadata?.isAmbiguous || false,
         needsClarification: result.metadata?.needsClarification || false,
         clarificationQuestion: result.metadata?.clarificationQuestion
+      },
+      nlpData: {
+        entities: nlpResult.entities,
+        references: nlpResult.references,
+        needsClarification: nlpResult.needsClarification,
+        clarificationMessage: nlpResult.clarificationMessage
       }
     };
 
+    // Enhance intent with NLP data
+    this.enhanceIntentWithNLPData(intent, nlpResult);
+    
     // Enhance intent with conversation context
     this.enhanceIntentWithContext(intent, message, conversationState);
+    
+    // Enhance intent with NLP data
+    this.enhanceIntentWithNLPData(intent, nlpResult);
     
     // Validate confidence and set clarification if needed
     if (intent.confidence < 0.7) {
@@ -218,6 +301,73 @@ If the user mentions dimensions (stage, status, industry), extract them as dimen
       intent.entities.action = 'analyze';
     } else if (lowerMessage.includes('export') || lowerMessage.includes('save') || lowerMessage.includes('download')) {
       intent.entities.action = 'export';
+    }
+  }
+
+  private enhanceIntentWithNLPData(intent: Intent, nlpResult: any): void {
+    // Use extracted entities to enhance intent
+    for (const entity of nlpResult.entities) {
+      switch (entity.type) {
+        case 'contact':
+          if (!intent.entities.contactName) {
+            intent.entities.contactName = entity.value;
+          }
+          break;
+        case 'date':
+          if (!intent.entities.date) {
+            intent.entities.date = entity.value;
+          }
+          break;
+        case 'amount':
+          if (!intent.entities.amount) {
+            intent.entities.amount = entity.value;
+          }
+          break;
+        case 'email':
+          if (!intent.entities.email) {
+            intent.entities.email = entity.value;
+          }
+          break;
+        case 'phone':
+          if (!intent.entities.phone) {
+            intent.entities.phone = entity.value;
+          }
+          break;
+        case 'company':
+          if (!intent.entities.company) {
+            intent.entities.company = entity.value;
+          }
+          break;
+      }
+    }
+
+    // Use resolved references to enhance intent
+    for (const reference of nlpResult.references) {
+      if (reference.resolvedEntity) {
+        switch (reference.resolvedEntity.type) {
+          case 'contact':
+            if (!intent.entities.contactName) {
+              intent.entities.contactName = reference.resolvedEntity.name;
+            }
+            break;
+          case 'account':
+            if (!intent.entities.company) {
+              intent.entities.company = reference.resolvedEntity.name;
+            }
+            break;
+          case 'deal':
+            if (!intent.entities.target) {
+              intent.entities.target = reference.resolvedEntity.name;
+            }
+            break;
+        }
+      }
+    }
+
+    // Update confidence based on NLP results
+    if (nlpResult.entities.length > 0) {
+      const avgConfidence = nlpResult.entities.reduce((sum: number, e: any) => sum + e.confidence, 0) / nlpResult.entities.length;
+      intent.confidence = Math.min(intent.confidence + (avgConfidence * 0.2), 1.0);
     }
   }
 
