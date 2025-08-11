@@ -166,9 +166,39 @@ export class AnalyzeIntentHandler implements IntentHandler {
   async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('🔍 Handling analysis intent:', intent.action);
     
+    // Import analysis engine
+    const { analysisEngine } = await import('@/lib/analysisEngine');
+    const { personalizationEngine } = await import('@/lib/personalizationEngine');
+    
+    // Track user interaction for personalization
+    await personalizationEngine.trackUserInteraction(context.userId, 'analysis_request', {
+      dataType: intent.entities.dataType,
+      target: intent.entities.target
+    });
+    
     // Handle account analysis queries
     if (intent.entities.dataType === 'accounts' && intent.entities.target?.includes('most contacts')) {
       return await this.handleAccountContactAnalysis(intent, conversationManager, context);
+    }
+    
+    // Handle sales pipeline analysis
+    if (intent.entities.target?.includes('pipeline') || intent.entities.target?.includes('sales')) {
+      return await this.handleSalesPipelineAnalysis(intent, conversationManager, context);
+    }
+    
+    // Handle churn analysis
+    if (intent.entities.target?.includes('churn') || intent.entities.target?.includes('retention')) {
+      return await this.handleChurnAnalysis(intent, conversationManager, context);
+    }
+    
+    // Handle revenue forecasting
+    if (intent.entities.target?.includes('revenue') || intent.entities.target?.includes('forecast')) {
+      return await this.handleRevenueForecast(intent, conversationManager, context);
+    }
+    
+    // Handle market opportunity analysis
+    if (intent.entities.target?.includes('opportunity') || intent.entities.target?.includes('market')) {
+      return await this.handleMarketOpportunityAnalysis(intent, conversationManager, context);
     }
     
     // Handle other analysis types
@@ -181,6 +211,324 @@ export class AnalyzeIntentHandler implements IntentHandler {
         referringTo: 'new_request'
       }
     };
+  }
+
+  private async handleSalesPipelineAnalysis(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    try {
+      console.log('📊 Analyzing sales pipeline...');
+      
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      const { analysisEngine } = await import('@/lib/analysisEngine');
+      
+      // Get user's team
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      
+      // Get all data
+      const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+      const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+      const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+      
+      // Analyze pipeline
+      const pipelineAnalysis = await analysisEngine.analyzeSalesPipeline(deals, contacts, accounts);
+      
+      // Generate response message
+      let message = `**Sales Pipeline Analysis**\n\n`;
+      message += `📊 **Pipeline Overview:**\n`;
+      message += `• Total Deals: ${pipelineAnalysis.totalDeals}\n`;
+      message += `• Total Value: $${pipelineAnalysis.totalValue.toLocaleString()}\n`;
+      message += `• Average Deal Size: $${pipelineAnalysis.averageDealSize.toLocaleString()}\n`;
+      message += `• Sales Velocity: ${pipelineAnalysis.salesVelocity} deals/month\n\n`;
+      
+      message += `📈 **Stage Breakdown:**\n`;
+      pipelineAnalysis.stageBreakdown.forEach(stage => {
+        message += `• ${stage.stage}: ${stage.count} deals ($${stage.value.toLocaleString()}) - ${stage.conversionRate.toFixed(1)}% conversion\n`;
+      });
+      
+      if (pipelineAnalysis.insights.length > 0) {
+        message += `\n💡 **Key Insights:**\n`;
+        pipelineAnalysis.insights.forEach(insight => {
+          message += `• ${insight}\n`;
+        });
+      }
+      
+      if (pipelineAnalysis.recommendations.length > 0) {
+        message += `\n🎯 **Recommendations:**\n`;
+        pipelineAnalysis.recommendations.forEach(rec => {
+          message += `• ${rec}\n`;
+        });
+      }
+      
+      return {
+        message,
+        data: {
+          records: pipelineAnalysis.stageBreakdown.map(stage => ({
+            id: stage.stage,
+            _id: stage.stage,
+            name: stage.stage,
+            count: stage.count,
+            value: stage.value,
+            conversionRate: stage.conversionRate,
+            type: 'pipeline_analysis'
+          })),
+          type: 'pipeline_analysis',
+          count: pipelineAnalysis.stageBreakdown.length,
+          displayFormat: 'analysis'
+        },
+        suggestions: conversationManager.getSuggestions(),
+        conversationContext: {
+          phase: conversationManager.getState().currentContext.conversationPhase.current,
+          action: 'analyze_data',
+          referringTo: 'new_request'
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Sales pipeline analysis failed:', error);
+      return {
+        message: "I encountered an error while analyzing your sales pipeline. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'analyze_data',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleChurnAnalysis(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    try {
+      console.log('🔮 Analyzing customer churn...');
+      
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      const { analysisEngine } = await import('@/lib/analysisEngine');
+      
+      // Get user's team
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      
+      // Get all data
+      const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+      const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+      const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+      
+      // Analyze churn
+      const churnAnalysis = await analysisEngine.predictCustomerChurn(contacts, activities, deals);
+      
+      // Generate response message
+      let message = `**Customer Churn Analysis**\n\n`;
+      message += `📊 **Overall Churn Rate:** ${churnAnalysis.churnRate.toFixed(1)}%\n`;
+      message += `⚠️ **At-Risk Customers:** ${churnAnalysis.atRiskCustomers.length}\n\n`;
+      
+      if (churnAnalysis.atRiskCustomers.length > 0) {
+        message += `🔴 **High-Risk Customers:**\n`;
+        churnAnalysis.atRiskCustomers.slice(0, 5).forEach(customer => {
+          message += `• ${customer.customerName} (Risk: ${customer.riskScore.toFixed(0)}%) - ${customer.reasons.join(', ')}\n`;
+        });
+      }
+      
+      if (churnAnalysis.retentionFactors.length > 0) {
+        message += `\n💡 **Retention Strategies:**\n`;
+        churnAnalysis.retentionFactors.forEach(factor => {
+          message += `• ${factor}\n`;
+        });
+      }
+      
+      return {
+        message,
+        data: {
+          records: churnAnalysis.atRiskCustomers.map(customer => ({
+            id: customer.customerId,
+            _id: customer.customerId,
+            name: customer.customerName,
+            riskScore: customer.riskScore,
+            lastActivity: customer.lastActivity,
+            reasons: customer.reasons.join(', '),
+            type: 'churn_analysis'
+          })),
+          type: 'churn_analysis',
+          count: churnAnalysis.atRiskCustomers.length,
+          displayFormat: 'analysis'
+        },
+        suggestions: conversationManager.getSuggestions(),
+        conversationContext: {
+          phase: conversationManager.getState().currentContext.conversationPhase.current,
+          action: 'analyze_data',
+          referringTo: 'new_request'
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Churn analysis failed:', error);
+      return {
+        message: "I encountered an error while analyzing customer churn. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'analyze_data',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleRevenueForecast(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    try {
+      console.log('💰 Forecasting revenue...');
+      
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      const { analysisEngine } = await import('@/lib/analysisEngine');
+      
+      // Get user's team
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      
+      // Get deals data
+      const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+      
+      // Forecast revenue
+      const revenueForecast = await analysisEngine.forecastRevenue(deals, []);
+      
+      // Generate response message
+      let message = `**Revenue Forecast**\n\n`;
+      message += `📊 **Current Month:** $${revenueForecast.currentMonth.toLocaleString()}\n`;
+      message += `🔮 **Next Month:** $${revenueForecast.nextMonth.toLocaleString()}\n`;
+      message += `📈 **Next Quarter:** $${revenueForecast.nextQuarter.toLocaleString()}\n`;
+      message += `🎯 **Confidence:** ${revenueForecast.confidence.toFixed(0)}%\n\n`;
+      
+      if (revenueForecast.factors.length > 0) {
+        message += `📋 **Key Factors:**\n`;
+        revenueForecast.factors.forEach(factor => {
+          const emoji = factor.impact === 'positive' ? '✅' : factor.impact === 'negative' ? '❌' : '➡️';
+          message += `${emoji} ${factor.factor}: ${factor.description}\n`;
+        });
+      }
+      
+      message += `\n📈 **Trends:**\n`;
+      revenueForecast.trends.forEach(trend => {
+        const growthEmoji = trend.growth > 0 ? '📈' : trend.growth < 0 ? '📉' : '➡️';
+        message += `${growthEmoji} ${trend.period}: $${trend.revenue.toLocaleString()} (${trend.growth > 0 ? '+' : ''}${trend.growth.toFixed(1)}%)\n`;
+      });
+      
+      return {
+        message,
+        data: {
+          records: revenueForecast.trends.map(trend => ({
+            id: trend.period,
+            _id: trend.period,
+            name: trend.period,
+            revenue: trend.revenue,
+            growth: trend.growth,
+            type: 'revenue_forecast'
+          })),
+          type: 'revenue_forecast',
+          count: revenueForecast.trends.length,
+          displayFormat: 'analysis'
+        },
+        suggestions: conversationManager.getSuggestions(),
+        conversationContext: {
+          phase: conversationManager.getState().currentContext.conversationPhase.current,
+          action: 'analyze_data',
+          referringTo: 'new_request'
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Revenue forecast failed:', error);
+      return {
+        message: "I encountered an error while forecasting revenue. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'analyze_data',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleMarketOpportunityAnalysis(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    try {
+      console.log('🎯 Analyzing market opportunities...');
+      
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      const { analysisEngine } = await import('@/lib/analysisEngine');
+      
+      // Get user's team
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      
+      // Get all data
+      const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+      const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+      const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+      
+      // Analyze opportunities
+      const opportunityAnalysis = await analysisEngine.analyzeMarketOpportunities(accounts, deals, contacts);
+      
+      // Generate response message
+      let message = `**Market Opportunity Analysis**\n\n`;
+      message += `📊 **Market Overview:**\n`;
+      message += `• Total Opportunity: $${opportunityAnalysis.totalOpportunity.toLocaleString()}\n`;
+      message += `• Addressable Market: $${opportunityAnalysis.addressableMarket.toLocaleString()}\n`;
+      message += `• Current Market Share: ${opportunityAnalysis.marketShare.toFixed(1)}%\n`;
+      message += `• Growth Potential: ${opportunityAnalysis.growthPotential.toFixed(1)}%\n\n`;
+      
+      if (opportunityAnalysis.topOpportunities.length > 0) {
+        message += `🎯 **Top Opportunities:**\n`;
+        opportunityAnalysis.topOpportunities.slice(0, 5).forEach(opp => {
+          message += `• ${opp.accountName}: $${opp.opportunityValue.toLocaleString()} (${opp.probability.toFixed(0)}% probability, ${opp.timeframe})\n`;
+        });
+      }
+      
+      if (opportunityAnalysis.recommendations.length > 0) {
+        message += `\n💡 **Recommendations:**\n`;
+        opportunityAnalysis.recommendations.forEach(rec => {
+          message += `• ${rec}\n`;
+        });
+      }
+      
+      return {
+        message,
+        data: {
+          records: opportunityAnalysis.topOpportunities.map(opp => ({
+            id: opp.accountId,
+            _id: opp.accountId,
+            name: opp.accountName,
+            opportunityValue: opp.opportunityValue,
+            probability: opp.probability,
+            timeframe: opp.timeframe,
+            type: 'market_opportunity'
+          })),
+          type: 'market_opportunity',
+          count: opportunityAnalysis.topOpportunities.length,
+          displayFormat: 'analysis'
+        },
+        suggestions: conversationManager.getSuggestions(),
+        conversationContext: {
+          phase: conversationManager.getState().currentContext.conversationPhase.current,
+          action: 'analyze_data',
+          referringTo: 'new_request'
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Market opportunity analysis failed:', error);
+      return {
+        message: "I encountered an error while analyzing market opportunities. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'analyze_data',
+          referringTo: 'new_request'
+        }
+      };
+    }
   }
 
   private async handleAccountContactAnalysis(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
