@@ -1900,17 +1900,24 @@ Please analyze the ACTUAL file content above and respond based on what you see i
     
     // Check if the user wants to send an email and go directly to email preview
     if (lowerMessage.includes('send') && lowerMessage.includes('email')) {
-      // Extract contact name from the message
-      const contactMatch = message.match(/(?:send|email)\s+(?:to\s+)?([a-z\s]+)/i) ||
-                          message.match(/send.*email.*to\s+([^,\n]+)/i);
+      // Extract contact name from the message - improved pattern matching
+      const contactMatch = message.match(/(?:send|email)\s+(?:to\s+)?([a-z\s]+?)(?:\s+(?:a\s+)?email|\s+email)/i) ||
+                          message.match(/send.*email.*to\s+([^,\n]+)/i) ||
+                          message.match(/(?:send|email)\s+([a-z\s]+?)(?:\s+email|\s+a\s+email)/i) ||
+                          message.match(/([a-z\s]+?)\s+(?:a\s+)?email/i);
       
-      if (contactMatch) {
-        const contactName = contactMatch[1].trim();
-        const matchingContact = contacts.find(contact => {
-          const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
-          return fullName.includes(contactName.toLowerCase()) || 
-                 contactName.toLowerCase().includes(fullName);
-        });
+              if (contactMatch) {
+          const contactName = contactMatch[1].trim();
+          console.log('📧 Email request detected - extracted contact name:', contactName);
+          console.log('📧 Available contacts:', contacts.map(c => `${c.firstName} ${c.lastName}`));
+          
+          const matchingContact = contacts.find(contact => {
+            const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
+            const matches = fullName.includes(contactName.toLowerCase()) || 
+                           contactName.toLowerCase().includes(fullName);
+            console.log(`📧 Checking "${fullName}" against "${contactName}" - matches: ${matches}`);
+            return matches;
+          });
 
         if (matchingContact) {
           // Check if the user provided context for the email content
