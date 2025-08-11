@@ -101,6 +101,8 @@ interface Message {
   partialDetails?: Record<string, string>;
   details?: Record<string, string>;
   data?: FormattedRecord[];
+  chartSpec?: any;
+  enhancedChart?: boolean;
   contactName?: string;
   contactId?: string;
   field?: string;
@@ -1898,6 +1900,78 @@ Please analyze the ACTUAL file content above and respond based on what you see i
       }
     }
     
+    // Check for enhanced chart modification and analysis requests
+    const enhancedChartPatterns = [
+      /(?:change|modify|update|switch|convert)\s+(?:to\s+)?(?:pie|bar|line|area|scatter)\s+(?:chart|graph)/i,
+      /(?:show|hide|toggle)\s+(?:grid|legend|tooltip|animation)/i,
+      /(?:analyze|find|detect)\s+(?:trends?|patterns?|anomalies?|insights?)/i,
+      /(?:export|save|download)\s+(?:as\s+)?(?:png|csv|pdf)/i,
+      /(?:predict|forecast)\s+(?:trends?|future|next)/i,
+      /(?:highlight|emphasize|focus)\s+(?:on|the)/i,
+      /(?:filter|show\s+only|display\s+only)/i,
+      /(?:sort|order|arrange)\s+(?:by|in)/i
+    ];
+
+    const hasEnhancedChartRequest = enhancedChartPatterns.some(pattern => pattern.test(message));
+    
+    if (hasEnhancedChartRequest) {
+      console.log('🚀 Enhanced chart request detected:', message);
+      
+      // Find the most recent chart message
+      const recentChartMessage = messages.findLast(m => m.chartSpec);
+      
+      if (recentChartMessage?.chartSpec) {
+        try {
+          const { enhancedAnalytics } = await import('@/lib/enhancedAnalytics');
+          
+          // Detect the type of request
+          const modificationIntent = enhancedAnalytics.detectModificationIntent(message);
+          const analysisIntent = enhancedAnalytics.detectAnalysisIntent(message);
+          
+          if (modificationIntent.confidence > 0.7) {
+            console.log('🚀 Chart modification request detected:', modificationIntent);
+            const modifiedChart = await enhancedAnalytics.modifyChart(recentChartMessage.chartSpec, message);
+            
+            if (modifiedChart) {
+              return NextResponse.json({
+                message: `I've updated the chart based on your request: "${message}". The chart has been modified with your requested changes.`,
+                chartSpec: modifiedChart,
+                enhancedChart: true
+              });
+            }
+          } else if (analysisIntent.confidence > 0.7) {
+            console.log('🚀 Chart analysis request detected:', analysisIntent);
+            
+            if (analysisIntent.type === 'trend') {
+              const { predictions, confidence } = await enhancedAnalytics.predictTrends(
+                recentChartMessage.chartSpec.data,
+                recentChartMessage.chartSpec.dataSource || 'database',
+                'next 30 days'
+              );
+              
+              return NextResponse.json({
+                message: `Based on the chart data, here are the trend predictions:\n\n${predictions.map((pred, i) => `${i + 1}. ${pred}`).join('\n')}\n\nConfidence level: ${confidence}%`,
+                enhancedChart: true
+              });
+            } else {
+              const { analysis, recommendations } = await enhancedAnalytics.analyzeData(
+                recentChartMessage.chartSpec.data,
+                recentChartMessage.chartSpec.dataSource || 'database',
+                analysisIntent.type
+              );
+              
+              return NextResponse.json({
+                message: `Here's my analysis of the chart data:\n\n**Analysis:**\n${analysis}\n\n**Recommendations:**\n${recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}`,
+                enhancedChart: true
+              });
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error processing enhanced chart request:', error);
+        }
+      }
+    }
+
     // Check if the user wants to send an email and go directly to email preview
     if (lowerMessage.includes('send') && lowerMessage.includes('email')) {
       // Extract contact name from the message - improved pattern matching
@@ -2516,7 +2590,7 @@ Important:
 // Chart generation handler with actual CRM data
 async function handleChart(userMessage: string, sessionFiles: Array<{ name: string; content: string }>, userId?: string) {
   try {
-    console.log('📊 Starting chart generation for user:', userId);
+    console.log('🚀 Starting enhanced chart generation for user:', userId);
     console.log('📜 Session files available:', sessionFiles.length);
     
     if (!userId) {
@@ -2533,12 +2607,12 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     
     // Check if we have uploaded files and user wants file data
     if (sessionFiles && sessionFiles.length > 0 && !wantsCrmData) {
-      console.log('📊 Analyzing uploaded file data for chart generation');
+      console.log('🚀 Analyzing uploaded file data for enhanced chart generation');
       return await generateChartFromFileData(userMessage, sessionFiles);
     }
     
     // Analyze CRM data (either no files or user wants CRM data specifically)
-    console.log('📊 Analyzing CRM data for chart generation');
+    console.log('🚀 Analyzing CRM data for enhanced chart generation');
     
     // Get user's team and data
     const teams = await convex.query(api.crm.getTeamsByUser, { userId });
@@ -2550,7 +2624,7 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     if ((lowerMessage.includes('deal') && lowerMessage.includes('stage')) || 
         (lowerMessage.includes('deal') && (lowerMessage.includes('pipeline') || lowerMessage.includes('progress')))) {
       // Deals by stage chart
-      console.log('📊 Generating deals by stage chart');
+      console.log('🚀 Generating deals by stage chart');
       const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
       
       // Group deals by stage
@@ -2571,7 +2645,7 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       
     } else if (lowerMessage.includes('contact')) {
       // Contacts chart
-      console.log('📊 Generating contacts chart');
+      console.log('🚀 Generating contacts chart');
       const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
       
       // Group contacts by lead status
@@ -2592,7 +2666,7 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       
     } else if (lowerMessage.includes('account')) {
       // Accounts chart
-      console.log('📊 Generating accounts chart');
+      console.log('🚀 Generating accounts chart');
       const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
       
       // Group accounts by industry
@@ -2613,16 +2687,16 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       
     } else {
       // Ask for clarification when chart type is unclear
-      console.log('📊 Chart request unclear, asking for clarification');
+      console.log('🚀 Chart request unclear, asking for clarification');
       
       return {
-        message: "I'd be happy to create a chart for you! To provide the most relevant visualization, could you please specify what type of data you'd like to see? For example:\n\n• **Deals by stage** - Shows your sales pipeline\n• **Contacts by status** - Shows lead progression\n• **Accounts by industry** - Shows customer distribution\n\nOr feel free to describe any other data you'd like visualized from your CRM.",
+        message: "I'd be happy to create an enhanced chart for you! To provide the most relevant visualization with AI-powered insights, could you please specify what type of data you'd like to see? For example:\n\n• **Deals by stage** - Shows your sales pipeline with trend analysis\n• **Contacts by status** - Shows lead progression with conversion insights\n• **Accounts by industry** - Shows customer distribution with market analysis\n\nOr feel free to describe any other data you'd like visualized from your CRM. I'll provide AI-powered insights and interactive features!",
         needsClarification: true,
         action: 'chart_clarification'
       };
     }
     
-    console.log('📊 Chart data generated:', { chartData, chartType, title });
+    console.log('🚀 Enhanced chart data generated:', { chartData, chartType, title });
     
     if (chartData.length === 0) {
       return {
@@ -2636,29 +2710,60 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       (chartData[0].stage ? 'stage' : chartData[0].status ? 'status' : chartData[0].industry ? 'industry' : 'name') : 
       'name';
     
-    // Create chart specification with proper chartConfig
-    const chartSpec = {
+    // Create enhanced chart specification with AI insights
+    const enhancedChartSpec: any = {
       chartType,
       data: chartData,
       title,
+      dataSource: 'database' as const,
+      lastUpdated: new Date().toISOString(),
+      metadata: {
+        totalRecords: chartData.reduce((sum, item) => sum + item.count, 0),
+        dateRange: 'All time',
+        filters: []
+      },
       chartConfig: {
         width: 600,
         height: 400,
         margin: { top: 20, right: 30, left: 20, bottom: 60 },
         xAxis: { dataKey: xAxisDataKey },
-        yAxis: { dataKey: 'count' }
+        yAxis: { dataKey: 'count' },
+        colors: ["#f59e0b", "#3b82f6", "#10b981", "#ef4444", "#8b5cf6"],
+        showGrid: true,
+        showLegend: true,
+        showTooltip: true,
+        animation: true
       }
     };
     
+    // Generate AI insights for the chart
+    try {
+      const { enhancedAnalytics } = await import('@/lib/enhancedAnalytics');
+      const insights = await enhancedAnalytics.generateInsights(
+        chartData,
+        chartType,
+        'database',
+        userMessage
+      );
+      
+      enhancedChartSpec.insights = insights;
+      
+      console.log('🚀 Generated AI insights:', insights.length);
+    } catch (error) {
+      console.error('❌ Error generating insights:', error);
+      // Continue without insights if there's an error
+    }
+    
     return {
-      message: `I've generated a ${title.toLowerCase()} chart for you.`,
-      chartSpec
+      message: `I've generated an enhanced ${title.toLowerCase()} chart for you with AI-powered insights and interactive features! You can now:\n\n• **Modify the chart** - "Change to pie chart" or "Hide grid"\n• **Get deeper insights** - "Analyze trends" or "Find anomalies"\n• **Export data** - "Export as CSV" or "Save as PNG"\n• **Predict trends** - "Forecast next month"\n\nTry asking me to modify or analyze the chart!`,
+      chartSpec: enhancedChartSpec,
+      enhancedChart: true
     };
     
   } catch (error) {
-    console.error('❌ Chart generation error:', error);
+    console.error('❌ Enhanced chart generation error:', error);
     return {
-      message: "I encountered an error while generating the chart. Please try again.",
+      message: "I encountered an error while generating the enhanced chart. Please try again.",
       error: true
     };
   }

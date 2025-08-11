@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import PreviewCard from "@/components/PreviewCard";
 import ChartDisplay from "@/components/ChartDisplay";
+import EnhancedChartDisplay from "@/components/EnhancedChartDisplay";
 
 interface Message {
   id: string;
@@ -36,6 +37,7 @@ interface Message {
       yAxis?: Record<string, unknown>;
     };
   };
+  enhancedChart?: boolean;
   narrative?: string;
   // CRUD operation metadata
   contactId?: string;
@@ -259,6 +261,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
               clarificationQuestion: data.clarificationQuestion,
               fields: data.fields,
               chartSpec: data.chartSpec,
+              enhancedChart: data.enhancedChart,
               narrative: data.narrative,
               // CRUD operation metadata
               contactId: data.contactId,
@@ -328,8 +331,26 @@ export default function Chat({ onAction }: ChatProps = {}) {
         >
           <div className="whitespace-pre-wrap">{message.content}</div>
           
-          {/* Render chart if present */}
-          {message.chartSpec && (
+          {/* Render enhanced chart if present */}
+          {message.chartSpec && message.enhancedChart && (
+            <div className="mt-4">
+              <EnhancedChartDisplay
+                chartSpec={{
+                  ...message.chartSpec,
+                  dataSource: 'database' as const
+                }}
+                narrative={message.narrative}
+                onChartUpdate={handleChartUpdate}
+                onExport={handleChartExport}
+                onShare={handleChartShare}
+                onInsightAction={handleInsightAction}
+                isInteractive={true}
+              />
+            </div>
+          )}
+          
+          {/* Render regular chart if present */}
+          {message.chartSpec && !message.enhancedChart && (
             <div className="mt-4">
               <ChartDisplay
                 chartSpec={message.chartSpec}
@@ -411,6 +432,104 @@ export default function Chat({ onAction }: ChatProps = {}) {
   const handleCancelEmail = () => {
     setEmailDraft(null);
   };
+
+  // Enhanced chart handlers
+  const handleChartUpdate = useCallback(async (newConfig: any) => {
+    console.log('🚀 Chart update requested:', newConfig);
+    
+    // Find the current chart message
+    const currentChartMessage = messages.find(m => m.chartSpec && m.enhancedChart);
+    if (!currentChartMessage) return;
+
+    try {
+      const response = await fetch('/api/enhanced-chart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'modify_chart',
+          chartSpec: currentChartMessage.chartSpec,
+          userRequest: `Update chart with: ${JSON.stringify(newConfig)}`,
+          userId: user?.id
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.modifiedChart) {
+          // Update the chart in the message
+          setMessages(prev => prev.map(m => 
+            m.id === currentChartMessage.id 
+              ? { ...m, chartSpec: result.modifiedChart }
+              : m
+          ));
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error updating chart:', error);
+    }
+  }, [messages, user?.id]);
+
+  const handleChartExport = useCallback(async (format: 'png' | 'csv' | 'pdf') => {
+    console.log('🚀 Chart export requested:', format);
+    
+    const currentChartMessage = messages.find(m => m.chartSpec && m.enhancedChart);
+    if (!currentChartMessage) return;
+
+    try {
+      const response = await fetch('/api/enhanced-chart', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'export',
+          chartSpec: currentChartMessage.chartSpec,
+          exportFormat: format,
+          userId: user?.id
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.exportUrl) {
+          // Create a download link
+          const link = document.createElement('a');
+          link.href = result.exportUrl;
+          link.download = `chart-${Date.now()}.${format}`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      }
+    } catch (error) {
+      console.error('❌ Error exporting chart:', error);
+    }
+  }, [messages, user?.id]);
+
+  const handleChartShare = useCallback(() => {
+    console.log('🚀 Chart share requested');
+    // Implement sharing functionality
+    // For now, just copy the chart URL to clipboard
+    navigator.clipboard.writeText(window.location.href);
+  }, []);
+
+  const handleInsightAction = useCallback(async (insight: any) => {
+    console.log('🚀 Insight action requested:', insight);
+    
+    // Add the insight action as a user message
+    const insightMessage: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: `Analyze this insight: ${insight.title} - ${insight.description}`,
+      timestamp: new Date()
+    };
+    
+    setMessages(prev => [...prev, insightMessage]);
+    
+    // Process the insight request
+    // Process the insight request by adding it to the input and submitting
+    setInput(insightMessage.content);
+    // Note: We'll need to handle this differently since handleSubmit expects a form event
+    // For now, we'll just add the message to the conversation
+  }, []);
 
   const handleFilesProcessed = (files: Array<{
     id: string;
