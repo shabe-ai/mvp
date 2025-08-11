@@ -2,6 +2,7 @@ import { Message } from '@/types/chat';
 import { convex } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
 import { logError } from '@/lib/errorLogger';
+import { getConversationManager } from './conversationManager';
 
 interface UserContext {
   userProfile: {
@@ -877,11 +878,26 @@ export async function handleContactDeleteWithConfirmation(message: string, userI
 
 export async function handleGeneralConversation(message: string, messages: Message[], context: UserContext, userId?: string) {
   try {
-    console.log('💬 Handling general conversation');
+    console.log('💬 Handling general conversation with personality features');
     
     // Get user's data for context
     const actualUserId = userId || context.userProfile?.email || 'unknown';
     console.log('🔍 Getting data for user:', actualUserId);
+    
+    // Get conversation manager for personality features
+    const convManager = getConversationManager(actualUserId, 'session-' + Date.now());
+    
+    // Analyze sentiment
+    const sentiment = await convManager.analyzeSentiment(message, 'general conversation');
+    console.log('😊 Sentiment analysis:', sentiment);
+    
+    // Get user personality
+    const personality = await convManager.getUserPersonality();
+    console.log('👤 User personality:', personality.communicationStyle);
+    
+    // Get proactive suggestions
+    const suggestions = await convManager.getProactiveSuggestions();
+    console.log('💡 Proactive suggestions:', suggestions.length);
     
     const teams = await convex.query(api.crm.getTeamsByUser, { userId: actualUserId });
     console.log('📋 Teams found:', teams.length);
@@ -956,20 +972,36 @@ Respond naturally and conversationally. If the user asks to send an email to som
       model: 'gpt-4'
     });
 
-    const assistantMessage = response.choices[0]?.message?.content || "I'm here to help! What would you like to do?";
+    let assistantMessage = response.choices[0]?.message?.content || "I'm here to help! What would you like to do?";
+
+    // Apply personality to response
+    assistantMessage = await convManager.applyPersonalityToResponse(assistantMessage, sentiment);
+    
+    // Learn from this interaction
+    await convManager.learnFromInteraction(message, assistantMessage, 'general_conversation', sentiment);
+
+    // Prepare suggestions including proactive ones
+    const baseSuggestions = [
+      "View all contacts",
+      "Create a new contact", 
+      "Generate a chart of deals by stage",
+      "Send an email to a contact"
+    ];
+
+    const proactiveSuggestionTexts = suggestions.map(s => s.title);
+    const allSuggestions = [...baseSuggestions, ...proactiveSuggestionTexts].slice(0, 6);
 
     return {
       message: assistantMessage,
-      suggestions: [
-        "View all contacts",
-        "Create a new contact", 
-        "Generate a chart of deals by stage",
-        "Send an email to a contact"
-      ],
+      suggestions: allSuggestions,
       conversationContext: {
         phase: 'general',
         action: 'general_conversation',
         referringTo: 'new_request'
+      },
+      personality: {
+        sentiment: sentiment,
+        proactiveSuggestions: suggestions
       }
     };
     
