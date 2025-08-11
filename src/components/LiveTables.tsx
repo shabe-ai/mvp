@@ -31,8 +31,11 @@ interface DataRecord {
   website?: string;
   stage?: string;
   amount?: number;
+  value?: string | number;
   subject?: string;
   activityType?: string;
+  type?: string;
+  status?: string;
   dueDate?: string;
   [key: string]: unknown;
 }
@@ -71,7 +74,7 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
         email: (record: DataRecord) => record.email || 'N/A',
         company: (record: DataRecord) => record.company || 'N/A',
         title: (record: DataRecord) => record.title || 'N/A',
-        leadStatus: (record: DataRecord) => record.leadStatus || 'new'
+        leadStatus: (record: DataRecord) => record.status || 'new'
       }
     },
     accounts: {
@@ -96,7 +99,7 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
       formatters: {
         name: (record: DataRecord) => record.name || 'N/A',
         stage: (record: DataRecord) => record.stage || 'prospecting',
-        amount: (record: DataRecord) => record.amount ? `$${record.amount.toLocaleString()}` : 'N/A',
+        amount: (record: DataRecord) => record.value ? `$${parseFloat(record.value.toString()).toLocaleString()}` : 'N/A',
         company: (record: DataRecord) => record.company || 'N/A'
       }
     },
@@ -108,7 +111,7 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
       columns: ['subject', 'activityType', 'dueDate'],
       formatters: {
         subject: (record: DataRecord) => record.subject || 'N/A',
-        activityType: (record: DataRecord) => record.activityType || 'task',
+        activityType: (record: DataRecord) => record.type || 'task',
         dueDate: (record: DataRecord) => record.dueDate ? new Date(record.dueDate).toLocaleDateString() : 'N/A'
       }
     }
@@ -252,7 +255,10 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
           </div>
         ) : filteredData.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-gray-500">
-            <currentConfig.icon className="h-8 w-8 mb-2 text-gray-300" />
+            {(() => {
+              const Icon = currentConfig.icon;
+              return <Icon className="h-8 w-8 mb-2 text-gray-300" />;
+            })()}
             <span>No {currentConfig.label.toLowerCase()} found</span>
             {searchTerm && (
               <span className="text-sm mt-1">Try adjusting your search</span>
