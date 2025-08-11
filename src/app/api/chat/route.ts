@@ -6,6 +6,8 @@ import { openaiClient } from "@/lib/openaiClient";
 import { logError, addBreadcrumb } from "@/lib/errorLogger";
 import { getConversationManager, resetConversationManager } from "@/lib/conversationManager";
 import { Message, ConversationResponse } from "@/types/chat";
+import { intentClassifier } from "@/lib/intentClassifier";
+import { intentRouter } from "@/lib/intentRouter";
 
 // Add proper interfaces at the top
 interface UserContext {
@@ -1037,6 +1039,45 @@ async function handleGeneralConversationWithState(message: string, messages: Mes
     if (conversationManager) {
       console.log('🧠 Conversation state:', conversationManager.getState());
       console.log('💡 Suggestions:', conversationManager.getSuggestions());
+    }
+    
+    // Use intent-based processing instead of pattern matching
+    if (conversationManager) {
+      console.log('🧠 Using intent-based processing for:', message);
+      
+      // Classify intent using LLM
+      const intent = await intentClassifier.classifyIntent(message, conversationManager.getState());
+      console.log('🧠 Classified intent:', intent);
+      
+      // Route intent to appropriate handler
+      const response = await intentRouter.routeIntent(intent, conversationManager, {
+        messages,
+        userId: actualUserId,
+        ...context
+      });
+      
+      // Update conversation state with response
+      conversationManager.updateContext(message, response.conversationContext?.action);
+      
+      // Add assistant response to history
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: response.message,
+        timestamp: new Date(),
+        conversationContext: response.conversationContext
+      };
+      conversationManager.addToHistory(assistantMessage);
+      
+      // Return structured response
+      return NextResponse.json({
+        message: response.message,
+        chartSpec: response.chartSpec,
+        enhancedChart: response.enhancedChart,
+        data: response.data,
+        suggestions: response.suggestions,
+        needsClarification: response.needsClarification,
+        conversationContext: response.conversationContext
+      });
     }
     
     const teams = await convex.query(api.crm.getTeamsByUser, { userId: actualUserId });
@@ -3324,3 +3365,4 @@ async function handleActivityDeleteWithConfirmation(message: string, userId: str
     });
   }
 }
+
