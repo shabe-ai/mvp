@@ -119,30 +119,44 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
 
   // Fetch data when activeTable changes
   useEffect(() => {
-    if (!user?.id) return;
+    console.log('🔍 LiveTables useEffect triggered:', { user: user?.id, activeTable });
+    if (!user?.id) {
+      console.log('🔍 No user ID, skipping fetch');
+      return;
+    }
     
+    console.log('🔍 Calling fetchTableData for:', activeTable);
     fetchTableData();
   }, [activeTable, user?.id]);
 
   const fetchTableData = async () => {
-    if (!user?.id) return;
+    console.log('🔍 fetchTableData called for:', activeTable);
+    if (!user?.id) {
+      console.log('🔍 No user ID in fetchTableData');
+      return;
+    }
     
+    console.log('🔍 Starting API call to /api/chat');
     setLoading(true);
     setError(null);
     
     try {
+      const requestBody = {
+        messages: [{ role: 'user', content: `view all ${activeTable}` }],
+        userId: user.id,
+        sessionFiles: [],
+        companyData: {},
+        userData: {}
+      };
+      
+      console.log('🔍 Making API call with body:', requestBody);
+      
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          messages: [{ role: 'user', content: `view all ${activeTable}` }],
-          userId: user.id,
-          sessionFiles: [],
-          companyData: {},
-          userData: {}
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       if (!response.ok) {
