@@ -1,0 +1,310 @@
+import { Message } from '@/types/chat';
+
+export interface ChartContext {
+  chartId: string;
+  chartType: 'line' | 'bar' | 'pie' | 'area' | 'scatter';
+  dataType: 'deals' | 'contacts' | 'accounts' | 'activities';
+  dimension: 'stage' | 'status' | 'industry' | 'type';
+  title: string;
+  lastModified: Date;
+  insights?: any[];
+}
+
+export interface UserPreferences {
+  preferredChartType?: 'line' | 'bar' | 'pie' | 'area' | 'scatter';
+  preferredDataTypes?: string[];
+  analysisDepth: 'basic' | 'detailed' | 'comprehensive';
+  responseStyle: 'concise' | 'detailed' | 'conversational';
+}
+
+export interface ConversationPhase {
+  current: 'exploration' | 'analysis' | 'modification' | 'export' | 'insights';
+  previous?: string;
+  transitions: string[];
+}
+
+export interface ConversationState {
+  currentContext: {
+    activeChart?: ChartContext;
+    lastAction?: string;
+    userGoals?: string[];
+    conversationPhase: ConversationPhase;
+    currentTopic?: string;
+  };
+  memory: {
+    recentTopics: string[];
+    userPreferences: UserPreferences;
+    sessionHistory: Message[];
+    interactionCount: number;
+    sessionStartTime: Date;
+  };
+  suggestions: {
+    nextSteps: string[];
+    relevantFeatures: string[];
+    contextualPrompts: string[];
+  };
+  metadata: {
+    userId: string;
+    sessionId: string;
+    lastActivity: Date;
+  };
+}
+
+export class ConversationManager {
+  private state: ConversationState;
+
+  constructor(userId: string, sessionId: string) {
+    this.state = {
+      currentContext: {
+        conversationPhase: {
+          current: 'exploration',
+          transitions: []
+        }
+      },
+      memory: {
+        recentTopics: [],
+        userPreferences: {
+          analysisDepth: 'detailed',
+          responseStyle: 'conversational'
+        },
+        sessionHistory: [],
+        interactionCount: 0,
+        sessionStartTime: new Date()
+      },
+      suggestions: {
+        nextSteps: [],
+        relevantFeatures: [],
+        contextualPrompts: []
+      },
+      metadata: {
+        userId,
+        sessionId,
+        lastActivity: new Date()
+      }
+    };
+  }
+
+  // Update context based on new message
+  updateContext(message: string, action?: string): void {
+    this.state.metadata.lastActivity = new Date();
+    this.state.memory.interactionCount++;
+    
+    if (action) {
+      this.state.currentContext.lastAction = action;
+    }
+
+    // Update recent topics
+    const topics = this.extractTopics(message);
+    this.state.memory.recentTopics = [
+      ...topics,
+      ...this.state.memory.recentTopics.filter(t => !topics.includes(t))
+    ].slice(0, 5); // Keep last 5 topics
+
+    // Update conversation phase based on action
+    this.updateConversationPhase(action);
+    
+    // Generate contextual suggestions
+    this.generateSuggestions();
+  }
+
+  // Set active chart context
+  setActiveChart(chartContext: ChartContext): void {
+    this.state.currentContext.activeChart = chartContext;
+    this.state.currentContext.currentTopic = `${chartContext.dataType} by ${chartContext.dimension}`;
+    
+    // Update conversation phase to analysis
+    this.updateConversationPhase('chart_created');
+  }
+
+  // Get current state
+  getState(): ConversationState {
+    return { ...this.state };
+  }
+
+  // Add message to session history
+  addToHistory(message: Message): void {
+    this.state.memory.sessionHistory.push(message);
+    
+    // Keep only last 20 messages for context
+    if (this.state.memory.sessionHistory.length > 20) {
+      this.state.memory.sessionHistory = this.state.memory.sessionHistory.slice(-20);
+    }
+  }
+
+  // Check if user is referring to current chart
+  isReferringToCurrentChart(message: string): boolean {
+    if (!this.state.currentContext.activeChart) return false;
+    
+    const chart = this.state.currentContext.activeChart;
+    const lowerMessage = message.toLowerCase();
+    
+    // Check for pronouns and references
+    const pronouns = ['it', 'this', 'that', 'the chart', 'current'];
+    const hasPronoun = pronouns.some(pronoun => lowerMessage.includes(pronoun));
+    
+    // Check for chart type references
+    const chartTypeRefs = [chart.chartType, 'chart', 'graph', 'visualization'];
+    const hasChartTypeRef = chartTypeRefs.some(ref => lowerMessage.includes(ref));
+    
+    // Check for data type references
+    const dataTypeRefs = [chart.dataType, chart.dimension];
+    const hasDataTypeRef = dataTypeRefs.some(ref => lowerMessage.includes(ref));
+    
+    return hasPronoun || (hasChartTypeRef && hasDataTypeRef);
+  }
+
+  // Get contextual suggestions
+  getSuggestions(): string[] {
+    return this.state.suggestions.nextSteps;
+  }
+
+  // Get conversation context for LLM
+  getConversationContext(): string {
+    const chart = this.state.currentContext.activeChart;
+    const recentTopics = this.state.memory.recentTopics.slice(0, 3);
+    
+    let context = `Current conversation context:\n`;
+    context += `- Session: ${this.state.metadata.sessionId}\n`;
+    context += `- Interaction count: ${this.state.memory.interactionCount}\n`;
+    context += `- Current phase: ${this.state.currentContext.conversationPhase.current}\n`;
+    
+    if (chart) {
+      context += `- Active chart: ${chart.title} (${chart.chartType} chart of ${chart.dataType} by ${chart.dimension})\n`;
+    }
+    
+    if (recentTopics.length > 0) {
+      context += `- Recent topics: ${recentTopics.join(', ')}\n`;
+    }
+    
+    if (this.state.currentContext.lastAction) {
+      context += `- Last action: ${this.state.currentContext.lastAction}\n`;
+    }
+    
+    return context;
+  }
+
+  private extractTopics(message: string): string[] {
+    const topics: string[] = [];
+    const lowerMessage = message.toLowerCase();
+    
+    // Extract data types
+    const dataTypes = ['deals', 'contacts', 'accounts', 'activities', 'sales', 'pipeline'];
+    dataTypes.forEach(type => {
+      if (lowerMessage.includes(type)) topics.push(type);
+    });
+    
+    // Extract chart types
+    const chartTypes = ['line', 'bar', 'pie', 'area', 'scatter', 'chart', 'graph'];
+    chartTypes.forEach(type => {
+      if (lowerMessage.includes(type)) topics.push(type);
+    });
+    
+    // Extract dimensions
+    const dimensions = ['stage', 'status', 'industry', 'type', 'trend', 'analysis'];
+    dimensions.forEach(dim => {
+      if (lowerMessage.includes(dim)) topics.push(dim);
+    });
+    
+    return topics;
+  }
+
+  private updateConversationPhase(action?: string): void {
+    const currentPhase = this.state.currentContext.conversationPhase.current;
+    let newPhase = currentPhase;
+    
+    switch (action) {
+      case 'chart_created':
+        newPhase = 'analysis';
+        break;
+      case 'chart_modified':
+        newPhase = 'modification';
+        break;
+      case 'analysis_requested':
+        newPhase = 'insights';
+        break;
+      case 'export_requested':
+        newPhase = 'export';
+        break;
+      case 'new_request':
+        newPhase = 'exploration';
+        break;
+    }
+    
+    if (newPhase !== currentPhase) {
+      this.state.currentContext.conversationPhase.previous = currentPhase;
+      this.state.currentContext.conversationPhase.transitions.push(`${currentPhase} -> ${newPhase}`);
+      this.state.currentContext.conversationPhase.current = newPhase;
+    }
+  }
+
+  private generateSuggestions(): void {
+    const phase = this.state.currentContext.conversationPhase.current;
+    const chart = this.state.currentContext.activeChart;
+    
+    let suggestions: string[] = [];
+    
+    switch (phase) {
+      case 'exploration':
+        suggestions = [
+          "Try asking for 'deals by stage' or 'contacts by status'",
+          "I can create line charts, bar charts, pie charts, and more",
+          "What type of data would you like to explore?"
+        ];
+        break;
+        
+      case 'analysis':
+        if (chart) {
+          suggestions = [
+            `Analyze trends in the ${chart.dataType} data`,
+            `Find anomalies or patterns`,
+            `Export the ${chart.chartType} chart`,
+            `Modify the chart type or settings`
+          ];
+        }
+        break;
+        
+      case 'modification':
+        suggestions = [
+          "Change the chart type",
+          "Adjust colors or styling",
+          "Add more data dimensions",
+          "Export the modified chart"
+        ];
+        break;
+        
+      case 'insights':
+        suggestions = [
+          "Get deeper analysis",
+          "Predict future trends",
+          "Compare with other data",
+          "Export insights as report"
+        ];
+        break;
+        
+      case 'export':
+        suggestions = [
+          "Export as PNG, CSV, or PDF",
+          "Share the chart",
+          "Create a report",
+          "Explore other data"
+        ];
+        break;
+    }
+    
+    this.state.suggestions.nextSteps = suggestions;
+  }
+}
+
+// Singleton instance for the current session
+let conversationManager: ConversationManager | null = null;
+
+export function getConversationManager(userId: string, sessionId: string): ConversationManager {
+  if (!conversationManager) {
+    conversationManager = new ConversationManager(userId, sessionId);
+  }
+  return conversationManager;
+}
+
+export function resetConversationManager(): void {
+  conversationManager = null;
+} 

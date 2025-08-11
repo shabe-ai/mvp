@@ -4,6 +4,8 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { openaiClient } from "@/lib/openaiClient";
 import { logError, addBreadcrumb } from "@/lib/errorLogger";
+import { getConversationManager, resetConversationManager } from "@/lib/conversationManager";
+import { Message, ConversationResponse } from "@/types/chat";
 
 // Add proper interfaces at the top
 interface UserContext {
@@ -92,29 +94,7 @@ interface DatabaseOperationResult {
 }
 
 // Convex client is now imported from lib/convex
-
-interface Message {
-  role: string;
-  content: string;
-  action?: string;
-  objectType?: string;
-  partialDetails?: Record<string, string>;
-  details?: Record<string, string>;
-  data?: FormattedRecord[];
-  chartSpec?: any;
-  enhancedChart?: boolean;
-  contactName?: string;
-  contactId?: string;
-  field?: string;
-  value?: string;
-  contactEmail?: string;
-  accountId?: string;
-  accountName?: string;
-  dealId?: string;
-  dealName?: string;
-  activityId?: string;
-  activitySubject?: string;
-}
+// Message interface is now imported from types/chat
 
 // Fast pattern matching for common intents (0-5ms latency)
 const fastIntentPatterns = {
@@ -1047,11 +1027,17 @@ async function handleChartGeneration(message: string, entities: Record<string, u
   return NextResponse.json(result);
 }
 
-async function handleGeneralConversation(message: string, messages: Message[], context: UserContext, userId?: string) {
+async function handleGeneralConversationWithState(message: string, messages: Message[], context: UserContext, userId?: string, conversationManager?: any) {
   try {
     // Get user's data for context
     const actualUserId = userId || context.userProfile?.email || 'unknown';
     console.log('🔍 Getting data for user:', actualUserId);
+    
+    // Log conversation state
+    if (conversationManager) {
+      console.log('🧠 Conversation state:', conversationManager.getState());
+      console.log('💡 Suggestions:', conversationManager.getSuggestions());
+    }
     
     const teams = await convex.query(api.crm.getTeamsByUser, { userId: actualUserId });
     console.log('📋 Teams found:', teams.length);
@@ -2043,6 +2029,11 @@ Please analyze the ACTUAL file content above and respond based on what you see i
   }
 }
 
+// Backward compatibility function
+async function handleGeneralConversation(message: string, messages: Message[], context: UserContext, userId?: string) {
+  return handleGeneralConversationWithState(message, messages, context, userId);
+}
+
 // Validation functions
 function validateRequiredFields(data: Record<string, unknown>, fields: string[]) {
   for (const field of fields) {
@@ -2828,6 +2819,21 @@ export async function POST(req: NextRequest) {
 
     const lastUserMessage = messages[messages.length - 1].content;
     
+    // Initialize conversation manager
+    const sessionId = `${userId}-${Date.now()}`;
+    const conversationManager = getConversationManager(userId, sessionId);
+    
+    // Add user message to conversation history
+    const userMessage: Message = {
+      role: 'user',
+      content: lastUserMessage,
+      timestamp: new Date()
+    };
+    conversationManager.addToHistory(userMessage);
+    
+    // Update conversation context
+    conversationManager.updateContext(lastUserMessage);
+    
     // Create context for LLM classification
     const context: UserContext = {
       userProfile: {
@@ -2845,10 +2851,10 @@ export async function POST(req: NextRequest) {
     };
 
     console.log('Chat API received user context:', context);
+    console.log('Conversation context:', conversationManager.getConversationContext());
 
-    // Use LLM-driven approach instead of rigid rule-based routing
-    // Let the LLM handle the conversation naturally and decide what actions to take
-    return await handleGeneralConversation(lastUserMessage, messages, context, userId);
+    // Use enhanced conversation handling with state management
+    return await handleGeneralConversationWithState(lastUserMessage, messages, context, userId, conversationManager);
 
   } catch (error) {
     console.error('❌ Chat API error:', error);
