@@ -3,6 +3,9 @@ import { convex } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
 import { logError } from '@/lib/errorLogger';
 import { getConversationManager } from './conversationManager';
+import { performanceOptimizer } from './performanceOptimizer';
+import { errorHandler } from './errorHandler';
+import { edgeCaseHandler } from './edgeCaseHandler';
 
 interface UserContext {
   userProfile: {
@@ -877,12 +880,61 @@ export async function handleContactDeleteWithConfirmation(message: string, userI
 }
 
 export async function handleGeneralConversation(message: string, messages: Message[], context: UserContext, userId?: string) {
+  const startTime = Date.now();
+  let retryCount = 0;
+  
   try {
-    console.log('💬 Handling general conversation with personality features');
+    console.log('💬 Handling general conversation with Phase 5 optimizations');
     
     // Get user's data for context
     const actualUserId = userId || context.userProfile?.email || 'unknown';
     console.log('🔍 Getting data for user:', actualUserId);
+    
+    // Phase 5: Edge case handling
+    const edgeCaseContext = {
+      userId: actualUserId,
+      operation: 'general_conversation',
+      input: message,
+      timestamp: new Date(),
+      retryCount
+    };
+    
+    const edgeCaseResult = await edgeCaseHandler.checkEdgeCases(message, edgeCaseContext);
+    if (edgeCaseResult.handled) {
+      console.log('🔧 Edge case handled:', edgeCaseResult.result);
+      return {
+        message: edgeCaseResult.result.message,
+        suggestions: edgeCaseResult.result.suggestions || [],
+        conversationContext: {
+          phase: 'edge_case',
+          action: 'edge_case_handled',
+          referringTo: 'new_request'
+        },
+        performance: {
+          responseTime: Date.now() - startTime,
+          optimization: 'edge_case_handling'
+        }
+      };
+    }
+    
+    // Phase 5: Input validation
+    const validation = edgeCaseHandler.validateInput(message);
+    if (!validation.isValid) {
+      console.log('⚠️ Input validation failed:', validation.issues);
+      return {
+        message: `I found some issues with your input: ${validation.issues.join(', ')}. ${validation.suggestions.join(' ')}`,
+        suggestions: validation.suggestions,
+        conversationContext: {
+          phase: 'validation',
+          action: 'input_validation_failed',
+          referringTo: 'new_request'
+        },
+        performance: {
+          responseTime: Date.now() - startTime,
+          optimization: 'input_validation'
+        }
+      };
+    }
     
     // Get conversation manager for personality features
     const convManager = getConversationManager(actualUserId, 'session-' + Date.now());
@@ -899,18 +951,25 @@ export async function handleGeneralConversation(message: string, messages: Messa
     const suggestions = await convManager.getProactiveSuggestions();
     console.log('💡 Proactive suggestions:', suggestions.length);
     
-    const teams = await convex.query(api.crm.getTeamsByUser, { userId: actualUserId });
-    console.log('📋 Teams found:', teams.length);
+    // Phase 5: Performance optimization - batch CRM queries
+    const crmData = await performanceOptimizer.batchCrmQueries(actualUserId, [
+      { type: 'contacts' },
+      { type: 'accounts' },
+      { type: 'deals' },
+      { type: 'activities' }
+    ]);
     
-    const teamId = teams.length > 0 ? teams[0]._id : 'default';
-    console.log('🏢 Using team ID:', teamId);
+    const contacts = crmData.contacts || [];
+    const accounts = crmData.accounts || [];
+    const deals = crmData.deals || [];
+    const activities = crmData.activities || [];
     
-    const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
-    console.log('👥 Contacts found:', contacts.length);
-    
-    const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
-    const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
-    const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+    console.log('📋 CRM data loaded:', {
+      contacts: contacts.length,
+      accounts: accounts.length,
+      deals: deals.length,
+      activities: activities.length
+    });
 
     const systemPrompt = `You are Shabe AI, a helpful and conversational CRM assistant. You have access to the user's CRM data and can help with:
 
@@ -991,6 +1050,10 @@ Respond naturally and conversationally. If the user asks to send an email to som
     const proactiveSuggestionTexts = suggestions.map(s => s.title);
     const allSuggestions = [...baseSuggestions, ...proactiveSuggestionTexts].slice(0, 6);
 
+    // Phase 5: Performance metrics
+    const responseTime = Date.now() - startTime;
+    const performanceSummary = performanceOptimizer.getPerformanceSummary();
+
     return {
       message: assistantMessage,
       suggestions: allSuggestions,
@@ -1002,14 +1065,40 @@ Respond naturally and conversationally. If the user asks to send an email to som
       personality: {
         sentiment: sentiment,
         proactiveSuggestions: suggestions
+      },
+      performance: {
+        responseTime,
+        cacheHitRate: performanceSummary.cacheHitRate,
+        memoryUsage: performanceSummary.memoryUsage,
+        optimization: 'phase_5_optimized'
       }
     };
     
   } catch (error) {
     console.error('General conversation error:', error);
+    
+    // Phase 5: Enhanced error handling
+    const errorContext = {
+      userId: userId || 'unknown',
+      operation: 'general_conversation',
+      timestamp: new Date(),
+      userMessage: message,
+      systemState: { messages: messages.length, context },
+      retryCount
+    };
+    
+    const errorResponse = await errorHandler.handleError(error as Error, errorContext);
+    
     return {
-      message: "I encountered an error while processing your request. Please try again.",
-      error: true
+      message: errorResponse.userFriendlyMessage,
+      suggestions: errorResponse.suggestions,
+      error: true,
+      errorCode: errorResponse.errorCode,
+      retryable: errorResponse.retryable,
+      performance: {
+        responseTime: Date.now() - startTime,
+        optimization: 'error_handling'
+      }
     };
   }
 } 
