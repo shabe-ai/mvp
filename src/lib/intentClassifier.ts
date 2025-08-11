@@ -201,10 +201,22 @@ Be specific and accurate. If the user is referring to an existing chart (using "
 If the user mentions a chart type (line, bar, pie, etc.), extract it as chartType.
 If the user mentions data types (deals, contacts, accounts), extract them as dataType.
 If the user mentions dimensions (stage, status, industry), extract them as dimension.
+
+**Important Analysis Types:**
+- **Account Analysis**: "which account has the most contacts" → action: "analyze_data", dataType: "accounts", target: "account with most contacts"
+- **Relationship Analysis**: "show contacts by account" → action: "create_chart", dataType: "contacts", dimension: "company"
+- **Comparative Analysis**: "compare accounts" → action: "analyze_data", dataType: "accounts", target: "account comparison"
+
+**Query Understanding:**
+- "which account has the most contacts" = Analyze accounts to find the one with highest contact count
+- "show contacts by account" = Create chart showing contacts grouped by their company/account
+- "accounts with most deals" = Analyze accounts to find those with highest deal count
+
 For contact updates, extract:
 - contactName: the name of the contact being updated
 - field: the field being updated (email, phone, title, company, etc.)
 - value: the new value for the field
+
 Use the extracted entities to populate the appropriate fields (contactName, field, value, etc.).
 `;
   }
