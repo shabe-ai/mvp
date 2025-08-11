@@ -1767,6 +1767,78 @@ Please analyze the ACTUAL file content above and respond based on what you see i
       }
     }
     
+    // Check for enhanced chart modification and analysis requests FIRST
+    const enhancedChartPatterns = [
+      /(?:change|modify|update|switch|convert)\s+(?:to\s+)?(?:pie|bar|line|area|scatter)\s+(?:chart|graph)/i,
+      /(?:show|hide|toggle)\s+(?:grid|legend|tooltip|animation)/i,
+      /(?:analyze|find|detect)\s+(?:trends?|patterns?|anomalies?|insights?)/i,
+      /(?:export|save|download)\s+(?:as\s+)?(?:png|csv|pdf)/i,
+      /(?:predict|forecast)\s+(?:trends?|future|next)/i,
+      /(?:highlight|emphasize|focus)\s+(?:on|the)/i,
+      /(?:filter|show\s+only|display\s+only)/i,
+      /(?:sort|order|arrange)\s+(?:by|in)/i
+    ];
+
+    const hasEnhancedChartRequest = enhancedChartPatterns.some(pattern => pattern.test(message));
+    
+    if (hasEnhancedChartRequest) {
+      console.log('🚀 Enhanced chart request detected:', message);
+      
+      // Find the most recent chart message
+      const recentChartMessage = messages.findLast(m => m.chartSpec);
+      
+      if (recentChartMessage?.chartSpec) {
+        try {
+          const { enhancedAnalytics } = await import('@/lib/enhancedAnalytics');
+          
+          // Detect the type of request
+          const modificationIntent = enhancedAnalytics.detectModificationIntent(message);
+          const analysisIntent = enhancedAnalytics.detectAnalysisIntent(message);
+          
+          if (modificationIntent.confidence > 0.7) {
+            console.log('🚀 Chart modification request detected:', modificationIntent);
+            const modifiedChart = await enhancedAnalytics.modifyChart(recentChartMessage.chartSpec, message);
+            
+            if (modifiedChart) {
+              return NextResponse.json({
+                message: `I've updated the chart based on your request: "${message}". The chart has been modified with your requested changes.`,
+                chartSpec: modifiedChart,
+                enhancedChart: true
+              });
+            }
+          } else if (analysisIntent.confidence > 0.7) {
+            console.log('🚀 Chart analysis request detected:', analysisIntent);
+            
+            if (analysisIntent.type === 'trend') {
+              const { predictions, confidence } = await enhancedAnalytics.predictTrends(
+                recentChartMessage.chartSpec.data,
+                recentChartMessage.chartSpec.dataSource || 'database',
+                'next 30 days'
+              );
+              
+              return NextResponse.json({
+                message: `Based on the chart data, here are the trend predictions:\n\n${predictions.map((pred, i) => `${i + 1}. ${pred}`).join('\n')}\n\nConfidence level: ${confidence}%`,
+                enhancedChart: true
+              });
+            } else {
+              const { analysis, recommendations } = await enhancedAnalytics.analyzeData(
+                recentChartMessage.chartSpec.data,
+                recentChartMessage.chartSpec.dataSource || 'database',
+                analysisIntent.type
+              );
+              
+              return NextResponse.json({
+                message: `Here's my analysis of the chart data:\n\n**Analysis:**\n${analysis}\n\n**Recommendations:**\n${recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}`,
+                enhancedChart: true
+              });
+            }
+          }
+        } catch (error) {
+          console.error('❌ Error processing enhanced chart request:', error);
+        }
+      }
+    }
+
     // Check if the user wants to create a chart
     if (lowerMessage.includes('chart') || lowerMessage.includes('graph') || lowerMessage.includes('visualization') ||
         (lowerMessage.includes('deals') && lowerMessage.includes('stage')) ||
@@ -1900,77 +1972,7 @@ Please analyze the ACTUAL file content above and respond based on what you see i
       }
     }
     
-    // Check for enhanced chart modification and analysis requests
-    const enhancedChartPatterns = [
-      /(?:change|modify|update|switch|convert)\s+(?:to\s+)?(?:pie|bar|line|area|scatter)\s+(?:chart|graph)/i,
-      /(?:show|hide|toggle)\s+(?:grid|legend|tooltip|animation)/i,
-      /(?:analyze|find|detect)\s+(?:trends?|patterns?|anomalies?|insights?)/i,
-      /(?:export|save|download)\s+(?:as\s+)?(?:png|csv|pdf)/i,
-      /(?:predict|forecast)\s+(?:trends?|future|next)/i,
-      /(?:highlight|emphasize|focus)\s+(?:on|the)/i,
-      /(?:filter|show\s+only|display\s+only)/i,
-      /(?:sort|order|arrange)\s+(?:by|in)/i
-    ];
 
-    const hasEnhancedChartRequest = enhancedChartPatterns.some(pattern => pattern.test(message));
-    
-    if (hasEnhancedChartRequest) {
-      console.log('🚀 Enhanced chart request detected:', message);
-      
-      // Find the most recent chart message
-      const recentChartMessage = messages.findLast(m => m.chartSpec);
-      
-      if (recentChartMessage?.chartSpec) {
-        try {
-          const { enhancedAnalytics } = await import('@/lib/enhancedAnalytics');
-          
-          // Detect the type of request
-          const modificationIntent = enhancedAnalytics.detectModificationIntent(message);
-          const analysisIntent = enhancedAnalytics.detectAnalysisIntent(message);
-          
-          if (modificationIntent.confidence > 0.7) {
-            console.log('🚀 Chart modification request detected:', modificationIntent);
-            const modifiedChart = await enhancedAnalytics.modifyChart(recentChartMessage.chartSpec, message);
-            
-            if (modifiedChart) {
-              return NextResponse.json({
-                message: `I've updated the chart based on your request: "${message}". The chart has been modified with your requested changes.`,
-                chartSpec: modifiedChart,
-                enhancedChart: true
-              });
-            }
-          } else if (analysisIntent.confidence > 0.7) {
-            console.log('🚀 Chart analysis request detected:', analysisIntent);
-            
-            if (analysisIntent.type === 'trend') {
-              const { predictions, confidence } = await enhancedAnalytics.predictTrends(
-                recentChartMessage.chartSpec.data,
-                recentChartMessage.chartSpec.dataSource || 'database',
-                'next 30 days'
-              );
-              
-              return NextResponse.json({
-                message: `Based on the chart data, here are the trend predictions:\n\n${predictions.map((pred, i) => `${i + 1}. ${pred}`).join('\n')}\n\nConfidence level: ${confidence}%`,
-                enhancedChart: true
-              });
-            } else {
-              const { analysis, recommendations } = await enhancedAnalytics.analyzeData(
-                recentChartMessage.chartSpec.data,
-                recentChartMessage.chartSpec.dataSource || 'database',
-                analysisIntent.type
-              );
-              
-              return NextResponse.json({
-                message: `Here's my analysis of the chart data:\n\n**Analysis:**\n${analysis}\n\n**Recommendations:**\n${recommendations.map((rec, i) => `${i + 1}. ${rec}`).join('\n')}`,
-                enhancedChart: true
-              });
-            }
-          }
-        } catch (error) {
-          console.error('❌ Error processing enhanced chart request:', error);
-        }
-      }
-    }
 
     // Check if the user wants to send an email and go directly to email preview
     if (lowerMessage.includes('send') && lowerMessage.includes('email')) {
