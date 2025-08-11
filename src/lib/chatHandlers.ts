@@ -49,6 +49,7 @@ interface DatabaseRecord {
 
 interface FormattedRecord {
   id: string;
+  _id: string; // Add _id for LiveTables compatibility
   name: string;
   email: string;
   phone: string;
@@ -625,6 +626,7 @@ function getFilterInfo(userMessage: string): string | null {
 function formatRecord(record: DatabaseRecord, dataType: string): FormattedRecord {
   const baseRecord = {
     id: record._id,
+    _id: record._id, // Add _id for LiveTables compatibility
     created: new Date(record._creationTime).toLocaleDateString(),
     name: '',
     email: '',
@@ -715,92 +717,14 @@ function getClarificationMessage(dataType: string, records: DatabaseRecord[]): s
   return `I found ${records.length} ${dataType}. Could you be more specific? For example, you could search by name, company, or other details. Here are some examples: ${sampleNames.join(', ')}`;
 }
 
+// DEPRECATED: This function is replaced by LLM-based intent classification
+// The new implementation is in intentRouter.ts -> CrudIntentHandler -> handleContactUpdate
 export async function handleContactUpdateWithConfirmation(message: string, userId: string) {
-  try {
-    console.log('🔍 Starting contact update for message:', message);
-    console.log('👤 User ID:', userId);
-    
-    // Extract contact name and field updates from the message
-    const lowerMessage = message.toLowerCase();
-    
-    // Extract name (look for patterns like "john smith", "john", "smith")
-    // Handle both uppercase and lowercase names
-    const nameMatch = message.match(/\b([A-Za-z]+)\s+([A-Za-z]+)\b/) || 
-                     message.match(/\b([A-Za-z]+)\b/);
-    const contactName = nameMatch ? nameMatch[0] : null;
-    
-    // Extract field and value (e.g., "email to johnsmith@acme.com")
-    const fieldMatch = lowerMessage.match(/(email|phone|title|company)\s+to\s+([^\s]+)/);
-    const field = fieldMatch ? fieldMatch[1] : null;
-    const value = fieldMatch ? fieldMatch[2] : null;
-    
-    console.log('📝 Extracted data:', { contactName, field, value });
-    
-    if (!contactName || !field || !value) {
-      console.log('❌ Missing required data for contact update');
-      return {
-        message: "I couldn't understand the update request. Please specify the contact name and what field to update. For example: 'update john smith's email to johnsmith@acme.com'",
-        error: true
-      };
-    }
-    
-    // Find the contact in the database
-    console.log('🔍 Looking up teams for user...');
-    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
-    console.log('📋 Teams found:', teams.length);
-    
-    const teamId = teams.length > 0 ? teams[0]._id : 'default';
-    console.log('🏢 Using team ID:', teamId);
-    
-    console.log('🔍 Looking up contacts for team...');
-    const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
-    console.log('👥 Contacts found:', contacts.length);
-    console.log('📋 Contact names:', contacts.map(c => `${c.firstName} ${c.lastName}`));
-    
-    const matchingContact = contacts.find(contact => {
-      const contactFullName = contact.firstName && contact.lastName 
-        ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
-        : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
-      const searchName = contactName.toLowerCase();
-      
-      const matches = contactFullName.includes(searchName) || 
-             searchName.includes(contactFullName) ||
-             contactFullName.split(' ').some((part: string) => searchName.includes(part)) ||
-             searchName.split(' ').some((part: string) => contactFullName.includes(part));
-      
-      console.log(`🔍 Checking "${contactFullName}" against "${searchName}": ${matches}`);
-      return matches;
-    });
-    
-    if (!matchingContact) {
-      console.log('❌ No matching contact found');
-      return {
-        message: `I couldn't find a contact named "${contactName}" in your database. Please check the spelling or create the contact first.`,
-        error: true
-      };
-    }
-    
-    console.log('✅ Found matching contact:', matchingContact);
-    
-    // Ask for confirmation before updating
-    const confirmationMessage = `Please confirm the contact update:\n\n**Contact:** ${matchingContact.firstName} ${matchingContact.lastName}\n**Field:** ${field}\n**New Value:** ${value}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
-    
-    return {
-      message: confirmationMessage,
-      action: "confirm_update",
-      contactId: matchingContact._id,
-      field: field,
-      value: value,
-      contactName: `${matchingContact.firstName} ${matchingContact.lastName}`
-    };
-    
-  } catch (error) {
-    console.error('Contact update failed:', error);
-    return {
-      message: "I encountered an error while processing the contact update. Please try again.",
-      error: true
-    };
-  }
+  console.log('⚠️ Using deprecated regex-based contact update handler');
+  return {
+    message: "This contact update method is deprecated. Please use the LLM-based system.",
+    error: true
+  };
 }
 
 export async function handleContactDeleteWithConfirmation(message: string, userId: string) {

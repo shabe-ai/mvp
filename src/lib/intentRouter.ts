@@ -183,9 +183,7 @@ export class CrudIntentHandler implements IntentHandler {
         };
         
       case 'update_contact':
-        const { handleContactUpdateWithConfirmation } = await import('@/lib/chatHandlers');
-        handlerFunction = handleContactUpdateWithConfirmation;
-        break;
+        return await this.handleContactUpdate(intent, conversationManager, context);
         
       case 'delete_contact':
         const { handleContactDeleteWithConfirmation } = await import('@/lib/chatHandlers');
@@ -226,6 +224,106 @@ export class CrudIntentHandler implements IntentHandler {
         referringTo: intent.context.referringTo
       }
     };
+  }
+
+  private async handleContactUpdate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('👤 Handling LLM-based contact update with intent:', intent);
+    
+    // Use LLM-extracted entities instead of regex
+    const contactName = intent.entities.contactName;
+    const field = intent.entities.field;
+    const value = intent.entities.value;
+    
+    console.log('📝 LLM-extracted data:', { contactName, field, value });
+    
+    if (!contactName || !field || !value) {
+      console.log('❌ Missing required data from LLM extraction');
+      return {
+        message: "I couldn't understand the update request. Please specify the contact name and what field to update. For example: 'update john smith's email to johnsmith@acme.com'",
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'update_contact',
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
+    try {
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Find the contact in the database
+      console.log('🔍 Looking up teams for user...');
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      console.log('📋 Teams found:', teams.length);
+      
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      console.log('🏢 Using team ID:', teamId);
+      
+      console.log('🔍 Looking up contacts for team...');
+      const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+      console.log('👥 Contacts found:', contacts.length);
+      console.log('📋 Contact names:', contacts.map(c => `${c.firstName} ${c.lastName}`));
+      
+      const matchingContact = contacts.find(contact => {
+        const contactFullName = contact.firstName && contact.lastName 
+          ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
+          : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
+        const searchName = contactName.toLowerCase();
+        
+        const matches = contactFullName.includes(searchName) || 
+               searchName.includes(contactFullName) ||
+               contactFullName.split(' ').some((part: string) => searchName.includes(part)) ||
+               searchName.split(' ').some((part: string) => contactFullName.includes(part));
+        
+        console.log(`🔍 Checking "${contactFullName}" against "${searchName}": ${matches}`);
+        return matches;
+      });
+      
+      if (!matchingContact) {
+        console.log('❌ No matching contact found');
+        return {
+          message: `I couldn't find a contact named "${contactName}" in your database. Please check the spelling or create the contact first.`,
+          conversationContext: {
+            phase: 'error',
+            action: 'update_contact',
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
+      console.log('✅ Found matching contact:', matchingContact);
+      
+      // Ask for confirmation before updating
+      const confirmationMessage = `Please confirm the contact update:\n\n**Contact:** ${matchingContact.firstName} ${matchingContact.lastName}\n**Field:** ${field}\n**New Value:** ${value}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+      return {
+        message: confirmationMessage,
+        action: "confirm_update",
+        contactId: matchingContact._id,
+        field: field,
+        value: value,
+        contactName: `${matchingContact.firstName} ${matchingContact.lastName}`,
+        conversationContext: {
+          phase: 'confirmation',
+          action: 'update_contact',
+          referringTo: 'new_request'
+        }
+      };
+      
+    } catch (error) {
+      console.error('Contact update failed:', error);
+      return {
+        message: "I encountered an error while processing the contact update. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'update_contact',
+          referringTo: 'new_request'
+        }
+      };
+    }
   }
 }
 

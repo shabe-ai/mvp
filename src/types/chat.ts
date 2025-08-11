@@ -44,4 +44,10 @@ export interface ConversationResponse {
   };
   error?: boolean;
   needsClarification?: boolean;
+  // CRUD operation fields
+  action?: string;
+  contactId?: string;
+  field?: string;
+  value?: string;
+  contactName?: string;
 } 

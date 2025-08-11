@@ -201,6 +201,10 @@ Be specific and accurate. If the user is referring to an existing chart (using "
 If the user mentions a chart type (line, bar, pie, etc.), extract it as chartType.
 If the user mentions data types (deals, contacts, accounts), extract them as dataType.
 If the user mentions dimensions (stage, status, industry), extract them as dimension.
+For contact updates, extract:
+- contactName: the name of the contact being updated
+- field: the field being updated (email, phone, title, company, etc.)
+- value: the new value for the field
 Use the extracted entities to populate the appropriate fields (contactName, field, value, etc.).
 `;
   }
