@@ -151,9 +151,20 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
 
       const result = await response.json();
       
+      console.log('🔍 LiveTables API response:', result);
+      console.log('🔍 LiveTables data structure:', {
+        hasData: !!result.data,
+        hasRecords: !!result.data?.records,
+        isArray: Array.isArray(result.data?.records),
+        recordCount: result.data?.records?.length || 0,
+        dataType: result.data?.type
+      });
+      
       if (result.data && Array.isArray(result.data.records)) {
+        console.log('🔍 Setting data with records:', result.data.records);
         setData(result.data.records);
       } else {
+        console.log('🔍 No valid data found, setting empty array');
         setData([]);
       }
     } catch (err) {
@@ -166,6 +177,14 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
   };
 
   // Filter data based on search term
+  console.log('🔍 LiveTables current state:', {
+    dataLength: data.length,
+    activeTable,
+    searchTerm,
+    loading,
+    error
+  });
+  
   const filteredData = data.filter(record => {
     if (!searchTerm) return true;
     
