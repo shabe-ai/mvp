@@ -204,11 +204,19 @@ If the user mentions dimensions (stage, status, industry), extract them as dimen
 
 **Important Analysis Types:**
 - **Account Analysis**: "which account has the most contacts" → action: "analyze_data", dataType: "accounts", target: "account with most contacts"
+- **Sales Pipeline Analysis**: "analyze sales pipeline" → action: "analyze_data", dataType: "deals", target: "pipeline analysis"
+- **Churn Analysis**: "predict customer churn" → action: "analyze_data", dataType: "contacts", target: "churn prediction"
+- **Revenue Forecasting**: "forecast revenue" → action: "analyze_data", dataType: "deals", target: "revenue forecast"
+- **Market Opportunity**: "analyze market opportunities" → action: "analyze_data", dataType: "accounts", target: "market opportunity analysis"
 - **Relationship Analysis**: "show contacts by account" → action: "create_chart", dataType: "contacts", dimension: "company"
 - **Comparative Analysis**: "compare accounts" → action: "analyze_data", dataType: "accounts", target: "account comparison"
 
 **Query Understanding:**
 - "which account has the most contacts" = Analyze accounts to find the one with highest contact count
+- "analyze sales pipeline" = Comprehensive analysis of deal stages, conversion rates, and sales velocity
+- "predict customer churn" = Identify at-risk customers and calculate churn probability
+- "forecast revenue" = Predict future revenue based on historical trends and current pipeline
+- "analyze market opportunities" = Identify top accounts and market expansion potential
 - "show contacts by account" = Create chart showing contacts grouped by their company/account
 - "accounts with most deals" = Analyze accounts to find those with highest deal count
 
