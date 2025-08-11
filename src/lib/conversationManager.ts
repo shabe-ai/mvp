@@ -1,4 +1,5 @@
 import { Message } from '@/types/chat';
+import { personalityEngine, UserPersonality, SentimentAnalysis, ProactiveSuggestion } from './personalityEngine';
 
 export interface ChartContext {
   chartId: string;
@@ -292,6 +293,85 @@ export class ConversationManager {
     }
     
     this.state.suggestions.nextSteps = suggestions;
+  }
+
+  /**
+   * Get user personality for personalized interactions
+   */
+  async getUserPersonality(): Promise<UserPersonality> {
+    return await personalityEngine.getUserPersonality(this.state.metadata.userId);
+  }
+
+  /**
+   * Analyze sentiment of user message
+   */
+  async analyzeSentiment(message: string, context: string): Promise<SentimentAnalysis> {
+    return await personalityEngine.analyzeSentiment(message, context);
+  }
+
+  /**
+   * Get proactive suggestions based on user behavior and context
+   */
+  async getProactiveSuggestions(): Promise<ProactiveSuggestion[]> {
+    const personality = await this.getUserPersonality();
+    const recentActions = this.state.memory.recentTopics;
+    const context = this.state.currentContext.lastAction || 'general';
+    
+    return await personalityEngine.generateProactiveSuggestions(
+      personality,
+      context,
+      recentActions
+    );
+  }
+
+  /**
+   * Apply personality to response
+   */
+  async applyPersonalityToResponse(
+    baseResponse: string,
+    sentiment: SentimentAnalysis
+  ): Promise<string> {
+    const personality = await this.getUserPersonality();
+    const tone = await personalityEngine.determineConversationTone(
+      personality,
+      sentiment,
+      this.state.currentContext.lastAction || 'general'
+    );
+    
+    return await personalityEngine.applyPersonalityToResponse(
+      baseResponse,
+      personality,
+      tone,
+      sentiment
+    );
+  }
+
+  /**
+   * Learn from user interaction
+   */
+  async learnFromInteraction(
+    message: string,
+    response: string,
+    action: string,
+    sentiment: SentimentAnalysis
+  ): Promise<void> {
+    await personalityEngine.learnFromInteraction(
+      this.state.metadata.userId,
+      message,
+      response,
+      action,
+      sentiment
+    );
+  }
+
+  /**
+   * Update user personality preferences
+   */
+  async updatePersonalityPreferences(preferences: Partial<UserPersonality>): Promise<void> {
+    await personalityEngine.updatePersonalityPreferences(
+      this.state.metadata.userId,
+      preferences
+    );
   }
 }
 

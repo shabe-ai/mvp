@@ -2,6 +2,10 @@ import { Message } from '@/types/chat';
 import { convex } from '@/lib/convex';
 import { api } from '@/convex/_generated/api';
 import { logError } from '@/lib/errorLogger';
+import { getConversationManager } from './conversationManager';
+import { performanceOptimizer } from './performanceOptimizer';
+import { errorHandler } from './errorHandler';
+import { edgeCaseHandler } from './edgeCaseHandler';
 
 interface UserContext {
   userProfile: {
@@ -712,33 +716,389 @@ function getClarificationMessage(dataType: string, records: DatabaseRecord[]): s
 }
 
 export async function handleContactUpdateWithConfirmation(message: string, userId: string) {
-  // This is a placeholder - we'll need to copy the actual implementation
-  // For now, return a basic response
-  return {
-    message: "Contact update functionality is being implemented.",
-    error: false
-  };
+  try {
+    console.log('🔍 Starting contact update for message:', message);
+    console.log('👤 User ID:', userId);
+    
+    // Extract contact name and field updates from the message
+    const lowerMessage = message.toLowerCase();
+    
+    // Extract name (look for patterns like "john smith", "john", "smith")
+    // Handle both uppercase and lowercase names
+    const nameMatch = message.match(/\b([A-Za-z]+)\s+([A-Za-z]+)\b/) || 
+                     message.match(/\b([A-Za-z]+)\b/);
+    const contactName = nameMatch ? nameMatch[0] : null;
+    
+    // Extract field and value (e.g., "email to johnsmith@acme.com")
+    const fieldMatch = lowerMessage.match(/(email|phone|title|company)\s+to\s+([^\s]+)/);
+    const field = fieldMatch ? fieldMatch[1] : null;
+    const value = fieldMatch ? fieldMatch[2] : null;
+    
+    console.log('📝 Extracted data:', { contactName, field, value });
+    
+    if (!contactName || !field || !value) {
+      console.log('❌ Missing required data for contact update');
+      return {
+        message: "I couldn't understand the update request. Please specify the contact name and what field to update. For example: 'update john smith's email to johnsmith@acme.com'",
+        error: true
+      };
+    }
+    
+    // Find the contact in the database
+    console.log('🔍 Looking up teams for user...');
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    console.log('📋 Teams found:', teams.length);
+    
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    console.log('🏢 Using team ID:', teamId);
+    
+    console.log('🔍 Looking up contacts for team...');
+    const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+    console.log('👥 Contacts found:', contacts.length);
+    console.log('📋 Contact names:', contacts.map(c => `${c.firstName} ${c.lastName}`));
+    
+    const matchingContact = contacts.find(contact => {
+      const contactFullName = contact.firstName && contact.lastName 
+        ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
+        : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
+      const searchName = contactName.toLowerCase();
+      
+      const matches = contactFullName.includes(searchName) || 
+             searchName.includes(contactFullName) ||
+             contactFullName.split(' ').some((part: string) => searchName.includes(part)) ||
+             searchName.split(' ').some((part: string) => contactFullName.includes(part));
+      
+      console.log(`🔍 Checking "${contactFullName}" against "${searchName}": ${matches}`);
+      return matches;
+    });
+    
+    if (!matchingContact) {
+      console.log('❌ No matching contact found');
+      return {
+        message: `I couldn't find a contact named "${contactName}" in your database. Please check the spelling or create the contact first.`,
+        error: true
+      };
+    }
+    
+    console.log('✅ Found matching contact:', matchingContact);
+    
+    // Ask for confirmation before updating
+    const confirmationMessage = `Please confirm the contact update:\n\n**Contact:** ${matchingContact.firstName} ${matchingContact.lastName}\n**Field:** ${field}\n**New Value:** ${value}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+    
+    return {
+      message: confirmationMessage,
+      action: "confirm_update",
+      contactId: matchingContact._id,
+      field: field,
+      value: value,
+      contactName: `${matchingContact.firstName} ${matchingContact.lastName}`
+    };
+    
+  } catch (error) {
+    console.error('Contact update failed:', error);
+    return {
+      message: "I encountered an error while processing the contact update. Please try again.",
+      error: true
+    };
+  }
 }
 
 export async function handleContactDeleteWithConfirmation(message: string, userId: string) {
-  // This is a placeholder - we'll need to copy the actual implementation
-  // For now, return a basic response
-  return {
-    message: "Contact deletion functionality is being implemented.",
-    error: false
-  };
+  try {
+    console.log('🔍 Starting contact deletion for message:', message);
+    console.log('👤 User ID:', userId);
+    
+    // Extract contact name from the message
+    const lowerMessage = message.toLowerCase();
+    
+    // Extract name (look for patterns like "john smith", "john", "smith")
+    const nameMatch = message.match(/\b([A-Za-z]+)\s+([A-Za-z]+)\b/) || 
+                     message.match(/\b([A-Za-z]+)\b/);
+    const contactName = nameMatch ? nameMatch[0] : null;
+    
+    console.log('📝 Extracted contact name:', contactName);
+    
+    if (!contactName) {
+      console.log('❌ Missing contact name for deletion');
+      return {
+        message: "I couldn't understand the deletion request. Please specify the contact name. For example: 'delete john smith'",
+        error: true
+      };
+    }
+    
+    // Find the contact in the database
+    console.log('🔍 Looking up teams for user...');
+    const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+    console.log('📋 Teams found:', teams.length);
+    
+    const teamId = teams.length > 0 ? teams[0]._id : 'default';
+    console.log('🏢 Using team ID:', teamId);
+    
+    console.log('🔍 Looking up contacts for team...');
+    const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+    console.log('👥 Contacts found:', contacts.length);
+    
+    const matchingContact = contacts.find(contact => {
+      const contactFullName = contact.firstName && contact.lastName 
+        ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
+        : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
+      const searchName = contactName.toLowerCase();
+      
+      return contactFullName.includes(searchName) || 
+             searchName.includes(contactFullName) ||
+             contactFullName.split(' ').some((part: string) => searchName.includes(part)) ||
+             searchName.split(' ').some((part: string) => contactFullName.includes(part));
+    });
+    
+    if (!matchingContact) {
+      console.log('❌ No matching contact found');
+      return {
+        message: `I couldn't find a contact named "${contactName}" in your database. Please check the spelling.`,
+        error: true
+      };
+    }
+    
+    console.log('✅ Found matching contact:', matchingContact);
+    
+    // Ask for confirmation before deleting
+    const confirmationMessage = `Please confirm the contact deletion:\n\n**Contact:** ${matchingContact.firstName} ${matchingContact.lastName}\n**Email:** ${matchingContact.email || 'N/A'}\n**Company:** ${matchingContact.company || 'N/A'}\n\nThis action cannot be undone. Are you sure you want to delete this contact? Please respond with "yes" to confirm or "no" to cancel.`;
+    
+    return {
+      message: confirmationMessage,
+      action: "confirm_delete",
+      contactId: matchingContact._id,
+      contactName: `${matchingContact.firstName} ${matchingContact.lastName}`
+    };
+    
+  } catch (error) {
+    console.error('Contact deletion failed:', error);
+    return {
+      message: "I encountered an error while processing the contact deletion. Please try again.",
+      error: true
+    };
+  }
 }
 
 export async function handleGeneralConversation(message: string, messages: Message[], context: UserContext, userId?: string) {
-  // This is a placeholder - we'll need to copy the actual implementation
-  // For now, return a basic response
-  return {
-    message: "General conversation functionality is being implemented.",
-    suggestions: [],
-    conversationContext: {
-      phase: 'general',
-      action: 'general_conversation',
-      referringTo: 'new_request'
+  const startTime = Date.now();
+  let retryCount = 0;
+  
+  try {
+    console.log('💬 Handling general conversation with Phase 5 optimizations');
+    
+    // Get user's data for context
+    const actualUserId = userId || context.userProfile?.email || 'unknown';
+    console.log('🔍 Getting data for user:', actualUserId);
+    
+    // Phase 5: Edge case handling
+    const edgeCaseContext = {
+      userId: actualUserId,
+      operation: 'general_conversation',
+      input: message,
+      timestamp: new Date(),
+      retryCount
+    };
+    
+    const edgeCaseResult = await edgeCaseHandler.checkEdgeCases(message, edgeCaseContext);
+    if (edgeCaseResult.handled) {
+      console.log('🔧 Edge case handled:', edgeCaseResult.result);
+      return {
+        message: edgeCaseResult.result.message,
+        suggestions: edgeCaseResult.result.suggestions || [],
+        conversationContext: {
+          phase: 'edge_case',
+          action: 'edge_case_handled',
+          referringTo: 'new_request'
+        },
+        performance: {
+          responseTime: Date.now() - startTime,
+          optimization: 'edge_case_handling'
+        }
+      };
     }
-  };
+    
+    // Phase 5: Input validation
+    const validation = edgeCaseHandler.validateInput(message);
+    if (!validation.isValid) {
+      console.log('⚠️ Input validation failed:', validation.issues);
+      return {
+        message: `I found some issues with your input: ${validation.issues.join(', ')}. ${validation.suggestions.join(' ')}`,
+        suggestions: validation.suggestions,
+        conversationContext: {
+          phase: 'validation',
+          action: 'input_validation_failed',
+          referringTo: 'new_request'
+        },
+        performance: {
+          responseTime: Date.now() - startTime,
+          optimization: 'input_validation'
+        }
+      };
+    }
+    
+    // Get conversation manager for personality features
+    const convManager = getConversationManager(actualUserId, 'session-' + Date.now());
+    
+    // Analyze sentiment
+    const sentiment = await convManager.analyzeSentiment(message, 'general conversation');
+    console.log('😊 Sentiment analysis:', sentiment);
+    
+    // Get user personality
+    const personality = await convManager.getUserPersonality();
+    console.log('👤 User personality:', personality.communicationStyle);
+    
+    // Get proactive suggestions
+    const suggestions = await convManager.getProactiveSuggestions();
+    console.log('💡 Proactive suggestions:', suggestions.length);
+    
+    // Phase 5: Performance optimization - batch CRM queries
+    const crmData = await performanceOptimizer.batchCrmQueries(actualUserId, [
+      { type: 'contacts' },
+      { type: 'accounts' },
+      { type: 'deals' },
+      { type: 'activities' }
+    ]);
+    
+    const contacts = crmData.contacts || [];
+    const accounts = crmData.accounts || [];
+    const deals = crmData.deals || [];
+    const activities = crmData.activities || [];
+    
+    console.log('📋 CRM data loaded:', {
+      contacts: contacts.length,
+      accounts: accounts.length,
+      deals: deals.length,
+      activities: activities.length
+    });
+
+    const systemPrompt = `You are Shabe AI, a helpful and conversational CRM assistant. You have access to the user's CRM data and can help with:
+
+**Available Data:**
+- Contacts: ${contacts.length} contacts (${contacts.slice(0, 3).map(c => `${c.firstName} ${c.lastName}`).join(', ')}${contacts.length > 3 ? ' and more...' : ''}
+- Accounts: ${accounts.length} accounts
+- Deals: ${deals.length} deals  
+- Activities: ${activities.length} activities
+
+**Your Capabilities:**
+- View and search contacts, accounts, deals, and activities
+- Send emails to contacts
+- Create new records
+- Update existing records
+- Analyze data and provide insights
+
+**Current Context:**
+- User: ${context.userProfile?.name || 'Unknown'}
+- Company: ${context.companyData?.name || 'Unknown Company'}
+
+**Instructions:**
+1. Be conversational and natural, like ChatGPT
+2. If the user wants to perform an action (send email, view data, etc.), tell them what you're doing
+3. Use the available data to provide helpful responses
+4. If you need to perform a specific action, let the user know and ask for confirmation
+5. Be helpful and engaging in your responses
+6. If the user mentions a contact by name or pronoun, use the available contact data to help them
+
+**Available Actions:**
+- To send an email: Mention you'll draft an email for the contact
+- To view data: Tell them what you found and show relevant details
+- To create records: Ask for the necessary information
+- To update records: Confirm the changes you'll make
+
+Respond naturally and conversationally. If the user asks to send an email to someone, tell them you'll draft an email and ask if they'd like you to proceed.`;
+
+    const { openaiClient } = await import('@/lib/openaiClient');
+    const response = await openaiClient.chatCompletionsCreate({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        ...messages.map(msg => ({
+          role: msg.role as "user" | "assistant",
+          content: msg.content
+        })),
+        {
+          role: "user",
+          content: message
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    }, {
+      userId: actualUserId,
+      operation: 'general_conversation',
+      model: 'gpt-4'
+    });
+
+    let assistantMessage = response.choices[0]?.message?.content || "I'm here to help! What would you like to do?";
+
+    // Apply personality to response
+    assistantMessage = await convManager.applyPersonalityToResponse(assistantMessage, sentiment);
+    
+    // Learn from this interaction
+    await convManager.learnFromInteraction(message, assistantMessage, 'general_conversation', sentiment);
+
+    // Prepare suggestions including proactive ones
+    const baseSuggestions = [
+      "View all contacts",
+      "Create a new contact", 
+      "Generate a chart of deals by stage",
+      "Send an email to a contact"
+    ];
+
+    const proactiveSuggestionTexts = suggestions.map(s => s.title);
+    const allSuggestions = [...baseSuggestions, ...proactiveSuggestionTexts].slice(0, 6);
+
+    // Phase 5: Performance metrics
+    const responseTime = Date.now() - startTime;
+    const performanceSummary = performanceOptimizer.getPerformanceSummary();
+
+    return {
+      message: assistantMessage,
+      suggestions: allSuggestions,
+      conversationContext: {
+        phase: 'general',
+        action: 'general_conversation',
+        referringTo: 'new_request'
+      },
+      personality: {
+        sentiment: sentiment,
+        proactiveSuggestions: suggestions
+      },
+      performance: {
+        responseTime,
+        cacheHitRate: performanceSummary.cacheHitRate,
+        memoryUsage: performanceSummary.memoryUsage,
+        optimization: 'phase_5_optimized'
+      }
+    };
+    
+  } catch (error) {
+    console.error('General conversation error:', error);
+    
+    // Phase 5: Enhanced error handling
+    const errorContext = {
+      userId: userId || 'unknown',
+      operation: 'general_conversation',
+      timestamp: new Date(),
+      userMessage: message,
+      systemState: { messages: messages.length, context },
+      retryCount
+    };
+    
+    const errorResponse = await errorHandler.handleError(error as Error, errorContext);
+    
+    return {
+      message: errorResponse.userFriendlyMessage,
+      suggestions: errorResponse.suggestions,
+      error: true,
+      errorCode: errorResponse.errorCode,
+      retryable: errorResponse.retryable,
+      performance: {
+        responseTime: Date.now() - startTime,
+        optimization: 'error_handling'
+      }
+    };
+  }
 } 
