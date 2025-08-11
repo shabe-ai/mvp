@@ -1786,6 +1786,8 @@ Please analyze the ACTUAL file content above and respond based on what you see i
       
       // Find the most recent chart message
       const recentChartMessage = messages.findLast(m => m.chartSpec);
+      console.log('🚀 Recent chart message found:', !!recentChartMessage);
+      console.log('🚀 Chart spec exists:', !!recentChartMessage?.chartSpec);
       
       if (recentChartMessage?.chartSpec) {
         try {
@@ -2623,6 +2625,19 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     let chartType = 'bar';
     let title = 'Chart';
     
+    // Detect user's preferred chart type from the message
+    if (lowerMessage.includes('line') || lowerMessage.includes('trend') || lowerMessage.includes('over time')) {
+      chartType = 'line';
+    } else if (lowerMessage.includes('pie') || lowerMessage.includes('distribution') || lowerMessage.includes('percentage')) {
+      chartType = 'pie';
+    } else if (lowerMessage.includes('area') || lowerMessage.includes('filled')) {
+      chartType = 'area';
+    } else if (lowerMessage.includes('scatter') || lowerMessage.includes('correlation')) {
+      chartType = 'scatter';
+    } else if (lowerMessage.includes('bar') || lowerMessage.includes('column')) {
+      chartType = 'bar';
+    }
+    
     if ((lowerMessage.includes('deal') && lowerMessage.includes('stage')) || 
         (lowerMessage.includes('deal') && (lowerMessage.includes('pipeline') || lowerMessage.includes('progress')))) {
       // Deals by stage chart
@@ -2643,7 +2658,6 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       }));
       
       title = 'Deals by Stage';
-      chartType = 'bar';
       
     } else if (lowerMessage.includes('contact')) {
       // Contacts chart
@@ -2664,7 +2678,6 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       }));
       
       title = 'Contacts by Lead Status';
-      chartType = 'pie';
       
     } else if (lowerMessage.includes('account')) {
       // Accounts chart
@@ -2685,7 +2698,6 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       }));
       
       title = 'Accounts by Industry';
-      chartType = 'pie';
       
     } else {
       // Ask for clarification when chart type is unclear
