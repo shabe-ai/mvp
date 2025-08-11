@@ -721,6 +721,17 @@ export class CrudIntentHandler implements IntentHandler {
   async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling CRUD intent:', intent.action);
     
+    // Check if this is a confirmation response
+    const currentState = conversationManager.getState();
+    const lastMessage = currentState.memory.sessionHistory[currentState.memory.sessionHistory.length - 1];
+    
+    // If the last message was asking for confirmation and user said "yes"
+    if (lastMessage?.conversationContext?.action === 'update_contact' && 
+        lastMessage?.conversationContext?.phase === 'confirmation' &&
+        intent.originalMessage.toLowerCase().includes('yes')) {
+      return await this.handleContactUpdateConfirmation(intent, conversationManager, context);
+    }
+    
     // Import the appropriate handler based on intent
     let handlerFunction: any;
     
@@ -771,12 +782,12 @@ export class CrudIntentHandler implements IntentHandler {
     }
     
     return {
-      message: "I'm not sure how to handle that request yet. Could you please rephrase?",
+      message: "I'm not sure how to handle that request. Could you please be more specific?",
       needsClarification: true,
       conversationContext: {
-        phase: conversationManager.getState().currentContext.conversationPhase.current,
-        action: 'general_fallback',
-        referringTo: intent.context.referringTo
+        phase: 'clarification',
+        action: 'unknown',
+        referringTo: 'new_request'
       }
     };
   }
@@ -875,6 +886,65 @@ export class CrudIntentHandler implements IntentHandler {
         conversationContext: {
           phase: 'error',
           action: 'update_contact',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleContactUpdateConfirmation(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('👤 Handling contact update confirmation with intent:', intent);
+
+    // Get the confirmation data from the last message's conversation context
+    const currentState = conversationManager.getState();
+    const lastMessage = currentState.memory.sessionHistory[currentState.memory.sessionHistory.length - 1];
+    
+    const contactId = lastMessage?.conversationContext?.contactId;
+    const field = lastMessage?.conversationContext?.field;
+    const value = lastMessage?.conversationContext?.value;
+    const contactName = lastMessage?.conversationContext?.contactName;
+
+    if (!contactId || !field || !value) {
+      console.log('❌ Missing required data for confirmation');
+      return {
+        message: "I couldn't process your confirmation. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'update_contact_confirmation',
+          referringTo: 'new_request'
+        }
+      };
+    }
+
+    try {
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Update the contact in the database
+      await convex.mutation(api.crm.updateContact, {
+        contactId: contactId as any, // Cast to Convex ID type
+        updates: { [field]: value }
+      });
+
+      console.log('✅ Contact updated successfully:', { contactId, field, value });
+
+      return {
+        message: `Great! I've updated the contact "${contactName}" to have "${field}" set to "${value}".`,
+        conversationContext: {
+          phase: conversationManager.getState().currentContext.conversationPhase.current,
+          action: 'update_contact',
+          referringTo: 'new_request'
+        }
+      };
+
+    } catch (error) {
+      console.error('Contact update confirmation failed:', error);
+      return {
+        message: "I encountered an error while confirming the contact update. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'update_contact_confirmation',
           referringTo: 'new_request'
         }
       };
