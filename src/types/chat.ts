@@ -25,6 +25,12 @@ export interface Message {
     phase?: string;
     referringTo?: string;
     intent?: string;
+    action?: string;
+    // CRUD operation fields
+    contactId?: string;
+    field?: string;
+    value?: string;
+    contactName?: string;
   };
   suggestions?: string[];
   nextSteps?: string[];
@@ -46,6 +52,11 @@ export interface ConversationResponse {
     phase: string;
     action: string;
     referringTo?: string;
+    // CRUD operation fields
+    contactId?: string;
+    field?: string;
+    value?: string;
+    contactName?: string;
   };
   error?: boolean;
   needsClarification?: boolean;

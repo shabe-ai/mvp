@@ -411,23 +411,39 @@ export default function EnhancedChartDisplay({
 
       case "pie":
       case "piechart":
-        const pieDataKey = data.length > 0 ? Object.keys(data[0]).find(key => key !== xAxisDataKey) : 'value';
-        console.log('🚀 PieChart data key:', pieDataKey);
+        console.log('🚀 PieChart rendering with data:', data);
+        console.log('🚀 PieChart data structure:', data.map(item => ({ keys: Object.keys(item), values: Object.values(item) })));
+        
+        // For pie charts, we need to ensure the data has the right structure
+        // Pie charts expect data with 'name' and 'value' properties
+        const pieData = data.map((item, index) => {
+          const keys = Object.keys(item);
+          const nameKey = keys.find(key => key.toLowerCase().includes('name') || key.toLowerCase().includes('stage') || key.toLowerCase().includes('status')) || keys[0];
+          const valueKey = keys.find(key => key.toLowerCase().includes('count') || key.toLowerCase().includes('value') || key.toLowerCase().includes('amount')) || keys[1] || keys[0];
+          
+          return {
+            name: String(item[nameKey] || `Item ${index + 1}`),
+            value: Number(item[valueKey] || 1)
+          };
+        });
+        
+        console.log('🚀 PieChart processed data:', pieData);
         
         return (
           <PieChart {...commonProps}>
             <Pie
-              data={data}
-              cx={currentConfig.width / 2}
-              cy={currentConfig.height / 2}
+              data={pieData}
+              cx="50%"
+              cy="50%"
               labelLine={false}
               label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
               outerRadius={80}
               fill="#f59e0b"
-              dataKey={pieDataKey}
+              dataKey="value"
+              nameKey="name"
               isAnimationActive={currentConfig?.animation !== false}
             >
-              {data.map((entry, index) => (
+              {pieData.map((entry, index) => (
                 <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
               ))}
             </Pie>
