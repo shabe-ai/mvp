@@ -5,6 +5,7 @@ import { nlpProcessor, Entity, ContextualReference } from './nlpProcessor';
 export interface Intent {
   action: 'create_chart' | 'modify_chart' | 'analyze_data' | 'export_data' | 'explore_data' | 'view_data' | 'send_email' | 'create_contact' | 'update_contact' | 'delete_contact' | 'general_conversation';
   confidence: number;
+  originalMessage: string; // The original user message
   entities: {
     chartType?: 'line' | 'bar' | 'pie' | 'area' | 'scatter';
     dataType?: 'deals' | 'contacts' | 'accounts' | 'activities';
@@ -69,6 +70,7 @@ export class IntentClassifier {
         return {
           action: 'general_conversation',
           confidence: 0.3,
+          originalMessage: message,
           entities: {},
           context: { referringTo: 'new_request' },
           metadata: {
@@ -210,6 +212,9 @@ If the user mentions dimensions (stage, status, industry), extract them as dimen
 - **Market Opportunity**: "analyze market opportunities" → action: "analyze_data", dataType: "accounts", target: "market opportunity analysis"
 - **Relationship Analysis**: "show contacts by account" → action: "create_chart", dataType: "contacts", dimension: "company"
 - **Comparative Analysis**: "compare accounts" → action: "analyze_data", dataType: "accounts", target: "account comparison"
+- **Chart Modification**: "make it into a pie chart" → action: "modify_chart", chartType: "pie"
+- **Chart Modification**: "change it to a bar chart" → action: "modify_chart", chartType: "bar"
+- **Chart Modification**: "convert to line chart" → action: "modify_chart", chartType: "line"
 
 **Query Understanding:**
 - "which account has the most contacts" = Analyze accounts to find the one with highest contact count
@@ -219,6 +224,10 @@ If the user mentions dimensions (stage, status, industry), extract them as dimen
 - "analyze market opportunities" = Identify top accounts and market expansion potential
 - "show contacts by account" = Create chart showing contacts grouped by their company/account
 - "accounts with most deals" = Analyze accounts to find those with highest deal count
+- "make it into a pie chart" = Modify existing chart to pie chart type
+- "change it to a bar chart" = Modify existing chart to bar chart type
+- "convert to line chart" = Modify existing chart to line chart type
+- "switch to area chart" = Modify existing chart to area chart type
 
 For contact updates, extract:
 - contactName: the name of the contact being updated
@@ -234,6 +243,7 @@ Use the extracted entities to populate the appropriate fields (contactName, fiel
     const intent: Intent = {
       action: result.action || 'general_conversation',
       confidence: Math.min(Math.max(result.confidence || 0.5, 0), 1),
+      originalMessage: message,
       entities: {
         chartType: result.entities?.chartType,
         dataType: result.entities?.dataType,
@@ -425,6 +435,7 @@ Use the extracted entities to populate the appropriate fields (contactName, fiel
       return {
         action: 'create_chart',
         confidence: 0.6,
+        originalMessage: message,
         entities: {},
         context: { referringTo: 'new_request' },
         metadata: { isAmbiguous: true, needsClarification: true, clarificationQuestion: "What type of chart would you like to create?" }
@@ -435,6 +446,7 @@ Use the extracted entities to populate the appropriate fields (contactName, fiel
       return {
         action: 'view_data',
         confidence: 0.6,
+        originalMessage: message,
         entities: {},
         context: { referringTo: 'new_request' },
         metadata: { isAmbiguous: true, needsClarification: true, clarificationQuestion: "What would you like to do with this data?" }
@@ -444,6 +456,7 @@ Use the extracted entities to populate the appropriate fields (contactName, fiel
     return {
       action: 'general_conversation',
       confidence: 0.5,
+      originalMessage: message,
       entities: {},
       context: { referringTo: 'new_request' },
       metadata: { isAmbiguous: true, needsClarification: true, clarificationQuestion: "How can I help you today?" }

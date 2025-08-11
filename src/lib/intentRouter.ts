@@ -61,6 +61,11 @@ export class ChartIntentHandler implements IntentHandler {
   async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('📊 Handling chart intent:', intent.action);
     
+    // Check if user is referring to current chart for modifications
+    if (conversationManager.isReferringToCurrentChart(intent.originalMessage)) {
+      return await this.handleChartModification(intent, conversationManager, context);
+    }
+    
     const { handleChartGeneration } = await import('@/lib/chatHandlers');
     
     // Build chart request from intent
@@ -93,6 +98,77 @@ export class ChartIntentHandler implements IntentHandler {
         referringTo: intent.context.referringTo
       }
     };
+  }
+
+  private async handleChartModification(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('🔄 Handling chart modification request');
+    
+    const activeChart = conversationManager.getState().currentContext.activeChart;
+    if (!activeChart) {
+      return {
+        message: "I don't see an active chart to modify. Could you please create a chart first?",
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'chart_modification',
+          referringTo: 'no_active_chart'
+        }
+      };
+    }
+
+    // Extract the new chart type from the user's message
+    const message = intent.originalMessage.toLowerCase();
+    let newChartType: string | null = null;
+    
+    if (message.includes('pie')) newChartType = 'pie';
+    else if (message.includes('bar')) newChartType = 'bar';
+    else if (message.includes('line')) newChartType = 'line';
+    else if (message.includes('area')) newChartType = 'area';
+    else if (message.includes('scatter')) newChartType = 'scatter';
+    
+    if (!newChartType) {
+      return {
+        message: `I understand you want to modify the current ${activeChart.chartType} chart, but I need to know what type of chart you'd like. You can say "make it a pie chart", "change to bar chart", etc.`,
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'chart_modification',
+          referringTo: 'chart_type_needed'
+        }
+      };
+    }
+
+    // Create a new chart with the same data but different type
+    const modificationRequest = `show ${activeChart.dataType} by ${activeChart.dimension} as ${newChartType} chart`;
+    
+    try {
+      const { handleChartGeneration } = await import('@/lib/chatHandlers');
+      const result = await handleChartGeneration(modificationRequest, {}, context.sessionFiles || [], context.userId);
+      
+      // Update the conversation context
+      conversationManager.updateContext(intent.originalMessage, 'chart_modified');
+      
+      return {
+        ...result,
+        message: `Perfect! I've converted your ${activeChart.chartType} chart to a ${newChartType} chart. ${result.message}`,
+        conversationContext: {
+          phase: 'modification',
+          action: 'chart_modified',
+          referringTo: 'current_chart'
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Chart modification failed:', error);
+      return {
+        message: `I encountered an error while converting your chart to a ${newChartType} chart. Please try again.`,
+        conversationContext: {
+          phase: 'error',
+          action: 'chart_modification_failed',
+          referringTo: 'current_chart'
+        }
+      };
+    }
   }
 
   private buildChartRequest(intent: Intent, conversationManager: ConversationManager): string {
