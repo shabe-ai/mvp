@@ -49,6 +49,7 @@ interface DatabaseRecord {
 
 interface FormattedRecord {
   id: string;
+  _id: string; // Add _id for LiveTables compatibility
   name: string;
   email: string;
   phone: string;
@@ -625,6 +626,7 @@ function getFilterInfo(userMessage: string): string | null {
 function formatRecord(record: DatabaseRecord, dataType: string): FormattedRecord {
   const baseRecord = {
     id: record._id,
+    _id: record._id, // Add _id for LiveTables compatibility
     created: new Date(record._creationTime).toLocaleDateString(),
     name: '',
     email: '',
@@ -729,10 +731,22 @@ export async function handleContactUpdateWithConfirmation(message: string, userI
                      message.match(/\b([A-Za-z]+)\b/);
     const contactName = nameMatch ? nameMatch[0] : null;
     
-    // Extract field and value (e.g., "email to johnsmith@acme.com")
-    const fieldMatch = lowerMessage.match(/(email|phone|title|company)\s+to\s+([^\s]+)/);
+    // Extract field and value with more flexible patterns
+    // Handle patterns like: "email to johnsmith@acme.com", "email johnsmith@acme.com", "change email to johnsmith@acme.com"
+    let fieldMatch = lowerMessage.match(/(email|phone|title|company)\s+(?:to\s+)?([^\s]+(?:\s+[^\s]+)*)/);
+    
+    // If no match, try alternative patterns
+    if (!fieldMatch) {
+      fieldMatch = lowerMessage.match(/(?:update|change|set)\s+(email|phone|title|company)\s+(?:to\s+)?([^\s]+(?:\s+[^\s]+)*)/);
+    }
+    
+    // If still no match, try even more flexible patterns
+    if (!fieldMatch) {
+      fieldMatch = lowerMessage.match(/(email|phone|title|company)\s*[:=]\s*([^\s]+(?:\s+[^\s]+)*)/);
+    }
+    
     const field = fieldMatch ? fieldMatch[1] : null;
-    const value = fieldMatch ? fieldMatch[2] : null;
+    const value = fieldMatch ? fieldMatch[2].trim() : null;
     
     console.log('📝 Extracted data:', { contactName, field, value });
     
