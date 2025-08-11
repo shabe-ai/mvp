@@ -725,12 +725,23 @@ export class CrudIntentHandler implements IntentHandler {
     const currentState = conversationManager.getState();
     const lastMessage = currentState.memory.sessionHistory[currentState.memory.sessionHistory.length - 1];
     
+    console.log('🔍 Confirmation check debug:', {
+      intentAction: intent.action,
+      originalMessage: intent.originalMessage,
+      lastMessageExists: !!lastMessage,
+      lastMessageContext: lastMessage?.conversationContext,
+      sessionHistoryLength: currentState.memory.sessionHistory.length
+    });
+    
     // If the last message was asking for confirmation and user said "yes"
     if (lastMessage?.conversationContext?.action === 'update_contact' && 
         lastMessage?.conversationContext?.phase === 'confirmation' &&
         intent.originalMessage.toLowerCase().includes('yes')) {
+      console.log('✅ Confirmation detected! Calling handleContactUpdateConfirmation');
       return await this.handleContactUpdateConfirmation(intent, conversationManager, context);
     }
+    
+    console.log('❌ No confirmation detected, proceeding with normal intent handling');
     
     // Import the appropriate handler based on intent
     let handlerFunction: any;
@@ -899,10 +910,18 @@ export class CrudIntentHandler implements IntentHandler {
     const currentState = conversationManager.getState();
     const lastMessage = currentState.memory.sessionHistory[currentState.memory.sessionHistory.length - 1];
     
+    console.log('🔍 Confirmation data debug:', {
+      lastMessageExists: !!lastMessage,
+      lastMessageContext: lastMessage?.conversationContext,
+      sessionHistoryLength: currentState.memory.sessionHistory.length
+    });
+    
     const contactId = lastMessage?.conversationContext?.contactId;
     const field = lastMessage?.conversationContext?.field;
     const value = lastMessage?.conversationContext?.value;
     const contactName = lastMessage?.conversationContext?.contactName;
+
+    console.log('📝 Extracted confirmation data:', { contactId, field, value, contactName });
 
     if (!contactId || !field || !value) {
       console.log('❌ Missing required data for confirmation');
@@ -917,9 +936,16 @@ export class CrudIntentHandler implements IntentHandler {
     }
 
     try {
+      console.log('🚀 Starting database update...');
+      
       // Import Convex for database operations
       const { convex } = await import('@/lib/convex');
       const { api } = await import('@/convex/_generated/api');
+      
+      console.log('📊 Calling Convex mutation with:', {
+        contactId,
+        updates: { [field]: value }
+      });
       
       // Update the contact in the database
       await convex.mutation(api.crm.updateContact, {
@@ -939,7 +965,7 @@ export class CrudIntentHandler implements IntentHandler {
       };
 
     } catch (error) {
-      console.error('Contact update confirmation failed:', error);
+      console.error('❌ Contact update confirmation failed:', error);
       return {
         message: "I encountered an error while confirming the contact update. Please try again.",
         conversationContext: {
