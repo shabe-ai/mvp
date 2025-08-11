@@ -157,6 +157,137 @@ export class DataIntentHandler implements IntentHandler {
   }
 }
 
+// Analysis Intent Handler
+export class AnalyzeIntentHandler implements IntentHandler {
+  canHandle(intent: Intent): boolean {
+    return ['analyze_data'].includes(intent.action);
+  }
+
+  async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('🔍 Handling analysis intent:', intent.action);
+    
+    // Handle account analysis queries
+    if (intent.entities.dataType === 'accounts' && intent.entities.target?.includes('most contacts')) {
+      return await this.handleAccountContactAnalysis(intent, conversationManager, context);
+    }
+    
+    // Handle other analysis types
+    return {
+      message: "I understand you want to analyze data, but I need more specific information about what you'd like to analyze. Could you please clarify?",
+      needsClarification: true,
+      conversationContext: {
+        phase: 'clarification',
+        action: 'analyze_data',
+        referringTo: 'new_request'
+      }
+    };
+  }
+
+  private async handleAccountContactAnalysis(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    try {
+      console.log('🔍 Analyzing accounts by contact count');
+      
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Get user's team
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      
+      // Get all contacts and accounts
+      const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+      const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+      
+      console.log('📊 Analysis data:', {
+        contactsCount: contacts.length,
+        accountsCount: accounts.length
+      });
+      
+      // Count contacts per account
+      const accountContactCounts = new Map<string, number>();
+      
+      contacts.forEach(contact => {
+        if (contact.company) {
+          const currentCount = accountContactCounts.get(contact.company) || 0;
+          accountContactCounts.set(contact.company, currentCount + 1);
+        }
+      });
+      
+      // Find account with most contacts
+      let maxContacts = 0;
+      let accountWithMostContacts = '';
+      
+      accountContactCounts.forEach((count, accountName) => {
+        if (count > maxContacts) {
+          maxContacts = count;
+          accountWithMostContacts = accountName;
+        }
+      });
+      
+      // Create analysis result
+      const analysisResult = {
+        accountWithMostContacts,
+        maxContacts,
+        totalAccounts: accountContactCounts.size,
+        totalContacts: contacts.length,
+        accountBreakdown: Array.from(accountContactCounts.entries()).map(([account, count]) => ({
+          account,
+          contactCount: count
+        })).sort((a, b) => b.contactCount - a.contactCount)
+      };
+      
+      console.log('📊 Analysis result:', analysisResult);
+      
+      // Generate response message
+      let message = '';
+      if (accountWithMostContacts && maxContacts > 0) {
+        message = `Based on your CRM data, **${accountWithMostContacts}** has the most contacts with **${maxContacts} contacts**.\n\n`;
+        message += `**Account Breakdown:**\n`;
+        analysisResult.accountBreakdown.forEach((item, index) => {
+          message += `${index + 1}. ${item.account}: ${item.contactCount} contacts\n`;
+        });
+        message += `\n**Summary:** You have ${analysisResult.totalContacts} total contacts across ${analysisResult.totalAccounts} accounts.`;
+      } else {
+        message = "I couldn't find any accounts with contacts in your CRM data. You may need to add some contacts with company information first.";
+      }
+      
+      return {
+        message,
+        data: {
+          records: analysisResult.accountBreakdown.map(item => ({
+            id: item.account,
+            _id: item.account,
+            name: item.account,
+            contactCount: item.contactCount,
+            type: 'account_analysis'
+          })),
+          type: 'account_analysis',
+          count: analysisResult.accountBreakdown.length,
+          displayFormat: 'analysis'
+        },
+        suggestions: conversationManager.getSuggestions(),
+        conversationContext: {
+          phase: conversationManager.getState().currentContext.conversationPhase.current,
+          action: 'analyze_data',
+          referringTo: 'new_request'
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Account analysis failed:', error);
+      return {
+        message: "I encountered an error while analyzing your account data. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'analyze_data',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+}
+
 // CRUD Intent Handler
 export class CrudIntentHandler implements IntentHandler {
   canHandle(intent: Intent): boolean {
@@ -364,5 +495,6 @@ export const intentRouter = new IntentRouter();
 // Register handlers
 intentRouter.registerHandler(new ChartIntentHandler());
 intentRouter.registerHandler(new DataIntentHandler());
+intentRouter.registerHandler(new AnalyzeIntentHandler());
 intentRouter.registerHandler(new CrudIntentHandler());
 intentRouter.registerHandler(new GeneralConversationHandler()); 
