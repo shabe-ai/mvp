@@ -139,9 +139,11 @@ export class ConversationManager {
     const chart = this.state.currentContext.activeChart;
     const lowerMessage = message.toLowerCase();
     
-    // Check for pronouns and references
+    // Check for pronouns and references (including "make it", "turn it", etc.)
     const pronouns = ['it', 'this', 'that', 'the chart', 'current'];
+    const actionPhrases = ['make it', 'turn it', 'convert it', 'change it', 'switch it'];
     const hasPronoun = pronouns.some(pronoun => lowerMessage.includes(pronoun));
+    const hasActionPhrase = actionPhrases.some(phrase => lowerMessage.includes(phrase));
     
     // Check for chart type references
     const chartTypeRefs = [chart.chartType, 'chart', 'graph', 'visualization'];
@@ -151,7 +153,14 @@ export class ConversationManager {
     const dataTypeRefs = [chart.dataType, chart.dimension];
     const hasDataTypeRef = dataTypeRefs.some(ref => lowerMessage.includes(ref));
     
-    return hasPronoun || (hasChartTypeRef && hasDataTypeRef);
+    // Check for modification keywords
+    const modificationKeywords = ['change', 'modify', 'update', 'convert', 'transform', 'switch', 'make'];
+    const hasModificationKeyword = modificationKeywords.some(keyword => lowerMessage.includes(keyword));
+    
+    // If we have an active chart and the message contains "it" or modification keywords, assume it refers to the chart
+    const hasItReference = lowerMessage.includes('it') && !!this.state.currentContext.activeChart;
+    
+    return hasPronoun || hasActionPhrase || hasItReference || (hasChartTypeRef && hasDataTypeRef) || (hasModificationKeyword && hasItReference);
   }
 
   // Get contextual suggestions
