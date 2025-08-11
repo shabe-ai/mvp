@@ -1776,13 +1776,18 @@ Please analyze the ACTUAL file content above and respond based on what you see i
       /(?:predict|forecast)\s+(?:trends?|future|next)/i,
       /(?:highlight|emphasize|focus)\s+(?:on|the)/i,
       /(?:filter|show\s+only|display\s+only)/i,
-      /(?:sort|order|arrange)\s+(?:by|in)/i
+      /(?:sort|order|arrange)\s+(?:by|in)/i,
+      // Add patterns for simple data references that should modify existing charts
+      /^(?:deals?|contacts?|accounts?)\s+(?:by\s+)?(?:stage|status|industry|type)$/i,
+      /^(?:show|display|view)\s+(?:deals?|contacts?|accounts?)\s+(?:by\s+)?(?:stage|status|industry|type)$/i
     ];
 
-    const hasEnhancedChartRequest = enhancedChartPatterns.some(pattern => pattern.test(message));
+    const matchingPattern = enhancedChartPatterns.find(pattern => pattern.test(message));
+    const hasEnhancedChartRequest = !!matchingPattern;
     
     if (hasEnhancedChartRequest) {
       console.log('🚀 Enhanced chart request detected:', message);
+      console.log('🚀 Matching pattern:', matchingPattern?.toString());
       
       // Find the most recent chart message
       const recentChartMessage = messages.findLast(m => m.chartSpec);
@@ -2626,16 +2631,24 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     let title = 'Chart';
     
     // Detect user's preferred chart type from the message
+    console.log('🚀 Detecting chart type from message:', userMessage);
     if (lowerMessage.includes('line') || lowerMessage.includes('trend') || lowerMessage.includes('over time')) {
       chartType = 'line';
+      console.log('🚀 Chart type detected: line');
     } else if (lowerMessage.includes('pie') || lowerMessage.includes('distribution') || lowerMessage.includes('percentage')) {
       chartType = 'pie';
+      console.log('🚀 Chart type detected: pie');
     } else if (lowerMessage.includes('area') || lowerMessage.includes('filled')) {
       chartType = 'area';
+      console.log('🚀 Chart type detected: area');
     } else if (lowerMessage.includes('scatter') || lowerMessage.includes('correlation')) {
       chartType = 'scatter';
+      console.log('🚀 Chart type detected: scatter');
     } else if (lowerMessage.includes('bar') || lowerMessage.includes('column')) {
       chartType = 'bar';
+      console.log('🚀 Chart type detected: bar');
+    } else {
+      console.log('🚀 No specific chart type detected, using default: bar');
     }
     
     if ((lowerMessage.includes('deal') && lowerMessage.includes('stage')) || 
