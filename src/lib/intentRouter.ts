@@ -1,10 +1,10 @@
 import { Intent } from './intentClassifier';
-import { ConversationState } from './conversationManager';
+import { ConversationManager } from './conversationManager';
 import { ConversationResponse } from '@/types/chat';
 
 export interface IntentHandler {
   canHandle(intent: Intent): boolean;
-  handle(intent: Intent, conversationState: ConversationState, context: any): Promise<ConversationResponse>;
+  handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse>;
 }
 
 export class IntentRouter {
@@ -14,7 +14,7 @@ export class IntentRouter {
     this.handlers.push(handler);
   }
 
-  async routeIntent(intent: Intent, conversationState: ConversationState, context: any): Promise<ConversationResponse> {
+  async routeIntent(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('🛣️ Routing intent:', intent.action, 'with confidence:', intent.confidence);
     
     // If intent needs clarification, return clarification response
@@ -22,11 +22,11 @@ export class IntentRouter {
       return {
         message: intent.metadata.clarificationQuestion || "Could you please clarify what you'd like me to help you with?",
         needsClarification: true,
-        conversationContext: {
-          phase: conversationState.currentContext.conversationPhase.current,
-          action: 'clarification_requested',
-          referringTo: intent.context.referringTo
-        }
+              conversationContext: {
+        phase: conversationManager.getState().currentContext.conversationPhase.current,
+        action: 'clarification_requested',
+        referringTo: intent.context.referringTo
+      }
       };
     }
 
@@ -35,7 +35,7 @@ export class IntentRouter {
     
     if (handler) {
       console.log('🛣️ Found handler for intent:', intent.action);
-      return await handler.handle(intent, conversationState, context);
+      return await handler.handle(intent, conversationManager, context);
     }
 
     // Fallback to general conversation
@@ -44,7 +44,7 @@ export class IntentRouter {
       message: "I understand you want to work with your data, but I need a bit more information. Could you please be more specific about what you'd like to do?",
       needsClarification: true,
       conversationContext: {
-        phase: conversationState.currentContext.conversationPhase.current,
+        phase: conversationManager.getState().currentContext.conversationPhase.current,
         action: 'general_fallback',
         referringTo: intent.context.referringTo
       }
@@ -58,24 +58,24 @@ export class ChartIntentHandler implements IntentHandler {
     return ['create_chart', 'modify_chart', 'analyze_data', 'export_data'].includes(intent.action);
   }
 
-  async handle(intent: Intent, conversationState: ConversationState, context: any): Promise<ConversationResponse> {
+  async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('📊 Handling chart intent:', intent.action);
     
-    const { handleChartGeneration } = await import('@/app/api/chat/route');
+    const { handleChartGeneration } = await import('@/lib/chatHandlers');
     
     // Build chart request from intent
-    const chartRequest = this.buildChartRequest(intent, conversationState);
+    const chartRequest = this.buildChartRequest(intent, conversationManager);
     
     // Call existing chart generation logic
     const result = await handleChartGeneration(chartRequest, {}, context.sessionFiles || [], context.userId);
     
     // Update conversation state
     if (result.chartSpec) {
-      conversationState.setActiveChart({
+      conversationManager.setActiveChart({
         chartId: `chart-${Date.now()}`,
         chartType: intent.entities.chartType || 'bar',
         dataType: intent.entities.dataType || 'deals',
-        dimension: intent.entities.dimension || 'stage',
+        dimension: (intent.entities.dimension as 'stage' | 'status' | 'industry' | 'type') || 'stage',
         title: result.chartSpec.title || 'Chart',
         lastModified: new Date(),
         insights: result.chartSpec.insights
@@ -86,16 +86,16 @@ export class ChartIntentHandler implements IntentHandler {
       message: result.message,
       chartSpec: result.chartSpec,
       enhancedChart: result.enhancedChart,
-      suggestions: conversationState.getSuggestions(),
+      suggestions: conversationManager.getSuggestions(),
       conversationContext: {
-        phase: conversationState.currentContext.conversationPhase.current,
+        phase: conversationManager.getState().currentContext.conversationPhase.current,
         action: intent.action,
         referringTo: intent.context.referringTo
       }
     };
   }
 
-  private buildChartRequest(intent: Intent, conversationState: ConversationState): string {
+  private buildChartRequest(intent: Intent, conversationManager: ConversationManager): string {
     let request = '';
     
     if (intent.action === 'create_chart') {
@@ -126,10 +126,10 @@ export class DataIntentHandler implements IntentHandler {
     return ['view_data', 'explore_data'].includes(intent.action);
   }
 
-  async handle(intent: Intent, conversationState: ConversationState, context: any): Promise<ConversationResponse> {
+  async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('📋 Handling data intent:', intent.action);
     
-    const { handleDatabaseQuery } = await import('@/app/api/chat/route');
+    const { handleDatabaseQuery } = await import('@/lib/chatHandlers');
     
     // Build data request from intent
     const dataRequest = this.buildDataRequest(intent);
@@ -140,9 +140,9 @@ export class DataIntentHandler implements IntentHandler {
     return {
       message: result.message,
       data: result.data?.records,
-      suggestions: conversationState.getSuggestions(),
+      suggestions: conversationManager.getSuggestions(),
       conversationContext: {
-        phase: conversationState.currentContext.conversationPhase.current,
+        phase: conversationManager.getState().currentContext.conversationPhase.current,
         action: intent.action,
         referringTo: intent.context.referringTo
       }
@@ -163,7 +163,7 @@ export class CrudIntentHandler implements IntentHandler {
     return ['create_contact', 'update_contact', 'delete_contact', 'send_email'].includes(intent.action);
   }
 
-  async handle(intent: Intent, conversationState: ConversationState, context: any): Promise<ConversationResponse> {
+  async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling CRUD intent:', intent.action);
     
     // Import the appropriate handler based on intent
@@ -183,12 +183,12 @@ export class CrudIntentHandler implements IntentHandler {
         };
         
       case 'update_contact':
-        const { handleContactUpdateWithConfirmation } = await import('@/app/api/chat/route');
+        const { handleContactUpdateWithConfirmation } = await import('@/lib/chatHandlers');
         handlerFunction = handleContactUpdateWithConfirmation;
         break;
         
       case 'delete_contact':
-        const { handleContactDeleteWithConfirmation } = await import('@/app/api/chat/route');
+        const { handleContactDeleteWithConfirmation } = await import('@/lib/chatHandlers');
         handlerFunction = handleContactDeleteWithConfirmation;
         break;
         
@@ -210,7 +210,7 @@ export class CrudIntentHandler implements IntentHandler {
       return {
         message: result.message,
         conversationContext: {
-          phase: conversationState.currentContext.conversationPhase.current,
+          phase: conversationManager.getState().currentContext.conversationPhase.current,
           action: intent.action,
           referringTo: intent.context.referringTo
         }
@@ -221,7 +221,7 @@ export class CrudIntentHandler implements IntentHandler {
       message: "I'm not sure how to handle that request yet. Could you please rephrase?",
       needsClarification: true,
       conversationContext: {
-        phase: conversationState.currentContext.conversationPhase.current,
+        phase: conversationManager.getState().currentContext.conversationPhase.current,
         action: 'general_fallback',
         referringTo: intent.context.referringTo
       }
@@ -235,10 +235,10 @@ export class GeneralConversationHandler implements IntentHandler {
     return intent.action === 'general_conversation';
   }
 
-  async handle(intent: Intent, conversationState: ConversationState, context: any): Promise<ConversationResponse> {
+  async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('💬 Handling general conversation intent');
     
-    const { handleGeneralConversation } = await import('@/app/api/chat/route');
+    const { handleGeneralConversation } = await import('@/lib/chatHandlers');
     
     // Call existing general conversation logic
     const result = await handleGeneralConversation(
@@ -250,9 +250,9 @@ export class GeneralConversationHandler implements IntentHandler {
     
     return {
       message: result.message || "I'm here to help! What would you like to do?",
-      suggestions: conversationState.getSuggestions(),
+      suggestions: conversationManager.getSuggestions(),
       conversationContext: {
-        phase: conversationState.currentContext.conversationPhase.current,
+        phase: conversationManager.getState().currentContext.conversationPhase.current,
         action: 'general_conversation',
         referringTo: intent.context.referringTo
       }
