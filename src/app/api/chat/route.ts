@@ -118,17 +118,22 @@ async function handleGeneralConversationWithState(message: string, messages: Mes
     // Use intent-based processing instead of pattern matching
     if (conversationManager) {
       console.log('🧠 Using intent-based processing for:', message);
+      console.log('🧠 Message content:', message);
+      console.log('🧠 User ID:', actualUserId);
       
       // Classify intent using LLM
+      console.log('🧠 Starting intent classification...');
       const intent = await intentClassifier.classifyIntent(message, conversationManager.getState());
-      console.log('🧠 Classified intent:', intent);
+      console.log('🧠 Classified intent:', JSON.stringify(intent, null, 2));
       
       // Route intent to appropriate handler
+      console.log('🧠 Starting intent routing...');
       const response = await intentRouter.routeIntent(intent, conversationManager, {
         messages,
         userId: actualUserId,
         ...context
       });
+      console.log('🧠 Intent routing response:', JSON.stringify(response, null, 2));
       
       // Update conversation state with response
       conversationManager.updateContext(message, response.conversationContext?.action);
@@ -150,7 +155,8 @@ async function handleGeneralConversationWithState(message: string, messages: Mes
         data: response.data,
         suggestions: response.suggestions,
         needsClarification: response.needsClarification,
-        conversationContext: response.conversationContext
+        conversationContext: response.conversationContext,
+        action: response.action // Add action to trigger table refresh
       });
     }
     
