@@ -120,6 +120,8 @@ export class IntentClassifier {
       try {
         const content = response.choices[0]?.message?.content || '{}';
         console.log('🧠 Raw LLM response:', content);
+        console.log('🧠 Response length:', content.length);
+        console.log('🧠 Response starts with:', content.substring(0, 50));
         result = JSON.parse(content);
       } catch (parseError) {
         console.error('❌ JSON parse error:', parseError);
@@ -134,9 +136,11 @@ export class IntentClassifier {
             console.log('✅ Successfully extracted JSON from response');
           } catch (secondError) {
             console.error('❌ Failed to extract JSON:', secondError);
+            console.log('🔄 Using fallback intent for message:', message);
             return this.getFallbackIntent(message);
           }
         } else {
+          console.log('🔄 No JSON found in response, using fallback intent for message:', message);
           return this.getFallbackIntent(message);
         }
       }
@@ -444,6 +448,19 @@ Return ONLY a JSON object with this exact structure (no other text):
 
   private getFallbackIntent(message: string): Intent {
     const lowerMessage = message.toLowerCase();
+    
+    // Check if this is a confirmation response
+    if (this.isConfirmationResponse(message)) {
+      console.log('🔄 Fallback: Detected confirmation response:', message);
+      return {
+        action: 'update_contact', // Default to update_contact for confirmations
+        confidence: 0.8,
+        originalMessage: message,
+        entities: {},
+        context: { referringTo: 'existing_data' },
+        metadata: { isAmbiguous: false, needsClarification: false }
+      };
+    }
     
     // Simple fallback logic
     if (lowerMessage.includes('chart') || lowerMessage.includes('graph')) {
