@@ -147,6 +147,13 @@ export class IntentClassifier {
       context += `- Last action: ${state.currentContext.lastAction}\n`;
     }
     
+    // Add information about pending confirmations
+    const lastMessage = state.memory.sessionHistory[state.memory.sessionHistory.length - 1];
+    if (lastMessage?.conversationContext?.action === 'update_contact' && 
+        lastMessage?.conversationContext?.phase === 'confirmation') {
+      context += `- PENDING CONFIRMATION: Contact update for ${lastMessage.conversationContext.contactName} (${lastMessage.conversationContext.field} = ${lastMessage.conversationContext.value})\n`;
+    }
+    
     return context;
   }
 
@@ -159,10 +166,20 @@ export class IntentClassifier {
       ? `\n**Contextual References:**\n${nlpResult.references.map((r: any) => `- ${r.type}: "${r.value}" (${r.possibleMatches.length} possible matches)`).join('\n')}`
       : '\n**No contextual references found**';
 
+    // Check if this looks like a confirmation response
+    const isLikelyConfirmation = this.isConfirmationResponse(message);
+    const confirmationContext = isLikelyConfirmation ? `
+**IMPORTANT: This appears to be a confirmation response.**
+- Message: "${message}"
+- If the previous context was asking for confirmation (like "Is this correct? Please respond with 'yes' to confirm"), 
+  classify this as the appropriate action (e.g., 'update_contact' if confirming a contact update)
+- Extract any relevant entities from the confirmation context
+` : '';
+
     return `
 Analyze this message in the context of our conversation and classify the user's intent.
 
-${conversationContext}
+${conversationContext}${confirmationContext}
 
 User message: "${message}"${entityInfo}${referenceInfo}
 
@@ -172,6 +189,7 @@ Classify the intent and extract entities. Consider:
 3. Are they referring to an existing chart or requesting something new?
 4. What specific entities (chart type, data type, dimension) are mentioned?
 5. Use the extracted entities to enhance your understanding
+6. **If this is a confirmation response (like "yes", "confirm", "correct"), classify it as the action being confirmed**
 
 Return a JSON object with this exact structure:
 {
@@ -482,6 +500,12 @@ Use the extracted entities to populate the appropriate fields (contactName, fiel
   // Helper method to check if intent is for CRUD operations
   isCrudIntent(intent: Intent): boolean {
     return ['create_contact', 'update_contact', 'delete_contact', 'send_email'].includes(intent.action);
+  }
+
+  private isConfirmationResponse(message: string): boolean {
+    const lowerMessage = message.toLowerCase().trim();
+    const confirmationWords = ['yes', 'confirm', 'correct', 'ok', 'sure', 'y', 'yeah', 'yep'];
+    return confirmationWords.some(word => lowerMessage.includes(word)) && lowerMessage.length <= 20;
   }
 }
 
