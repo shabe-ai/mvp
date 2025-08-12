@@ -855,6 +855,7 @@ export class CrudIntentHandler implements IntentHandler {
 
   private async handleContactUpdate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling LLM-based contact update with intent:', intent);
+    console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
     // Use LLM-extracted entities instead of regex
     const contactName = intent.entities.contactName;
@@ -862,9 +863,13 @@ export class CrudIntentHandler implements IntentHandler {
     const value = intent.entities.value;
     
     console.log('📝 LLM-extracted data:', { contactName, field, value });
+    console.log('📝 Full entities object:', JSON.stringify(intent.entities, null, 2));
     
     if (!contactName || !field || !value) {
       console.log('❌ Missing required data from LLM extraction');
+      console.log('❌ contactName:', contactName);
+      console.log('❌ field:', field);
+      console.log('❌ value:', value);
       return {
         message: "I couldn't understand the update request. Please specify the contact name and what field to update. For example: 'update john smith's email to johnsmith@acme.com'",
         needsClarification: true,
@@ -926,7 +931,7 @@ export class CrudIntentHandler implements IntentHandler {
       // Ask for confirmation before updating
       const confirmationMessage = `Please confirm the contact update:\n\n**Contact:** ${matchingContact.firstName} ${matchingContact.lastName}\n**Field:** ${field}\n**New Value:** ${value}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
       
-      return {
+      const confirmationResponse = {
         message: confirmationMessage,
         action: "confirm_update",
         contactId: matchingContact._id,
@@ -945,6 +950,10 @@ export class CrudIntentHandler implements IntentHandler {
         }
       };
       
+      console.log('📝 Confirmation response being sent:', JSON.stringify(confirmationResponse, null, 2));
+      
+      return confirmationResponse;
+      
     } catch (error) {
       console.error('Contact update failed:', error);
       return {
@@ -960,6 +969,7 @@ export class CrudIntentHandler implements IntentHandler {
 
   private async handleContactUpdateConfirmation(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling contact update confirmation with intent:', intent);
+    console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
 
     // Get the confirmation data from the last message's conversation context
     const currentState = conversationManager.getState();
@@ -968,7 +978,8 @@ export class CrudIntentHandler implements IntentHandler {
     console.log('🔍 Confirmation data debug:', {
       lastMessageExists: !!lastMessage,
       lastMessageContext: lastMessage?.conversationContext,
-      sessionHistoryLength: currentState.memory.sessionHistory.length
+      sessionHistoryLength: currentState.memory.sessionHistory.length,
+      fullLastMessage: JSON.stringify(lastMessage, null, 2)
     });
     
     const contactId = lastMessage?.conversationContext?.contactId;
@@ -980,6 +991,9 @@ export class CrudIntentHandler implements IntentHandler {
 
     if (!contactId || !field || !value) {
       console.log('❌ Missing required data for confirmation');
+      console.log('❌ contactId:', contactId);
+      console.log('❌ field:', field);
+      console.log('❌ value:', value);
       return {
         message: "I couldn't process your confirmation. Please try again.",
         conversationContext: {
@@ -992,6 +1006,7 @@ export class CrudIntentHandler implements IntentHandler {
 
     try {
       console.log('🚀 Starting database update...');
+      console.log('🚀 User ID from context:', context.userId);
       
       // Import Convex for database operations
       const { convex } = await import('@/lib/convex');
@@ -1003,12 +1018,22 @@ export class CrudIntentHandler implements IntentHandler {
       });
       
       // Update the contact in the database
-      await convex.mutation(api.crm.updateContact, {
+      const result = await convex.mutation(api.crm.updateContact, {
         contactId: contactId as any, // Cast to Convex ID type
         updates: { [field]: value }
       });
 
+      console.log('✅ Contact update mutation result:', result);
       console.log('✅ Contact updated successfully:', { contactId, field, value });
+
+      // Verify the update by querying the contact
+      try {
+        console.log('🔍 Verifying update by querying contact...');
+        const updatedContact = await convex.query(api.crm.getContactById, { contactId: contactId as any });
+        console.log('🔍 Updated contact data:', updatedContact);
+      } catch (verifyError) {
+        console.log('⚠️ Could not verify update:', verifyError);
+      }
 
       return {
         message: `Great! I've updated the contact "${contactName}" to have "${field}" set to "${value}".`,
@@ -1022,6 +1047,13 @@ export class CrudIntentHandler implements IntentHandler {
 
     } catch (error) {
       console.error('❌ Contact update confirmation failed:', error);
+      console.error('❌ Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        contactId,
+        field,
+        value
+      });
       return {
         message: "I encountered an error while confirming the contact update. Please try again.",
         conversationContext: {
