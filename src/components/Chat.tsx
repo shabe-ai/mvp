@@ -284,6 +284,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
 
       // Notify parent of any actions that occurred
       if (data.action && onAction) {
+        console.log('🎯 Chat component calling onAction:', data.action, data);
         onAction(data.action, {
           recordId: data.contactId || data.accountId || data.dealId,
           ...data
