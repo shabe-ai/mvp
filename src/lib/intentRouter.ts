@@ -886,7 +886,12 @@ export class CrudIntentHandler implements IntentHandler {
         conversationContext: {
           phase: 'confirmation',
           action: 'update_contact',
-          referringTo: 'new_request'
+          referringTo: 'new_request',
+          // Include CRUD fields in conversationContext
+          contactId: matchingContact._id,
+          field: field,
+          value: value,
+          contactName: `${matchingContact.firstName} ${matchingContact.lastName}`
         }
       };
       
