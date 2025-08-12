@@ -190,6 +190,7 @@ Classify the intent and extract entities. Consider:
 4. What specific entities (chart type, data type, dimension) are mentioned?
 5. Use the extracted entities to enhance your understanding
 6. **If this is a confirmation response (like "yes", "confirm", "correct"), classify it as the action being confirmed**
+7. **IMPORTANT: For confirmation responses, set needsClarification to false and extract entities from the pending confirmation context**
 
 Return a JSON object with this exact structure:
 {
@@ -227,6 +228,14 @@ Be specific and accurate. If the user is referring to an existing chart (using "
 If the user mentions a chart type (line, bar, pie, etc.), extract it as chartType.
 If the user mentions data types (deals, contacts, accounts), extract them as dataType.
 If the user mentions dimensions (stage, status, industry), extract them as dimension.
+
+**CRITICAL: Confirmation Response Handling**
+- If the user says "yes", "confirm", "correct", "ok", "sure" and there's a pending confirmation in the context:
+  - Set action to the action being confirmed (e.g., "update_contact")
+  - Set needsClarification to false
+  - Extract entities from the pending confirmation context
+  - Set confidence to 0.95 or higher
+  - Do NOT ask for clarification
 
 **Important Analysis Types:**
 - **Account Analysis**: "which account has the most contacts" → action: "analyze_data", dataType: "accounts", target: "account with most contacts"
