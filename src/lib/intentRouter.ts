@@ -783,10 +783,39 @@ export class CrudIntentHandler implements IntentHandler {
       sessionHistoryLength: currentState.memory.sessionHistory.length
     });
     
+    // Enhanced confirmation detection
+    const isConfirmationResponse = (
+      lastMessage?.conversationContext?.action === 'update_contact' && 
+      lastMessage?.conversationContext?.phase === 'confirmation' &&
+      (intent.originalMessage.toLowerCase().includes('yes') || 
+       intent.originalMessage.toLowerCase().includes('confirm') ||
+       intent.originalMessage.toLowerCase().includes('correct') ||
+       intent.originalMessage.toLowerCase().includes('ok') ||
+       intent.originalMessage.toLowerCase().includes('sure'))
+    );
+    
+    // Fallback: Check if this looks like a confirmation response even if intent classification failed
+    const isLikelyConfirmation = (
+      lastMessage?.conversationContext?.action === 'update_contact' && 
+      lastMessage?.conversationContext?.phase === 'confirmation' &&
+      intent.originalMessage.toLowerCase().trim().length <= 10 && // Short response
+      (intent.originalMessage.toLowerCase().includes('yes') || 
+       intent.originalMessage.toLowerCase().includes('y') ||
+       intent.originalMessage.toLowerCase().includes('ok') ||
+       intent.originalMessage.toLowerCase().includes('sure'))
+    );
+    
+    console.log('🔍 Enhanced confirmation detection:', {
+      isConfirmationResponse,
+      isLikelyConfirmation,
+      lastMessageAction: lastMessage?.conversationContext?.action,
+      lastMessagePhase: lastMessage?.conversationContext?.phase,
+      userResponse: intent.originalMessage.toLowerCase(),
+      responseLength: intent.originalMessage.length
+    });
+    
     // If the last message was asking for confirmation and user said "yes"
-    if (lastMessage?.conversationContext?.action === 'update_contact' && 
-        lastMessage?.conversationContext?.phase === 'confirmation' &&
-        intent.originalMessage.toLowerCase().includes('yes')) {
+    if (isConfirmationResponse || isLikelyConfirmation) {
       console.log('✅ Confirmation detected! Calling handleContactUpdateConfirmation');
       return await this.handleContactUpdateConfirmation(intent, conversationManager, context);
     }
