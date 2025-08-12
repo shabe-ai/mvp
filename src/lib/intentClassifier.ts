@@ -1,6 +1,7 @@
 import { openaiClient } from '@/lib/openaiClient';
 import { ConversationState } from './conversationManager';
 import { nlpProcessor, Entity, ContextualReference } from './nlpProcessor';
+import { userDataEnhancer } from './userDataEnhancer';
 
 export interface Intent {
   action: 'create_chart' | 'modify_chart' | 'analyze_data' | 'export_data' | 'explore_data' | 'view_data' | 'send_email' | 'create_contact' | 'update_contact' | 'delete_contact' | 'general_conversation';
@@ -88,7 +89,12 @@ export class IntentClassifier {
       }
       
       const conversationContext = this.buildConversationContext(conversationState);
-      const prompt = this.buildClassificationPrompt(message, conversationContext, nlpResult);
+      const basePrompt = this.buildClassificationPrompt(message, conversationContext, nlpResult);
+      
+      // Enhance prompt with RAG (user data examples)
+      const enhancedPrompt = userDataEnhancer.enhancePrompt(basePrompt, message);
+      
+      console.log('🧠 Using RAG-enhanced prompt for intent classification');
       
       const response = await openaiClient.chatCompletionsCreate({
         model: "gpt-4",
@@ -99,7 +105,7 @@ export class IntentClassifier {
           },
           {
             role: "user",
-            content: prompt
+            content: enhancedPrompt
           }
         ],
         temperature: 0.1,

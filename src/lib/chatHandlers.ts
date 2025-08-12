@@ -6,6 +6,7 @@ import { getConversationManager } from './conversationManager';
 import { performanceOptimizer } from './performanceOptimizer';
 import { errorHandler } from './errorHandler';
 import { edgeCaseHandler } from './edgeCaseHandler';
+import { specializedRAG } from './specializedRAG';
 
 interface UserContext {
   userProfile: {
@@ -96,6 +97,10 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     console.log('🚀 Starting enhanced chart generation for user:', userId);
     console.log('📜 Session files available:', sessionFiles.length);
     
+    // Enhance chart generation with specialized RAG
+    const enhancedMessage = await specializedRAG.enhanceChartPrompt(userMessage, userMessage);
+    console.log('🧠 Using RAG-enhanced chart generation');
+    
     if (!userId) {
       throw new Error('User ID is required for chart generation');
     }
@@ -123,6 +128,8 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     let chartData: Array<{ stage?: string; status?: string; industry?: string; count: number; name: string }> = [];
     let chartType = 'bar';
     let title = 'Chart';
+    let dataType = 'deals';
+    let dimension = 'stage';
     
     // Detect user's preferred chart type from the message
     console.log('🚀 Detecting chart type from message:', userMessage);
@@ -140,6 +147,8 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     if (lowerMessage.includes('deal')) {
       // Deals chart
       console.log('🚀 Generating deals chart');
+      dataType = 'deals';
+      dimension = 'stage';
       const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
       
       // Group deals by stage
@@ -160,6 +169,8 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     } else if (lowerMessage.includes('contact')) {
       // Contacts chart
       console.log('🚀 Generating contacts chart');
+      dataType = 'contacts';
+      dimension = 'leadStatus';
       const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
       
       // Group contacts by lead status
@@ -180,6 +191,8 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     } else if (lowerMessage.includes('account')) {
       // Accounts chart
       console.log('🚀 Generating accounts chart');
+      dataType = 'accounts';
+      dimension = 'industry';
       const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
       
       // Group accounts by industry
@@ -264,6 +277,18 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     } catch (error) {
       console.error('❌ Error generating insights:', error);
       // Continue without insights if there's an error
+    }
+    
+    // Log successful chart generation for RAG learning
+    try {
+      await specializedRAG.logSuccessfulChart(userMessage, {
+        chartType,
+        dataType,
+        dimension,
+        title
+      });
+    } catch (error) {
+      console.error('❌ Error logging chart for RAG:', error);
     }
     
     return {

@@ -1,6 +1,7 @@
 import { Intent } from './intentClassifier';
 import { ConversationManager } from './conversationManager';
 import { ConversationResponse } from '@/types/chat';
+import { userDataEnhancer } from './userDataEnhancer';
 
 export interface IntentHandler {
   canHandle(intent: Intent): boolean;
@@ -35,7 +36,19 @@ export class IntentRouter {
     
     if (handler) {
       console.log('🛣️ Found handler for intent:', intent.action);
-      return await handler.handle(intent, conversationManager, context);
+      const response = await handler.handle(intent, conversationManager, context);
+      
+      // Log successful interaction for RAG learning
+      if (response && !response.error && !response.needsClarification) {
+        await userDataEnhancer.logSuccessfulInteraction(
+          intent.originalMessage,
+          intent.action,
+          intent.entities,
+          intent.context.referringTo
+        );
+      }
+      
+      return response;
     }
 
     // Fallback to general conversation
