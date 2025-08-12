@@ -101,7 +101,7 @@ export class IntentClassifier {
         messages: [
           {
             role: "system",
-            content: "You are an expert intent classifier for a CRM analytics system. Your job is to understand what the user wants to do and extract relevant entities."
+            content: "You are an expert intent classifier for a CRM analytics system. Your job is to understand what the user wants to do and extract relevant entities. ALWAYS return valid JSON only."
           },
           {
             role: "user",
@@ -116,7 +116,30 @@ export class IntentClassifier {
         model: 'gpt-4'
       });
 
-      const result = JSON.parse(response.choices[0]?.message?.content || '{}');
+      let result;
+      try {
+        const content = response.choices[0]?.message?.content || '{}';
+        console.log('🧠 Raw LLM response:', content);
+        result = JSON.parse(content);
+      } catch (parseError) {
+        console.error('❌ JSON parse error:', parseError);
+        console.error('❌ Raw response was:', response.choices[0]?.message?.content);
+        
+        // Try to extract JSON from the response if it contains other text
+        const content = response.choices[0]?.message?.content || '';
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          try {
+            result = JSON.parse(jsonMatch[0]);
+            console.log('✅ Successfully extracted JSON from response');
+          } catch (secondError) {
+            console.error('❌ Failed to extract JSON:', secondError);
+            return this.getFallbackIntent(message);
+          }
+        } else {
+          return this.getFallbackIntent(message);
+        }
+      }
       
       console.log('🧠 Intent classification result:', result);
       
@@ -169,30 +192,20 @@ export class IntentClassifier {
     // Check if this looks like a confirmation response
     const isLikelyConfirmation = this.isConfirmationResponse(message);
     const confirmationContext = isLikelyConfirmation ? `
-**IMPORTANT: This appears to be a confirmation response.**
-- Message: "${message}"
-- If the previous context was asking for confirmation (like "Is this correct? Please respond with 'yes' to confirm"), 
-  classify this as the appropriate action (e.g., 'update_contact' if confirming a contact update)
-- Extract any relevant entities from the confirmation context
+**CONFIRMATION DETECTED:**
+- User said: "${message}"
+- If there's a pending confirmation in the conversation context, classify this as the action being confirmed
+- Set needsClarification to false for confirmation responses
 ` : '';
 
     return `
-Analyze this message in the context of our conversation and classify the user's intent.
+You are an intent classifier for a CRM system. Analyze the user message and return ONLY a valid JSON object.
 
 ${conversationContext}${confirmationContext}
 
 User message: "${message}"${entityInfo}${referenceInfo}
 
-Classify the intent and extract entities. Consider:
-1. What action does the user want to perform?
-2. What data or chart are they referring to?
-3. Are they referring to an existing chart or requesting something new?
-4. What specific entities (chart type, data type, dimension) are mentioned?
-5. Use the extracted entities to enhance your understanding
-6. **If this is a confirmation response (like "yes", "confirm", "correct"), classify it as the action being confirmed**
-7. **IMPORTANT: For confirmation responses, set needsClarification to false and extract entities from the pending confirmation context**
-
-Return a JSON object with this exact structure:
+Return ONLY a JSON object with this exact structure (no other text):
 {
   "action": "create_chart|modify_chart|analyze_data|export_data|explore_data|view_data|send_email|create_contact|update_contact|delete_contact|general_conversation",
   "confidence": 0.95,
@@ -224,50 +237,19 @@ Return a JSON object with this exact structure:
   }
 }
 
-Be specific and accurate. If the user is referring to an existing chart (using "it", "this", "the chart"), set referringTo to "current_chart".
-If the user mentions a chart type (line, bar, pie, etc.), extract it as chartType.
-If the user mentions data types (deals, contacts, accounts), extract them as dataType.
-If the user mentions dimensions (stage, status, industry), extract them as dimension.
+**IMPORTANT RULES:**
+1. Return ONLY valid JSON - no explanations or additional text
+2. For confirmation responses (yes, confirm, correct, ok, sure), set action to the action being confirmed
+3. For confirmation responses, set needsClarification to false
+4. Extract entities from the conversation context if available
+5. Use high confidence (0.9+) for clear requests
+6. Use lower confidence (0.5-0.7) for ambiguous requests
 
-**CRITICAL: Confirmation Response Handling**
-- If the user says "yes", "confirm", "correct", "ok", "sure" and there's a pending confirmation in the context:
-  - Set action to the action being confirmed (e.g., "update_contact")
-  - Set needsClarification to false
-  - Extract entities from the pending confirmation context
-  - Set confidence to 0.95 or higher
-  - Do NOT ask for clarification
-
-**Important Analysis Types:**
-- **Account Analysis**: "which account has the most contacts" → action: "analyze_data", dataType: "accounts", target: "account with most contacts"
-- **Sales Pipeline Analysis**: "analyze sales pipeline" → action: "analyze_data", dataType: "deals", target: "pipeline analysis"
-- **Churn Analysis**: "predict customer churn" → action: "analyze_data", dataType: "contacts", target: "churn prediction"
-- **Revenue Forecasting**: "forecast revenue" → action: "analyze_data", dataType: "deals", target: "revenue forecast"
-- **Market Opportunity**: "analyze market opportunities" → action: "analyze_data", dataType: "accounts", target: "market opportunity analysis"
-- **Relationship Analysis**: "show contacts by account" → action: "create_chart", dataType: "contacts", dimension: "company"
-- **Comparative Analysis**: "compare accounts" → action: "analyze_data", dataType: "accounts", target: "account comparison"
-- **Chart Modification**: "make it into a pie chart" → action: "modify_chart", chartType: "pie"
-- **Chart Modification**: "change it to a bar chart" → action: "modify_chart", chartType: "bar"
-- **Chart Modification**: "convert to line chart" → action: "modify_chart", chartType: "line"
-
-**Query Understanding:**
-- "which account has the most contacts" = Analyze accounts to find the one with highest contact count
-- "analyze sales pipeline" = Comprehensive analysis of deal stages, conversion rates, and sales velocity
-- "predict customer churn" = Identify at-risk customers and calculate churn probability
-- "forecast revenue" = Predict future revenue based on historical trends and current pipeline
-- "analyze market opportunities" = Identify top accounts and market expansion potential
-- "show contacts by account" = Create chart showing contacts grouped by their company/account
-- "accounts with most deals" = Analyze accounts to find those with highest deal count
-- "make it into a pie chart" = Modify existing chart to pie chart type
-- "change it to a bar chart" = Modify existing chart to bar chart type
-- "convert to line chart" = Modify existing chart to line chart type
-- "switch to area chart" = Modify existing chart to area chart type
-
-For contact updates, extract:
-- contactName: the name of the contact being updated
-- field: the field being updated (email, phone, title, company, etc.)
-- value: the new value for the field
-
-Use the extracted entities to populate the appropriate fields (contactName, field, value, etc.).
+**Examples:**
+- "yes" after contact update confirmation → action: "update_contact", needsClarification: false
+- "update john's email to john@example.com" → action: "update_contact", contactName: "john", field: "email", value: "john@example.com"
+- "show me contacts" → action: "view_data", dataType: "contacts"
+- "make it a pie chart" → action: "modify_chart", chartType: "pie"
 `;
   }
 
