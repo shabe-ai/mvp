@@ -2,6 +2,7 @@ import { Intent } from './intentClassifier';
 import { ConversationManager } from './conversationManager';
 import { ConversationResponse } from '@/types/chat';
 import { userDataEnhancer } from './userDataEnhancer';
+import { ragMonitor } from './ragMonitor';
 
 export interface IntentHandler {
   canHandle(intent: Intent): boolean;
@@ -18,9 +19,11 @@ export class IntentRouter {
   async routeIntent(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('🛣️ Routing intent:', intent.action, 'with confidence:', intent.confidence);
     
+    const startTime = Date.now();
+    
     // If intent needs clarification, return clarification response
     if (intent.metadata.needsClarification) {
-      return {
+      const response = {
         message: intent.metadata.clarificationQuestion || "Could you please clarify what you'd like me to help you with?",
         needsClarification: true,
               conversationContext: {
@@ -29,6 +32,18 @@ export class IntentRouter {
         referringTo: intent.context.referringTo
       }
       };
+      
+      // Track clarification interaction
+      await ragMonitor.trackInteraction(
+        intent.originalMessage,
+        intent.action,
+        intent.confidence,
+        false, // Not successful (needs clarification)
+        1, // Clarification needed
+        Date.now() - startTime
+      );
+      
+      return response;
     }
 
     // Find appropriate handler
@@ -48,12 +63,22 @@ export class IntentRouter {
         );
       }
       
+      // Track interaction for monitoring
+      await ragMonitor.trackInteraction(
+        intent.originalMessage,
+        intent.action,
+        intent.confidence,
+        !response.error && !response.needsClarification, // Success if no error and no clarification needed
+        response.needsClarification ? 1 : 0, // Clarifications needed
+        Date.now() - startTime
+      );
+      
       return response;
     }
 
     // Fallback to general conversation
     console.log('🛣️ No specific handler found, falling back to general conversation');
-    return {
+    const fallbackResponse = {
       message: "I understand you want to work with your data, but I need a bit more information. Could you please be more specific about what you'd like to do?",
       needsClarification: true,
       conversationContext: {
@@ -62,6 +87,18 @@ export class IntentRouter {
         referringTo: intent.context.referringTo
       }
     };
+    
+    // Track fallback interaction
+    await ragMonitor.trackInteraction(
+      intent.originalMessage,
+      intent.action,
+      intent.confidence,
+      false, // Not successful (fallback)
+      1, // Clarification needed
+      Date.now() - startTime
+    );
+    
+    return fallbackResponse;
   }
 }
 
