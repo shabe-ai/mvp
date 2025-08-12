@@ -54,10 +54,11 @@ export default function ChatWithSidebar() {
 
   // Handle when chat performs an action that should refresh tables
   const handleChatAction = useCallback((action: string, data?: unknown) => {
-    console.log('Chat action:', action, data);
+    console.log('🎯 ChatWithSidebar received action:', action, data);
     
     // If a contact/account/deal was created, updated, or deleted, refresh tables
     if (['contact_created', 'contact_updated', 'account_created', 'deal_created'].includes(action)) {
+      console.log('🔄 Triggering table refresh for action:', action);
       setRefreshTables(prev => prev + 1);
     }
     

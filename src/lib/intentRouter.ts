@@ -1012,6 +1012,7 @@ export class CrudIntentHandler implements IntentHandler {
 
       return {
         message: `Great! I've updated the contact "${contactName}" to have "${field}" set to "${value}".`,
+        action: "contact_updated", // Add this to trigger table refresh
         conversationContext: {
           phase: conversationManager.getState().currentContext.conversationPhase.current,
           action: 'update_contact',
