@@ -583,6 +583,8 @@ async function applyFilters(records: DatabaseRecord[], userMessage: string, data
       return record;
     });
     
+    console.log('🧠 Records data prepared for LLM:', recordsData.slice(0, 3)); // Log first 3 records
+    
     const systemPrompt = `You are an expert database filtering system. Your job is to filter records based on the user's query.
 
 **Available Records (${dataType}):**
@@ -602,6 +604,8 @@ ${JSON.stringify(recordsData, null, 2)}
 - "show contacts at tech company" → Return IDs of contacts at tech companies
 - "find deals in closing stage" → Return IDs of deals with "closing" stage
 - "all contacts" → Return all contact IDs
+- "view kavean gobal" → Return ID of contact named "kavean gobal"
+- "what is kavean gobal's email" → Return ID of contact named "kavean gobal"
 
 **Return Format:**
 Return ONLY a JSON array of matching record IDs:
@@ -609,6 +613,8 @@ Return ONLY a JSON array of matching record IDs:
 
 **Important:** Return ONLY the JSON array, no other text.`;
 
+    console.log('🧠 Sending request to LLM with prompt length:', systemPrompt.length);
+    
     const response = await openaiClient.chatCompletionsCreate({
       model: "gpt-4",
       messages: [
@@ -649,6 +655,8 @@ Return ONLY a JSON array of matching record IDs:
       }
     } catch (error) {
       console.log('❌ Failed to parse LLM response as JSON, trying to extract IDs');
+      console.log('❌ Parse error:', error);
+      console.log('❌ Raw content:', content);
       // Fallback: try to extract IDs from text
       const idMatches = content.match(/"([^"]+)"/g);
       if (idMatches) {
@@ -664,7 +672,8 @@ Return ONLY a JSON array of matching record IDs:
     console.log('🧠 LLM filtering result:', {
       originalCount: records.length,
       filteredCount: filteredRecords.length,
-      matchingIds: matchingIds.length
+      matchingIds: matchingIds.length,
+      filteredRecordNames: filteredRecords.map(r => `${r.firstName || ''} ${r.lastName || ''}`.trim())
     });
 
     return filteredRecords;
