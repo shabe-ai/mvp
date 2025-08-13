@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { addBreadcrumb } from '@sentry/nextjs';
 import { getConversationManager } from '@/lib/conversationManager';
 import { intentClassifier } from "@/lib/intentClassifier";
 import { intentRouter } from "@/lib/intentRouter";
+import { logger } from '@/lib/logger';
+import { errorMonitoring } from '@/lib/errorMonitoring';
+import { ConversationPruner } from '@/lib/conversationPruner';
 
 // Add proper interfaces at the top
 interface UserContext {
@@ -23,13 +25,16 @@ interface UserContext {
 
 // Main POST handler
 export async function POST(request: NextRequest) {
+  let actualUserId: string | undefined;
+  let messageContent: string | undefined;
+  
   try {
     const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const actualUserId = userId;
+    actualUserId = userId;
     const body = await request.json();
     const { message, messages = [], context: requestContext = {} } = body;
 
@@ -41,16 +46,50 @@ export async function POST(request: NextRequest) {
       messageContent = lastUserMessage?.content;
     }
 
-    console.log('🧠 Message content:', messageContent);
-    console.log('🧠 User ID:', actualUserId);
+    // Set up error monitoring context
+    errorMonitoring.setUserContext(actualUserId);
+    errorMonitoring.setTransactionContext('chat_api', 'process_message', { messageLength: messageContent?.length });
+
+    // Log API request with structured logging
+    logger.logApiRequest('POST', '/api/chat', actualUserId, { messageLength: messageContent?.length });
+
+    logger.debug('Processing chat message', { 
+      userId: actualUserId, 
+      messageLength: messageContent?.length,
+      hasMessages: messages.length > 0
+    });
 
     // Validate that we have a message
     if (!messageContent || typeof messageContent !== 'string') {
-      console.log('❌ Invalid or missing message:', messageContent);
+      logger.warn('Invalid or missing message received', { 
+        userId: actualUserId, 
+        messageContent: typeof messageContent 
+      });
+      
+      errorMonitoring.captureValidationError(
+        'Invalid or missing message',
+        'messageContent',
+        messageContent,
+        { userId: actualUserId }
+      );
+      
       return NextResponse.json({
         message: "I didn't receive a valid message. Please try again.",
         error: true
       });
+    }
+
+    // Prune conversation history if needed
+    if (messages.length > 0) {
+      const pruningResult = ConversationPruner.smartPrune(messages);
+      if (pruningResult.prunedCount > 0) {
+        logger.info('Conversation history pruned', {
+          userId: actualUserId,
+          originalCount: pruningResult.originalCount,
+          prunedCount: pruningResult.prunedCount,
+          reason: pruningResult.reason
+        });
+      }
     }
 
     // Check if this is a simple confirmation response
@@ -209,6 +248,91 @@ export async function POST(request: NextRequest) {
               });
             }
           }
+        } else if (lastMessage?.conversationContext?.action === 'create_contact' && 
+                   lastMessage?.conversationContext?.phase === 'confirmation') {
+          
+          console.log('✅ Pending create confirmation found! Processing directly...');
+          
+          // Extract confirmation data
+          const contactName = lastMessage.conversationContext.contactName;
+          const email = lastMessage.conversationContext.email;
+          const company = lastMessage.conversationContext.company;
+          
+          console.log('📝 Create confirmation data:', { contactName, email, company });
+          
+          if (contactName && email) {
+            try {
+              console.log('🚀 Starting direct database creation...');
+              
+              // Import Convex for database operations
+              const { convex } = await import('@/lib/convex');
+              const { api } = await import('@/convex/_generated/api');
+              
+              // Get user's team
+              const teams = await convex.query(api.crm.getTeamsByUser, { userId: actualUserId });
+              const teamId = teams.length > 0 ? teams[0]._id : 'default';
+              
+              // Parse name into first and last name
+              const nameParts = contactName.trim().split(' ');
+              const firstName = nameParts[0] || '';
+              const lastName = nameParts.slice(1).join(' ') || '';
+              
+              // Create the contact in the database
+              const result = await convex.mutation(api.crm.createContact, {
+                teamId,
+                createdBy: actualUserId,
+                firstName,
+                lastName,
+                email,
+                company: company || '',
+                phone: '',
+                title: '',
+                leadStatus: 'new',
+                contactType: 'contact',
+                source: 'chat_creation'
+              });
+
+              console.log('✅ Direct database creation successful:', result);
+              
+              // Update conversation state
+              conversationManager.updateContext(messageContent, 'create_contact');
+              
+              // Add assistant response to history
+              const assistantMessage = {
+                role: 'assistant' as const,
+                content: `Perfect! I've successfully created the contact ${contactName} with email ${email}${company ? ` at ${company}` : ''}. The contact has been added to your database.`,
+                timestamp: new Date(),
+                conversationContext: {
+                  phase: 'exploration',
+                  action: 'create_contact',
+                  referringTo: 'new_request'
+                }
+              };
+              conversationManager.addToHistory(assistantMessage);
+              
+              return NextResponse.json({
+                message: `Perfect! I've successfully created the contact ${contactName} with email ${email}${company ? ` at ${company}` : ''}. The contact has been added to your database.`,
+                action: "contact_created",
+                suggestions: conversationManager.getSuggestions(),
+                conversationContext: {
+                  phase: 'exploration',
+                  action: 'create_contact',
+                  referringTo: 'new_request'
+                }
+              });
+              
+            } catch (error) {
+              console.error('❌ Direct database creation failed:', error);
+              return NextResponse.json({
+                message: "I encountered an error while creating the contact. Please try again.",
+                conversationContext: {
+                  phase: 'error',
+                  action: 'create_contact',
+                  referringTo: 'new_request'
+                }
+              });
+            }
+          }
         }
       }
     }
@@ -268,7 +392,23 @@ export async function POST(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('❌ Chat API error:', error);
+    // Log error with structured logging
+    logger.error('Chat API error occurred', error instanceof Error ? error : undefined, {
+      userId: actualUserId,
+      operation: 'chat_api',
+      messageLength: messageContent?.length
+    });
+
+    // Capture error for monitoring
+    errorMonitoring.captureApiError(
+      error instanceof Error ? error : new Error(String(error)),
+      request,
+      { userId: actualUserId }
+    );
+
+    // Log API response
+    logger.logApiResponse('POST', '/api/chat', 500, actualUserId, { error: true });
+
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
