@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
         if (lastMessage?.conversationContext?.action === 'update_contact' && 
             lastMessage?.conversationContext?.phase === 'confirmation') {
           
-          console.log('✅ Pending confirmation found! Processing directly...');
+          console.log('✅ Pending update confirmation found! Processing directly...');
           
           // Extract confirmation data
           const contactId = lastMessage.conversationContext.contactId;
@@ -139,6 +139,71 @@ export async function POST(request: NextRequest) {
                 conversationContext: {
                   phase: 'error',
                   action: 'update_contact',
+                  referringTo: 'new_request'
+                }
+              });
+            }
+          }
+        } else if (lastMessage?.conversationContext?.action === 'delete_contact' && 
+                   lastMessage?.conversationContext?.phase === 'confirmation') {
+          
+          console.log('✅ Pending delete confirmation found! Processing directly...');
+          
+          // Extract confirmation data
+          const contactId = lastMessage.conversationContext.contactId;
+          const contactName = lastMessage.conversationContext.contactName;
+          
+          console.log('📝 Delete confirmation data:', { contactId, contactName });
+          
+          if (contactId) {
+            try {
+              console.log('🚀 Starting direct database deletion...');
+              
+              // Import Convex for database operations
+              const { convex } = await import('@/lib/convex');
+              const { api } = await import('@/convex/_generated/api');
+              
+              // Delete the contact from the database
+              const result = await convex.mutation(api.crm.deleteContact, {
+                contactId: contactId as any
+              });
+
+              console.log('✅ Direct database deletion successful:', result);
+              
+              // Update conversation state
+              conversationManager.updateContext(messageContent, 'delete_contact');
+              
+              // Add assistant response to history
+              const assistantMessage = {
+                role: 'assistant' as const,
+                content: `Perfect! I've successfully deleted ${contactName} from your database.`,
+                timestamp: new Date(),
+                conversationContext: {
+                  phase: 'exploration',
+                  action: 'delete_contact',
+                  referringTo: 'new_request'
+                }
+              };
+              conversationManager.addToHistory(assistantMessage);
+              
+              return NextResponse.json({
+                message: `Perfect! I've successfully deleted ${contactName} from your database.`,
+                action: "contact_deleted",
+                suggestions: conversationManager.getSuggestions(),
+                conversationContext: {
+                  phase: 'exploration',
+                  action: 'delete_contact',
+                  referringTo: 'new_request'
+                }
+              });
+              
+            } catch (error) {
+              console.error('❌ Direct database deletion failed:', error);
+              return NextResponse.json({
+                message: "I encountered an error while deleting the contact. Please try again.",
+                conversationContext: {
+                  phase: 'error',
+                  action: 'delete_contact',
                   referringTo: 'new_request'
                 }
               });
