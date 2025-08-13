@@ -580,14 +580,22 @@ function applyFilters(records: DatabaseRecord[], userMessage: string, dataType: 
                title.includes(term);
       });
     } else if (dataType === 'accounts') {
+      const name = (record.name || '').toLowerCase();
+      const industry = (record.industry || '').toLowerCase();
+      const website = (record.website || '').toLowerCase();
+      
+      console.log('🔍 Checking account:', { name, industry, website, filterTerms });
+      
       return filterTerms.some(term => {
-        const name = (record.name || '').toLowerCase();
-        const industry = (record.industry || '').toLowerCase();
-        const website = (record.website || '').toLowerCase();
-        
-        return name.includes(term) || 
+        const matches = name.includes(term) || 
                industry.includes(term) || 
                website.includes(term);
+        
+        if (matches) {
+          console.log('🔍 Account match found:', { name, term, matches });
+        }
+        
+        return matches;
       });
     } else if (dataType === 'deals') {
       return filterTerms.some(term => {
@@ -634,12 +642,33 @@ function extractFilterTerms(message: string): string[] {
     'contact', 'contacts', 'account', 'accounts', 'deal', 'deals', 'activity', 'activities'
   ]);
   
-  // Extract words that could be filter terms
+  // First, try to extract specific names/terms after common query patterns
+  const patterns = [
+    /view\s+(?:account|contact|deal|activity)\s+([a-zA-Z\s]+)/i,
+    /show\s+(?:account|contact|deal|activity)\s+([a-zA-Z\s]+)/i,
+    /find\s+(?:account|contact|deal|activity)\s+([a-zA-Z\s]+)/i,
+    /get\s+(?:account|contact|deal|activity)\s+([a-zA-Z\s]+)/i,
+    /search\s+(?:account|contact|deal|activity)\s+([a-zA-Z\s]+)/i
+  ];
+  
+  for (const pattern of patterns) {
+    const match = message.match(pattern);
+    if (match && match[1]) {
+      const extracted = match[1].trim();
+      if (extracted.length > 0) {
+        console.log('🔍 Extracted filter term from pattern:', extracted);
+        return [extracted.toLowerCase()];
+      }
+    }
+  }
+  
+  // Fallback to general word extraction
   const words = message.toLowerCase()
     .replace(/[^\w\s]/g, ' ') // Remove punctuation
     .split(/\s+/)
     .filter(word => word.length > 2 && !stopWords.has(word));
   
+  console.log('🔍 Extracted filter terms:', words);
   return [...new Set(words)]; // Remove duplicates
 }
 
