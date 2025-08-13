@@ -4,7 +4,12 @@ import { nlpProcessor, Entity, ContextualReference } from './nlpProcessor';
 import { userDataEnhancer } from './userDataEnhancer';
 
 export interface Intent {
-  action: 'create_chart' | 'modify_chart' | 'analyze_data' | 'export_data' | 'explore_data' | 'view_data' | 'send_email' | 'create_contact' | 'update_contact' | 'delete_contact' | 'general_conversation';
+  action: 'create_chart' | 'modify_chart' | 'analyze_data' | 'export_data' | 'explore_data' | 'view_data' | 'send_email' | 
+          'create_contact' | 'update_contact' | 'delete_contact' | 
+          'create_account' | 'update_account' | 'delete_account' |
+          'create_deal' | 'update_deal' | 'delete_deal' |
+          'create_activity' | 'update_activity' | 'delete_activity' |
+          'general_conversation';
   confidence: number;
   originalMessage: string; // The original user message
   entities: {
@@ -14,7 +19,21 @@ export interface Intent {
     context?: 'existing' | 'new' | 'modification' | 'reference';
     action?: 'show' | 'hide' | 'change' | 'analyze' | 'export' | 'predict';
     target?: string; // What the user is referring to (e.g., "the chart", "deals data")
+    
+    // Contact entities
     contactName?: string;
+    
+    // Account entities
+    accountName?: string;
+    
+    // Deal entities
+    dealName?: string;
+    
+    // Activity entities
+    activitySubject?: string;
+    activityType?: string;
+    
+    // Common entities
     field?: string;
     value?: string;
     date?: string;
@@ -22,6 +41,16 @@ export interface Intent {
     email?: string;
     phone?: string;
     company?: string;
+    industry?: string;
+    website?: string;
+    stage?: string;
+    status?: string;
+    type?: string;
+    subject?: string;
+    description?: string;
+    closeDate?: string;
+    account?: string;
+    contact?: string;
   };
   context: {
     referringTo?: 'current_chart' | 'previous_chart' | 'new_request' | 'existing_data';
@@ -89,7 +118,7 @@ export class IntentClassifier {
       }
       
       const conversationContext = this.buildConversationContext(conversationState);
-      const basePrompt = this.buildClassificationPrompt(message, conversationContext, nlpResult);
+      const basePrompt = this.buildClassificationPrompt(message, conversationState);
       
       // Enhance prompt with RAG (user data examples)
       const enhancedPrompt = userDataEnhancer.enhancePrompt(basePrompt, message);
@@ -155,27 +184,25 @@ export class IntentClassifier {
     }
   }
 
-  private buildConversationContext(state: ConversationState): string {
-    let context = `Current conversation context:\n`;
-    context += `- Session: ${state.metadata.sessionId}\n`;
-    context += `- Interaction count: ${state.memory.interactionCount}\n`;
-    context += `- Current phase: ${state.currentContext.conversationPhase.current}\n`;
+  private buildConversationContext(conversationState: ConversationState): string {
+    let context = '';
     
-    if (state.currentContext.activeChart) {
-      const chart = state.currentContext.activeChart;
-      context += `- Active chart: ${chart.title} (${chart.chartType} chart of ${chart.dataType} by ${chart.dimension})\n`;
+    // Add current conversation phase
+    if (conversationState.currentContext.conversationPhase.current) {
+      context += `**Current Phase:** ${conversationState.currentContext.conversationPhase.current}\n`;
     }
     
-    if (state.memory.recentTopics.length > 0) {
-      context += `- Recent topics: ${state.memory.recentTopics.slice(0, 3).join(', ')}\n`;
-    }
-    
-    if (state.currentContext.lastAction) {
-      context += `- Last action: ${state.currentContext.lastAction}\n`;
+    // Add recent conversation history (last 3 messages)
+    const recentHistory = conversationState.memory.sessionHistory.slice(-3);
+    if (recentHistory.length > 0) {
+      context += `**Recent Conversation:**\n`;
+      recentHistory.forEach((msg, index) => {
+        context += `${index + 1}. ${msg.role}: "${msg.content}"\n`;
+      });
     }
     
     // Add information about pending confirmations
-    const lastMessage = state.memory.sessionHistory[state.memory.sessionHistory.length - 1];
+    const lastMessage = conversationState.memory.sessionHistory[conversationState.memory.sessionHistory.length - 1];
     if (lastMessage?.conversationContext?.action === 'update_contact' && 
         lastMessage?.conversationContext?.phase === 'confirmation') {
       context += `- PENDING CONFIRMATION: Contact update for ${lastMessage.conversationContext.contactName} (${lastMessage.conversationContext.field} = ${lastMessage.conversationContext.value})\n`;
@@ -184,77 +211,103 @@ export class IntentClassifier {
     return context;
   }
 
-  private buildClassificationPrompt(message: string, conversationContext: string, nlpResult: any): string {
-    const entityInfo = nlpResult.entities.length > 0 
-      ? `\n**Extracted Entities:**\n${nlpResult.entities.map((e: any) => `- ${e.type}: "${e.value}" (confidence: ${e.confidence})`).join('\n')}`
-      : '\n**No specific entities extracted**';
-    
-    const referenceInfo = nlpResult.references.length > 0
-      ? `\n**Contextual References:**\n${nlpResult.references.map((r: any) => `- ${r.type}: "${r.value}" (${r.possibleMatches.length} possible matches)`).join('\n')}`
-      : '\n**No contextual references found**';
+  private buildEntityInfo(conversationState: ConversationState): string {
+    // This method would extract entity information from conversation state
+    // For now, return empty string as we're not using NLP entities in this version
+    return '';
+  }
 
-    // Check if this looks like a confirmation response
+  private buildReferenceInfo(conversationState: ConversationState): string {
+    // This method would extract reference information from conversation state
+    // For now, return empty string as we're not using contextual references in this version
+    return '';
+  }
+
+  private buildClassificationPrompt(message: string, conversationState: ConversationState): string {
+    const conversationContext = this.buildConversationContext(conversationState);
+    const entityInfo = this.buildEntityInfo(conversationState);
+    const referenceInfo = this.buildReferenceInfo(conversationState);
+    
     const isLikelyConfirmation = this.isConfirmationResponse(message);
     const confirmationContext = isLikelyConfirmation ? `
-**CONFIRMATION DETECTED:**
-- User said: "${message}"
-- If there's a pending confirmation in the conversation context, classify this as the action being confirmed
-- Set needsClarification to false for confirmation responses
-` : '';
-
+    **CONFIRMATION DETECTED:**
+    - User said: "${message}"
+    - If there's a pending confirmation in the conversation context, classify this as the action being confirmed
+    - Set needsClarification to false for confirmation responses
+    ` : '';
+    
     return `
-You are an intent classifier for a CRM system. Analyze the user message and return ONLY a valid JSON object.
-
-${conversationContext}${confirmationContext}
-
-User message: "${message}"${entityInfo}${referenceInfo}
-
-Return ONLY a JSON object with this exact structure (no other text):
-{
-  "action": "create_chart|modify_chart|analyze_data|export_data|explore_data|view_data|send_email|create_contact|update_contact|delete_contact|general_conversation",
-  "confidence": 0.95,
-  "entities": {
-    "chartType": "line|bar|pie|area|scatter",
-    "dataType": "deals|contacts|accounts|activities",
-    "dimension": "stage|status|industry|type|source|probability",
-    "context": "existing|new|modification|reference",
-    "action": "show|hide|change|analyze|export|predict",
-    "target": "string describing what user is referring to",
-    "contactName": "extracted contact name",
-    "field": "field to update",
-    "value": "new value",
-    "date": "extracted date",
-    "amount": "extracted amount",
-    "email": "extracted email",
-    "phone": "extracted phone",
-    "company": "extracted company"
-  },
-  "context": {
-    "referringTo": "current_chart|previous_chart|new_request|existing_data",
-    "userGoal": "string describing what user wants to accomplish",
-    "clarification": "any clarification needed"
-  },
-  "metadata": {
-    "isAmbiguous": false,
-    "needsClarification": false,
-    "clarificationQuestion": "question to ask if clarification needed"
-  }
-}
-
-**IMPORTANT RULES:**
-1. Return ONLY valid JSON - no explanations or additional text
-2. For confirmation responses (yes, confirm, correct, ok, sure), set action to the action being confirmed
-3. For confirmation responses, set needsClarification to false
-4. Extract entities from the conversation context if available
-5. Use high confidence (0.9+) for clear requests
-6. Use lower confidence (0.5-0.7) for ambiguous requests
-
-**Examples:**
-- "yes" after contact update confirmation → action: "update_contact", needsClarification: false
-- "update john's email to john@example.com" → action: "update_contact", contactName: "john", field: "email", value: "john@example.com"
-- "show me contacts" → action: "view_data", dataType: "contacts"
-- "make it a pie chart" → action: "modify_chart", chartType: "pie"
-`;
+    You are an intent classifier for a CRM system. Analyze the user message and return ONLY a valid JSON object.
+    
+    ${conversationContext}${confirmationContext}
+    
+    User message: "${message}"${entityInfo}${referenceInfo}
+    
+    Return ONLY a JSON object with this exact structure (no other text):
+    {
+      "action": "create_chart|modify_chart|analyze_data|export_data|explore_data|view_data|send_email|create_contact|update_contact|delete_contact|create_account|update_account|delete_account|create_deal|update_deal|delete_deal|create_activity|update_activity|delete_activity|general_conversation",
+      "confidence": 0.95,
+      "entities": {
+        "chartType": "line|bar|pie|area|scatter",
+        "dataType": "deals|contacts|accounts|activities",
+        "dimension": "stage|status|industry|type|source|probability",
+        "context": "existing|new|modification|reference",
+        "action": "show|hide|change|analyze|export|predict",
+        "target": "string describing what user is referring to",
+        "contactName": "extracted contact name",
+        "accountName": "extracted account name",
+        "dealName": "extracted deal name",
+        "activitySubject": "extracted activity subject",
+        "field": "field to update",
+        "value": "new value",
+        "date": "extracted date",
+        "amount": "extracted amount",
+        "email": "extracted email",
+        "phone": "extracted phone",
+        "company": "extracted company",
+        "industry": "extracted industry",
+        "website": "extracted website",
+        "stage": "extracted stage",
+        "status": "extracted status",
+        "type": "extracted type",
+        "subject": "extracted subject",
+        "description": "extracted description"
+      },
+      "context": {
+        "referringTo": "current_chart|previous_chart|new_request|existing_data",
+        "userGoal": "string describing what user wants to accomplish",
+        "clarification": "any clarification needed"
+      },
+      "metadata": {
+        "isAmbiguous": false,
+        "needsClarification": false,
+        "clarificationQuestion": "question to ask if clarification needed"
+      }
+    }
+    
+    **IMPORTANT RULES:**
+    1. Return ONLY valid JSON - no explanations or additional text
+    2. For confirmation responses (yes, confirm, correct, ok, sure), set action to the action being confirmed
+    3. For confirmation responses, set needsClarification to false
+    4. Extract entities from the conversation context if available
+    5. Use high confidence (0.9+) for clear requests
+    6. Use lower confidence (0.5-0.7) for ambiguous requests
+    
+    **Examples:**
+    - "yes" after contact update confirmation → action: "update_contact", needsClarification: false
+    - "update john's email to john@example.com" → action: "update_contact", contactName: "john", field: "email", value: "john@example.com"
+    - "update acme corp's industry to technology" → action: "update_account", accountName: "acme corp", field: "industry", value: "technology"
+    - "update deal acme license stage to negotiation" → action: "update_deal", dealName: "acme license", field: "stage", value: "negotiation"
+    - "update meeting follow-up status to completed" → action: "update_activity", activitySubject: "follow-up", field: "status", value: "completed"
+    - "create account techstart ventures" → action: "create_account", accountName: "techstart ventures"
+    - "create deal enterprise license 50000" → action: "create_deal", dealName: "enterprise license", amount: "50000"
+    - "create activity call with john tomorrow" → action: "create_activity", activitySubject: "call with john", type: "call"
+    - "delete account acme corp" → action: "delete_account", accountName: "acme corp"
+    - "delete deal old proposal" → action: "delete_deal", dealName: "old proposal"
+    - "delete activity cancelled meeting" → action: "delete_activity", activitySubject: "cancelled meeting"
+    - "show me contacts" → action: "view_data", dataType: "contacts"
+    - "make it a pie chart" → action: "modify_chart", chartType: "pie"
+    `;
   }
 
   private validateAndEnhanceIntent(result: any, message: string, conversationState: ConversationState, nlpResult: any): Intent {
@@ -452,6 +505,8 @@ Return ONLY a JSON object with this exact structure (no other text):
     // Check if this is a confirmation response
     if (this.isConfirmationResponse(message)) {
       console.log('🔄 Fallback: Detected confirmation response:', message);
+      // Check for pending confirmations in conversation context
+      // For now, default to update_contact, but this should be enhanced to detect the actual pending action
       return {
         action: 'update_contact', // Default to update_contact for confirmations
         confidence: 0.8,
@@ -462,36 +517,135 @@ Return ONLY a JSON object with this exact structure (no other text):
       };
     }
     
-    // Simple fallback logic
-    if (lowerMessage.includes('chart') || lowerMessage.includes('graph')) {
-      return {
-        action: 'create_chart',
-        confidence: 0.6,
-        originalMessage: message,
-        entities: {},
-        context: { referringTo: 'new_request' },
-        metadata: { isAmbiguous: true, needsClarification: true, clarificationQuestion: "What type of chart would you like to create?" }
-      };
+    // Check for common CRUD patterns
+    if (lowerMessage.includes('create') || lowerMessage.includes('add') || lowerMessage.includes('new')) {
+      if (lowerMessage.includes('contact')) {
+        return {
+          action: 'create_contact',
+          confidence: 0.7,
+          originalMessage: message,
+          entities: {},
+          context: { referringTo: 'new_request' },
+          metadata: { isAmbiguous: false, needsClarification: true, clarificationQuestion: 'Please provide the contact name and email address.' }
+        };
+      } else if (lowerMessage.includes('account')) {
+        return {
+          action: 'create_account',
+          confidence: 0.7,
+          originalMessage: message,
+          entities: {},
+          context: { referringTo: 'new_request' },
+          metadata: { isAmbiguous: false, needsClarification: true, clarificationQuestion: 'Please provide the account name and industry.' }
+        };
+      } else if (lowerMessage.includes('deal')) {
+        return {
+          action: 'create_deal',
+          confidence: 0.7,
+          originalMessage: message,
+          entities: {},
+          context: { referringTo: 'new_request' },
+          metadata: { isAmbiguous: false, needsClarification: true, clarificationQuestion: 'Please provide the deal name and amount.' }
+        };
+      } else if (lowerMessage.includes('activity') || lowerMessage.includes('meeting') || lowerMessage.includes('call')) {
+        return {
+          action: 'create_activity',
+          confidence: 0.7,
+          originalMessage: message,
+          entities: {},
+          context: { referringTo: 'new_request' },
+          metadata: { isAmbiguous: false, needsClarification: true, clarificationQuestion: 'Please provide the activity subject and type.' }
+        };
+      }
     }
     
-    if (lowerMessage.includes('contact') || lowerMessage.includes('deal') || lowerMessage.includes('account')) {
-      return {
-        action: 'view_data',
-        confidence: 0.6,
-        originalMessage: message,
-        entities: {},
-        context: { referringTo: 'new_request' },
-        metadata: { isAmbiguous: true, needsClarification: true, clarificationQuestion: "What would you like to do with this data?" }
-      };
+    if (lowerMessage.includes('update') || lowerMessage.includes('change') || lowerMessage.includes('modify')) {
+      if (lowerMessage.includes('contact')) {
+        return {
+          action: 'update_contact',
+          confidence: 0.7,
+          originalMessage: message,
+          entities: {},
+          context: { referringTo: 'existing_data' },
+          metadata: { isAmbiguous: false, needsClarification: true, clarificationQuestion: 'Please specify which contact and what field to update.' }
+        };
+      } else if (lowerMessage.includes('account')) {
+        return {
+          action: 'update_account',
+          confidence: 0.7,
+          originalMessage: message,
+          entities: {},
+          context: { referringTo: 'existing_data' },
+          metadata: { isAmbiguous: false, needsClarification: true, clarificationQuestion: 'Please specify which account and what field to update.' }
+        };
+      } else if (lowerMessage.includes('deal')) {
+        return {
+          action: 'update_deal',
+          confidence: 0.7,
+          originalMessage: message,
+          entities: {},
+          context: { referringTo: 'existing_data' },
+          metadata: { isAmbiguous: false, needsClarification: true, clarificationQuestion: 'Please specify which deal and what field to update.' }
+        };
+      } else if (lowerMessage.includes('activity')) {
+        return {
+          action: 'update_activity',
+          confidence: 0.7,
+          originalMessage: message,
+          entities: {},
+          context: { referringTo: 'existing_data' },
+          metadata: { isAmbiguous: false, needsClarification: true, clarificationQuestion: 'Please specify which activity and what field to update.' }
+        };
+      }
     }
     
+    if (lowerMessage.includes('delete') || lowerMessage.includes('remove')) {
+      if (lowerMessage.includes('contact')) {
+        return {
+          action: 'delete_contact',
+          confidence: 0.7,
+          originalMessage: message,
+          entities: {},
+          context: { referringTo: 'existing_data' },
+          metadata: { isAmbiguous: false, needsClarification: true, clarificationQuestion: 'Please specify which contact to delete.' }
+        };
+      } else if (lowerMessage.includes('account')) {
+        return {
+          action: 'delete_account',
+          confidence: 0.7,
+          originalMessage: message,
+          entities: {},
+          context: { referringTo: 'existing_data' },
+          metadata: { isAmbiguous: false, needsClarification: true, clarificationQuestion: 'Please specify which account to delete.' }
+        };
+      } else if (lowerMessage.includes('deal')) {
+        return {
+          action: 'delete_deal',
+          confidence: 0.7,
+          originalMessage: message,
+          entities: {},
+          context: { referringTo: 'existing_data' },
+          metadata: { isAmbiguous: false, needsClarification: true, clarificationQuestion: 'Please specify which deal to delete.' }
+        };
+      } else if (lowerMessage.includes('activity')) {
+        return {
+          action: 'delete_activity',
+          confidence: 0.7,
+          originalMessage: message,
+          entities: {},
+          context: { referringTo: 'existing_data' },
+          metadata: { isAmbiguous: false, needsClarification: true, clarificationQuestion: 'Please specify which activity to delete.' }
+        };
+      }
+    }
+    
+    // Default fallback
     return {
       action: 'general_conversation',
       confidence: 0.5,
       originalMessage: message,
       entities: {},
       context: { referringTo: 'new_request' },
-      metadata: { isAmbiguous: true, needsClarification: true, clarificationQuestion: "How can I help you today?" }
+      metadata: { isAmbiguous: true, needsClarification: true, clarificationQuestion: 'I didn\'t understand that request. Could you please rephrase it?' }
     };
   }
 

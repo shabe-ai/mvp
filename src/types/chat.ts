@@ -39,31 +39,52 @@ export interface Message {
 export interface ConversationResponse {
   message: string;
   chartSpec?: any;
-  enhancedChart?: boolean;
-  data?: any[] | {
-    records: any[];
-    type: string;
-    count: number;
-    displayFormat: string;
-  };
+  enhancedChart?: any;
+  data?: any;
   suggestions?: string[];
-  nextSteps?: string[];
+  needsClarification?: boolean;
+  error?: boolean;
   conversationContext?: {
-    phase: string;
-    action: string;
+    phase?: string;
+    action?: string;
     referringTo?: string;
-    // CRUD operation fields
+    // Contact fields
     contactId?: string;
+    contactName?: string;
     field?: string;
     value?: string;
-    contactName?: string;
+    // Account fields
+    accountId?: string;
+    accountName?: string;
+    // Deal fields
+    dealId?: string;
+    dealName?: string;
+    // Activity fields
+    activityId?: string;
+    activityType?: string;
+    subject?: string;
+    date?: string;
+    // Common fields
+    email?: string;
+    company?: string | null;
+    industry?: string | null;
+    website?: string | null;
+    amount?: string;
+    stage?: string;
+    closeDate?: string;
   };
-  error?: boolean;
-  needsClarification?: boolean;
-  // CRUD operation fields
   action?: string;
-  contactId?: string;
-  field?: string;
-  value?: string;
+  // CRUD operation fields
+  contactId?: string | null;
+  accountId?: string | null;
+  dealId?: string | null;
+  activityId?: string | null;
+  field?: string | null;
+  value?: string | null;
   contactName?: string;
+  accountName?: string;
+  dealName?: string;
+  activityType?: string;
+  subject?: string;
+  date?: string;
 } 
