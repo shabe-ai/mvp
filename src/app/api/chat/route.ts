@@ -33,12 +33,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { message, messages = [], context: requestContext = {} } = body;
 
-    console.log('🧠 Message content:', message);
+    // Handle both message formats (single message or messages array)
+    let messageContent = message;
+    if (!messageContent && messages && messages.length > 0) {
+      // Extract the last user message from the messages array
+      const lastUserMessage = messages.findLast((msg: any) => msg.role === 'user');
+      messageContent = lastUserMessage?.content;
+    }
+
+    console.log('🧠 Message content:', messageContent);
     console.log('🧠 User ID:', actualUserId);
 
     // Validate that we have a message
-    if (!message || typeof message !== 'string') {
-      console.log('❌ Invalid or missing message:', message);
+    if (!messageContent || typeof messageContent !== 'string') {
+      console.log('❌ Invalid or missing message:', messageContent);
       return NextResponse.json({
         message: "I didn't receive a valid message. Please try again.",
         error: true
@@ -46,15 +54,15 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if this is a simple confirmation response
-    const isSimpleConfirmation = message && (
-      message.toLowerCase().trim() === 'yes' || 
-      message.toLowerCase().trim() === 'y' ||
-      message.toLowerCase().trim() === 'confirm' ||
-      message.toLowerCase().trim() === 'correct'
+    const isSimpleConfirmation = messageContent && (
+      messageContent.toLowerCase().trim() === 'yes' || 
+      messageContent.toLowerCase().trim() === 'y' ||
+      messageContent.toLowerCase().trim() === 'confirm' ||
+      messageContent.toLowerCase().trim() === 'correct'
     );
 
     if (isSimpleConfirmation) {
-      console.log('🎯 Simple confirmation detected:', message);
+      console.log('🎯 Simple confirmation detected:', messageContent);
       
       // Check if there's a pending confirmation in the conversation
       const conversationManager = await getConversationManager(actualUserId, 'session-id');
@@ -98,7 +106,7 @@ export async function POST(request: NextRequest) {
               console.log('✅ Direct database update successful:', result);
               
               // Update conversation state
-              conversationManager.updateContext(message, 'update_contact');
+              conversationManager.updateContext(messageContent, 'update_contact');
               
               // Add assistant response to history
               const assistantMessage = {
@@ -144,13 +152,13 @@ export async function POST(request: NextRequest) {
     const conversationManager = await getConversationManager(actualUserId, 'session-id');
     
     if (conversationManager) {
-      console.log('🧠 Using intent-based processing for:', message);
-      console.log('🧠 Message content:', message);
+      console.log('🧠 Using intent-based processing for:', messageContent);
+      console.log('🧠 Message content:', messageContent);
       console.log('🧠 User ID:', actualUserId);
       
       // Classify intent using LLM
       console.log('🧠 Starting intent classification...');
-      const intent = await intentClassifier.classifyIntent(message, conversationManager.getState());
+      const intent = await intentClassifier.classifyIntent(messageContent, conversationManager.getState());
       console.log('🧠 Classified intent:', JSON.stringify(intent, null, 2));
       
       // Route intent to appropriate handler
@@ -163,7 +171,7 @@ export async function POST(request: NextRequest) {
       console.log('🧠 Intent routing response:', JSON.stringify(response, null, 2));
       
       // Update conversation state with response
-      conversationManager.updateContext(message, response.conversationContext?.action);
+      conversationManager.updateContext(messageContent, response.conversationContext?.action);
       
       // Add assistant response to history
       const assistantMessage = {
