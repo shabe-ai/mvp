@@ -72,6 +72,13 @@ export interface ConversationResponse {
     amount?: string;
     stage?: string;
     closeDate?: string;
+    // Multiple contact selection
+    matchingContacts?: Array<{
+      id: string;
+      name: string;
+      email?: string;
+      company?: string;
+    }>;
   };
   action?: string;
   // CRUD operation fields
