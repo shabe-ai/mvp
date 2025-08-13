@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import { convex } from '@/lib/convex';
+import { api } from '@/convex/_generated/api';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,108 +13,76 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { contactName, field, value } = body;
 
-    console.log('🧪 Test update called with:', { contactName, field, value, userId });
+    console.log('🧪 Test update request:', { contactName, field, value });
 
-    // Import Convex for database operations
-    const { convex } = await import('@/lib/convex');
-    const { api } = await import('@/convex/_generated/api');
-
-    // Get teams for the user
+    // Get all contacts for the user
     const teams = await convex.query(api.crm.getTeamsByUser, { userId });
-    console.log('🧪 Teams found:', teams.length);
+    console.log('🧪 Found teams:', teams.length);
     
     if (teams.length === 0) {
-      return NextResponse.json({ error: 'No teams found' });
+      return NextResponse.json({ error: 'No teams found' }, { status: 404 });
     }
-
+    
     const teamId = teams[0]._id;
-    console.log('🧪 Using team ID:', teamId);
-    
-    // Get all contacts for the team
-    const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
-    console.log('🧪 Contacts found:', contacts.length);
-    
-    // Find the contact
+    const contacts = await convex.query(api.crm.getContactsByTeam, { teamId: teamId.toString() });
+    console.log('🧪 Found contacts:', contacts.length);
+
+    // Find the contact by name
     const matchingContact = contacts.find(contact => {
       const contactFullName = contact.firstName && contact.lastName 
         ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
         : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
       const searchName = contactName.toLowerCase();
       
-      const matches = contactFullName.includes(searchName) || 
-             searchName.includes(contactFullName) ||
-             contactFullName.split(' ').some((part: string) => searchName.includes(part)) ||
-             searchName.split(' ').some((part: string) => contactFullName.includes(part));
-      
-      console.log(`🧪 Checking "${contactFullName}" against "${searchName}": ${matches}`);
-      return matches;
+      return contactFullName.includes(searchName) || searchName.includes(contactFullName);
     });
 
     if (!matchingContact) {
-      console.log('🧪 No matching contact found');
       return NextResponse.json({ 
-        error: 'Contact not found',
+        error: 'Contact not found', 
         searchedFor: contactName,
-        availableContacts: contacts.map(c => `${c.firstName} ${c.lastName}`)
-      });
+        availableContacts: contacts.map(c => `${c.firstName} ${c.lastName}`.trim())
+      }, { status: 404 });
     }
 
-    console.log('🧪 Found matching contact:', matchingContact);
-    console.log('🧪 Current contact data:', {
-      id: matchingContact._id,
-      firstName: matchingContact.firstName,
-      lastName: matchingContact.lastName,
-      company: matchingContact.company,
-      title: matchingContact.title,
-      email: matchingContact.email
-    });
+    console.log('🧪 Found contact:', matchingContact);
 
-    // Perform the update
-    console.log('🧪 Performing update with:', {
+    // Test the update
+    console.log('🧪 Attempting update with:', {
       contactId: matchingContact._id,
       updates: { [field]: value }
     });
 
-    try {
-      const result = await convex.mutation(api.crm.updateContact, {
-        contactId: matchingContact._id as any,
-        updates: { [field]: value }
-      });
+    const result = await convex.mutation(api.crm.updateContact, {
+      contactId: matchingContact._id,
+      updates: { [field]: value }
+    });
 
-      console.log('🧪 Update result:', result);
+    console.log('🧪 Update result:', result);
 
-      // Verify the update
-      const updatedContact = await convex.query(api.crm.getContactById, { 
-        contactId: matchingContact._id as any 
-      });
+    // Verify the update
+    const updatedContact = await convex.query(api.crm.getContactById, { 
+      contactId: matchingContact._id 
+    });
 
-      console.log('🧪 Updated contact data:', updatedContact);
+    console.log('🧪 Updated contact:', updatedContact);
 
-      return NextResponse.json({
-        success: true,
-        message: `Updated ${contactName}'s ${field} to ${value}`,
+    return NextResponse.json({
+      success: true,
+      originalContact: matchingContact,
+      updatedContact,
+      updateDetails: {
         contactId: matchingContact._id,
-        before: {
-          [field]: matchingContact[field as keyof typeof matchingContact]
-        },
-        after: {
-          [field]: updatedContact?.[field as keyof typeof updatedContact]
-        },
-        fullContact: updatedContact
-      });
-
-    } catch (updateError) {
-      console.error('🧪 Update failed:', updateError);
-      return NextResponse.json({ 
-        error: 'Update failed',
-        details: updateError instanceof Error ? updateError.message : String(updateError)
-      }, { status: 500 });
-    }
+        field,
+        value,
+        result
+      }
+    });
 
   } catch (error) {
-    console.error('🧪 Test update API error:', error);
+    console.error('🧪 Test update error:', error);
     return NextResponse.json({ 
-      error: 'Internal server error',
+      error: 'Test update failed', 
       details: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
