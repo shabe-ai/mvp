@@ -794,7 +794,13 @@ export class AnalyzeIntentHandler implements IntentHandler {
 // CRUD Intent Handler
 export class CrudIntentHandler implements IntentHandler {
   canHandle(intent: Intent): boolean {
-    return ['create_contact', 'update_contact', 'delete_contact', 'send_email'].includes(intent.action);
+    return [
+      'create_contact', 'update_contact', 'delete_contact',
+      'create_account', 'update_account', 'delete_account',
+      'create_deal', 'update_deal', 'delete_deal',
+      'create_activity', 'update_activity', 'delete_activity',
+      'send_email'
+    ].includes(intent.action);
   }
 
   async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
@@ -856,27 +862,42 @@ export class CrudIntentHandler implements IntentHandler {
     
     switch (intent.action) {
       case 'create_contact':
-        // This would need to be implemented or imported
-        return {
-          message: "I can help you create a new contact. Please provide the contact's name and email address.",
-          needsClarification: true,
-          conversationContext: {
-            phase: 'creation',
-            action: 'create_contact',
-            referringTo: 'new_request'
-          }
-        };
+        return await this.handleContactCreate(intent, conversationManager, context);
         
       case 'update_contact':
         return await this.handleContactUpdate(intent, conversationManager, context);
         
       case 'delete_contact':
-        const { handleContactDeleteWithConfirmation } = await import('@/lib/chatHandlers');
-        handlerFunction = handleContactDeleteWithConfirmation;
-        break;
+        return await this.handleContactDelete(intent, conversationManager, context);
+        
+      case 'create_account':
+        return await this.handleAccountCreate(intent, conversationManager, context);
+        
+      case 'update_account':
+        return await this.handleAccountUpdate(intent, conversationManager, context);
+        
+      case 'delete_account':
+        return await this.handleAccountDelete(intent, conversationManager, context);
+        
+      case 'create_deal':
+        return await this.handleDealCreate(intent, conversationManager, context);
+        
+      case 'update_deal':
+        return await this.handleDealUpdate(intent, conversationManager, context);
+        
+      case 'delete_deal':
+        return await this.handleDealDelete(intent, conversationManager, context);
+        
+      case 'create_activity':
+        return await this.handleActivityCreate(intent, conversationManager, context);
+        
+      case 'update_activity':
+        return await this.handleActivityUpdate(intent, conversationManager, context);
+        
+      case 'delete_activity':
+        return await this.handleActivityDelete(intent, conversationManager, context);
         
       case 'send_email':
-        // This would need to be implemented or imported
         return {
           message: "I can help you send an email. Please specify who you'd like to email and what you'd like to say.",
           needsClarification: true,
@@ -909,6 +930,118 @@ export class CrudIntentHandler implements IntentHandler {
         referringTo: 'new_request'
       }
     };
+  }
+
+  private async handleContactCreate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('👤 Handling LLM-based contact creation with intent:', intent);
+    console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
+    
+    // Use LLM-extracted entities instead of regex
+    const contactName = intent.entities.contactName;
+    const email = intent.entities.email;
+    const company = intent.entities.company;
+    
+    console.log('📝 LLM-extracted data:', { contactName, email, company });
+    console.log('📝 Full entities object:', JSON.stringify(intent.entities, null, 2));
+    
+    if (!contactName || !email) {
+      console.log('❌ Missing required data from LLM extraction');
+      console.log('❌ contactName:', contactName);
+      console.log('❌ email:', email);
+      return {
+        message: "I couldn't understand the contact creation request. Please specify the contact's name and email address.",
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'create_contact',
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
+    try {
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Find the contact in the database
+      console.log('🔍 Looking up teams for user...');
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      console.log('📋 Teams found:', teams.length);
+      
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      console.log('🏢 Using team ID:', teamId);
+      
+      console.log('🔍 Looking up contacts for team...');
+      const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+      console.log('👥 Contacts found:', contacts.length);
+      console.log('📋 Contact names:', contacts.map(c => `${c.firstName} ${c.lastName}`));
+      
+      const matchingContact = contacts.find(contact => {
+        const contactFullName = contact.firstName && contact.lastName 
+          ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
+          : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
+        const searchName = contactName.toLowerCase();
+        
+        const matches = contactFullName.includes(searchName) || 
+               searchName.includes(contactFullName) ||
+               contactFullName.split(' ').some((part: string) => searchName.includes(part)) ||
+               searchName.split(' ').some((part: string) => contactFullName.includes(part));
+        
+        console.log(`🔍 Checking "${contactFullName}" against "${searchName}": ${matches}`);
+        return matches;
+      });
+      
+      if (matchingContact) {
+        console.log('❌ Contact already exists');
+        return {
+          message: `A contact named "${contactName}" already exists in your database. Please update it instead.`,
+          conversationContext: {
+            phase: 'error',
+            action: 'create_contact',
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
+      console.log('✅ Contact does not exist, proceeding with creation');
+      
+      // Ask for confirmation before creating
+      const confirmationMessage = `Please confirm the contact creation:\n\n**Contact:** ${contactName}\n**Email:** ${email}\n**Company:** ${company || 'N/A'}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+      const confirmationResponse = {
+        message: confirmationMessage,
+        action: "confirm_create",
+        contactId: null, // Will be set after creation
+        field: null,
+        value: null,
+        contactName: contactName,
+        conversationContext: {
+          phase: 'confirmation',
+          action: 'create_contact',
+          referringTo: 'new_request',
+          // Include CRUD fields in conversationContext
+          contactName: contactName,
+          email: email,
+          company: company || null
+        }
+      };
+      
+      console.log('📝 Confirmation response being sent:', JSON.stringify(confirmationResponse, null, 2));
+      
+      return confirmationResponse;
+      
+    } catch (error) {
+      console.error('Contact creation failed:', error);
+      return {
+        message: "I encountered an error while processing the contact creation. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'create_contact',
+          referringTo: 'new_request'
+        }
+      };
+    }
   }
 
   private async handleContactUpdate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
@@ -1019,6 +1152,1024 @@ export class CrudIntentHandler implements IntentHandler {
         conversationContext: {
           phase: 'error',
           action: 'update_contact',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleContactDelete(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('👤 Handling LLM-based contact deletion with intent:', intent);
+    console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
+    
+    // Use LLM-extracted entity for contact name
+    const contactName = intent.entities.contactName;
+    
+    console.log('📝 LLM-extracted data:', { contactName });
+    console.log('📝 Full entities object:', JSON.stringify(intent.entities, null, 2));
+    
+    if (!contactName) {
+      console.log('❌ Missing required data from LLM extraction');
+      console.log('❌ contactName:', contactName);
+      return {
+        message: "I couldn't understand the delete request. Please specify the contact name to delete.",
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'delete_contact',
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
+    try {
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Find the contact in the database
+      console.log('🔍 Looking up teams for user...');
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      console.log('📋 Teams found:', teams.length);
+      
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      console.log('🏢 Using team ID:', teamId);
+      
+      console.log('🔍 Looking up contacts for team...');
+      const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+      console.log('👥 Contacts found:', contacts.length);
+      console.log('📋 Contact names:', contacts.map(c => `${c.firstName} ${c.lastName}`));
+      
+      const matchingContact = contacts.find(contact => {
+        const contactFullName = contact.firstName && contact.lastName 
+          ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
+          : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
+        const searchName = contactName.toLowerCase();
+        
+        const matches = contactFullName.includes(searchName) || 
+               searchName.includes(contactFullName) ||
+               contactFullName.split(' ').some((part: string) => searchName.includes(part)) ||
+               searchName.split(' ').some((part: string) => contactFullName.includes(part));
+        
+        console.log(`🔍 Checking "${contactFullName}" against "${searchName}": ${matches}`);
+        return matches;
+      });
+      
+      if (!matchingContact) {
+        console.log('❌ No matching contact found');
+        return {
+          message: `I couldn't find a contact named "${contactName}" in your database to delete.`,
+          conversationContext: {
+            phase: 'error',
+            action: 'delete_contact',
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
+      console.log('✅ Found matching contact for deletion:', matchingContact);
+      
+      // Ask for confirmation before deleting
+      const confirmationMessage = `Please confirm the contact deletion:\n\n**Contact:** ${matchingContact.firstName} ${matchingContact.lastName}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+      const confirmationResponse = {
+        message: confirmationMessage,
+        action: "confirm_delete",
+        contactId: matchingContact._id,
+        contactName: `${matchingContact.firstName} ${matchingContact.lastName}`,
+        conversationContext: {
+          phase: 'confirmation',
+          action: 'delete_contact',
+          referringTo: 'new_request',
+          contactId: matchingContact._id,
+          contactName: `${matchingContact.firstName} ${matchingContact.lastName}`
+        }
+      };
+      
+      console.log('📝 Confirmation response being sent:', JSON.stringify(confirmationResponse, null, 2));
+      
+      return confirmationResponse;
+      
+    } catch (error) {
+      console.error('Contact deletion failed:', error);
+      return {
+        message: "I encountered an error while processing the contact deletion. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'delete_contact',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleAccountCreate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('👤 Handling LLM-based account creation with intent:', intent);
+    console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
+    
+    // Use LLM-extracted entities instead of regex
+    const accountName = intent.entities.accountName;
+    const industry = intent.entities.industry;
+    const website = intent.entities.website;
+    
+    console.log('📝 LLM-extracted data:', { accountName, industry, website });
+    console.log('📝 Full entities object:', JSON.stringify(intent.entities, null, 2));
+    
+    if (!accountName) {
+      console.log('❌ Missing required data from LLM extraction');
+      console.log('❌ accountName:', accountName);
+      return {
+        message: "I couldn't understand the account creation request. Please specify the account name.",
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'create_account',
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
+    try {
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Find the account in the database
+      console.log('🔍 Looking up teams for user...');
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      console.log('📋 Teams found:', teams.length);
+      
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      console.log('🏢 Using team ID:', teamId);
+      
+      console.log('🔍 Looking up accounts for team...');
+      const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+      console.log('🏦 Accounts found:', accounts.length);
+      console.log('📋 Account names:', accounts.map(a => a.name));
+      
+      const matchingAccount = accounts.find(account => account.name.toLowerCase() === accountName.toLowerCase());
+      
+      if (matchingAccount) {
+        console.log('❌ Account already exists');
+        return {
+          message: `An account named "${accountName}" already exists in your database. Please update it instead.`,
+          conversationContext: {
+            phase: 'error',
+            action: 'create_account',
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
+      console.log('✅ Account does not exist, proceeding with creation');
+      
+      // Ask for confirmation before creating
+      const confirmationMessage = `Please confirm the account creation:\n\n**Account:** ${accountName}\n**Industry:** ${industry || 'N/A'}\n**Website:** ${website || 'N/A'}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+      const confirmationResponse = {
+        message: confirmationMessage,
+        action: "confirm_create",
+        accountId: null, // Will be set after creation
+        field: null,
+        value: null,
+        accountName: accountName,
+        conversationContext: {
+          phase: 'confirmation',
+          action: 'create_account',
+          referringTo: 'new_request',
+          // Include CRUD fields in conversationContext
+          accountName: accountName,
+          industry: industry || null,
+          website: website || null
+        }
+      };
+      
+      console.log('📝 Confirmation response being sent:', JSON.stringify(confirmationResponse, null, 2));
+      
+      return confirmationResponse;
+      
+    } catch (error) {
+      console.error('Account creation failed:', error);
+      return {
+        message: "I encountered an error while processing the account creation. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'create_account',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleAccountUpdate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('👤 Handling LLM-based account update with intent:', intent);
+    console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
+    
+    // Use LLM-extracted entities instead of regex
+    const accountName = intent.entities.accountName;
+    const field = intent.entities.field;
+    const value = intent.entities.value;
+    
+    console.log('📝 LLM-extracted data:', { accountName, field, value });
+    console.log('📝 Full entities object:', JSON.stringify(intent.entities, null, 2));
+    
+    if (!accountName || !field || !value) {
+      console.log('❌ Missing required data from LLM extraction');
+      console.log('❌ accountName:', accountName);
+      console.log('❌ field:', field);
+      console.log('❌ value:', value);
+      return {
+        message: "I couldn't understand the update request. Please specify the account name and what field to update. For example: 'update acme's industry to technology'",
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'update_account',
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
+    try {
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Find the account in the database
+      console.log('🔍 Looking up teams for user...');
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      console.log('📋 Teams found:', teams.length);
+      
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      console.log('🏢 Using team ID:', teamId);
+      
+      console.log('🔍 Looking up accounts for team...');
+      const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+      console.log('🏦 Accounts found:', accounts.length);
+      console.log('📋 Account names:', accounts.map(a => a.name));
+      
+      const matchingAccount = accounts.find(account => account.name.toLowerCase() === accountName.toLowerCase());
+      
+      if (!matchingAccount) {
+        console.log('❌ No matching account found');
+        return {
+          message: `I couldn't find an account named "${accountName}" in your database. Please check the spelling or create the account first.`,
+          conversationContext: {
+            phase: 'error',
+            action: 'update_account',
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
+      console.log('✅ Found matching account:', matchingAccount);
+      
+      // Ask for confirmation before updating
+      const confirmationMessage = `Please confirm the account update:\n\n**Account:** ${matchingAccount.name}\n**Field:** ${field}\n**New Value:** ${value}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+      const confirmationResponse = {
+        message: confirmationMessage,
+        action: "confirm_update",
+        accountId: matchingAccount._id,
+        field: field,
+        value: value,
+        accountName: matchingAccount.name,
+        conversationContext: {
+          phase: 'confirmation',
+          action: 'update_account',
+          referringTo: 'new_request',
+          // Include CRUD fields in conversationContext
+          accountId: matchingAccount._id,
+          field: field,
+          value: value,
+          accountName: matchingAccount.name
+        }
+      };
+      
+      console.log('📝 Confirmation response being sent:', JSON.stringify(confirmationResponse, null, 2));
+      
+      return confirmationResponse;
+      
+    } catch (error) {
+      console.error('Account update failed:', error);
+      return {
+        message: "I encountered an error while processing the account update. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'update_account',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleAccountDelete(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('👤 Handling LLM-based account deletion with intent:', intent);
+    console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
+    
+    // Use LLM-extracted entity for account name
+    const accountName = intent.entities.accountName;
+    
+    console.log('📝 LLM-extracted data:', { accountName });
+    console.log('📝 Full entities object:', JSON.stringify(intent.entities, null, 2));
+    
+    if (!accountName) {
+      console.log('❌ Missing required data from LLM extraction');
+      console.log('❌ accountName:', accountName);
+      return {
+        message: "I couldn't understand the delete request. Please specify the account name to delete.",
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'delete_account',
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
+    try {
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Find the account in the database
+      console.log('🔍 Looking up teams for user...');
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      console.log('📋 Teams found:', teams.length);
+      
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      console.log('🏢 Using team ID:', teamId);
+      
+      console.log('🔍 Looking up accounts for team...');
+      const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+      console.log('🏦 Accounts found:', accounts.length);
+      console.log('📋 Account names:', accounts.map(a => a.name));
+      
+      const matchingAccount = accounts.find(account => account.name.toLowerCase() === accountName.toLowerCase());
+      
+      if (!matchingAccount) {
+        console.log('❌ No matching account found');
+        return {
+          message: `I couldn't find an account named "${accountName}" in your database to delete.`,
+          conversationContext: {
+            phase: 'error',
+            action: 'delete_account',
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
+      console.log('✅ Found matching account for deletion:', matchingAccount);
+      
+      // Ask for confirmation before deleting
+      const confirmationMessage = `Please confirm the account deletion:\n\n**Account:** ${matchingAccount.name}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+      const confirmationResponse = {
+        message: confirmationMessage,
+        action: "confirm_delete",
+        accountId: matchingAccount._id,
+        accountName: matchingAccount.name,
+        conversationContext: {
+          phase: 'confirmation',
+          action: 'delete_account',
+          referringTo: 'new_request',
+          accountId: matchingAccount._id,
+          accountName: matchingAccount.name
+        }
+      };
+      
+      console.log('📝 Confirmation response being sent:', JSON.stringify(confirmationResponse, null, 2));
+      
+      return confirmationResponse;
+      
+    } catch (error) {
+      console.error('Account deletion failed:', error);
+      return {
+        message: "I encountered an error while processing the account deletion. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'delete_account',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleDealCreate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('👤 Handling LLM-based deal creation with intent:', intent);
+    console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
+    
+    // Use LLM-extracted entities instead of regex
+    const dealName = intent.entities.dealName;
+    const amount = intent.entities.amount;
+    const stage = intent.entities.stage;
+    const closeDate = intent.entities.closeDate;
+    const account = intent.entities.account;
+    
+    console.log('📝 LLM-extracted data:', { dealName, amount, stage, closeDate, account });
+    console.log('📝 Full entities object:', JSON.stringify(intent.entities, null, 2));
+    
+    if (!dealName || !amount || !stage || !closeDate || !account) {
+      console.log('❌ Missing required data from LLM extraction');
+      console.log('❌ dealName:', dealName);
+      console.log('❌ amount:', amount);
+      console.log('❌ stage:', stage);
+      console.log('❌ closeDate:', closeDate);
+      console.log('❌ account:', account);
+      return {
+        message: "I couldn't understand the deal creation request. Please specify the deal name, amount, stage, close date, and account.",
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'create_deal',
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
+    try {
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Find the account in the database
+      console.log('🔍 Looking up teams for user...');
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      console.log('📋 Teams found:', teams.length);
+      
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      console.log('🏢 Using team ID:', teamId);
+      
+      console.log('🔍 Looking up accounts for team...');
+      const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+      console.log('🏦 Accounts found:', accounts.length);
+      console.log('📋 Account names:', accounts.map(a => a.name));
+      
+      const matchingAccount = accounts.find(acc => acc.name.toLowerCase() === account.toLowerCase());
+      
+      if (!matchingAccount) {
+        console.log('❌ No matching account found for deal');
+        return {
+          message: `I couldn't find an account named "${account}" in your database. Please check the spelling or create the account first.`,
+          conversationContext: {
+            phase: 'error',
+            action: 'create_deal',
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
+      console.log('✅ Found matching account for deal:', matchingAccount);
+      
+      // Ask for confirmation before creating
+      const confirmationMessage = `Please confirm the deal creation:\n\n**Deal:** ${dealName}\n**Amount:** $${amount}\n**Stage:** ${stage}\n**Close Date:** ${closeDate}\n**Account:** ${matchingAccount.name}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+      const confirmationResponse = {
+        message: confirmationMessage,
+        action: "confirm_create",
+        dealId: null, // Will be set after creation
+        field: null,
+        value: null,
+        dealName: dealName,
+        conversationContext: {
+          phase: 'confirmation',
+          action: 'create_deal',
+          referringTo: 'new_request',
+          // Include CRUD fields in conversationContext
+          dealName: dealName,
+          amount: amount,
+          stage: stage,
+          closeDate: closeDate,
+          account: matchingAccount._id,
+          accountName: matchingAccount.name
+        }
+      };
+      
+      console.log('📝 Confirmation response being sent:', JSON.stringify(confirmationResponse, null, 2));
+      
+      return confirmationResponse;
+      
+    } catch (error) {
+      console.error('Deal creation failed:', error);
+      return {
+        message: "I encountered an error while processing the deal creation. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'create_deal',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleDealUpdate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('👤 Handling LLM-based deal update with intent:', intent);
+    console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
+    
+    // Use LLM-extracted entities instead of regex
+    const dealName = intent.entities.dealName;
+    const field = intent.entities.field;
+    const value = intent.entities.value;
+    
+    console.log('�� LLM-extracted data:', { dealName, field, value });
+    console.log('📝 Full entities object:', JSON.stringify(intent.entities, null, 2));
+    
+    if (!dealName || !field || !value) {
+      console.log('❌ Missing required data from LLM extraction');
+      console.log('❌ dealName:', dealName);
+      console.log('❌ field:', field);
+      console.log('❌ value:', value);
+      return {
+        message: "I couldn't understand the update request. Please specify the deal name and what field to update. For example: 'update deal123's amount to 100000'",
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'update_deal',
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
+    try {
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Find the deal in the database
+      console.log('🔍 Looking up teams for user...');
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      console.log('📋 Teams found:', teams.length);
+      
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      console.log('🏢 Using team ID:', teamId);
+      
+      console.log('🔍 Looking up deals for team...');
+      const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+      console.log('🔔 Deals found:', deals.length);
+      console.log('📋 Deal names:', deals.map(d => d.name));
+      
+      const matchingDeal = deals.find(deal => deal.name.toLowerCase() === dealName.toLowerCase());
+      
+      if (!matchingDeal) {
+        console.log('❌ No matching deal found');
+        return {
+          message: `I couldn't find a deal named "${dealName}" in your database. Please check the spelling or create the deal first.`,
+          conversationContext: {
+            phase: 'error',
+            action: 'update_deal',
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
+      console.log('✅ Found matching deal:', matchingDeal);
+      
+      // Ask for confirmation before updating
+      const confirmationMessage = `Please confirm the deal update:\n\n**Deal:** ${matchingDeal.name}\n**Field:** ${field}\n**New Value:** ${value}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+      const confirmationResponse = {
+        message: confirmationMessage,
+        action: "confirm_update",
+        dealId: matchingDeal._id,
+        field: field,
+        value: value,
+        dealName: matchingDeal.name,
+        conversationContext: {
+          phase: 'confirmation',
+          action: 'update_deal',
+          referringTo: 'new_request',
+          // Include CRUD fields in conversationContext
+          dealId: matchingDeal._id,
+          field: field,
+          value: value,
+          dealName: matchingDeal.name
+        }
+      };
+      
+      console.log('📝 Confirmation response being sent:', JSON.stringify(confirmationResponse, null, 2));
+      
+      return confirmationResponse;
+      
+    } catch (error) {
+      console.error('Deal update failed:', error);
+      return {
+        message: "I encountered an error while processing the deal update. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'update_deal',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleDealDelete(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('👤 Handling LLM-based deal deletion with intent:', intent);
+    console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
+    
+    // Use LLM-extracted entity for deal name
+    const dealName = intent.entities.dealName;
+    
+    console.log('📝 LLM-extracted data:', { dealName });
+    console.log('📝 Full entities object:', JSON.stringify(intent.entities, null, 2));
+    
+    if (!dealName) {
+      console.log('❌ Missing required data from LLM extraction');
+      console.log('❌ dealName:', dealName);
+      return {
+        message: "I couldn't understand the delete request. Please specify the deal name to delete.",
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'delete_deal',
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
+    try {
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Find the deal in the database
+      console.log('🔍 Looking up teams for user...');
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      console.log('📋 Teams found:', teams.length);
+      
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      console.log('🏢 Using team ID:', teamId);
+      
+      console.log('🔍 Looking up deals for team...');
+      const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+      console.log('🔔 Deals found:', deals.length);
+      console.log('📋 Deal names:', deals.map(d => d.name));
+      
+      const matchingDeal = deals.find(deal => deal.name.toLowerCase() === dealName.toLowerCase());
+      
+      if (!matchingDeal) {
+        console.log('❌ No matching deal found');
+        return {
+          message: `I couldn't find a deal named "${dealName}" in your database to delete.`,
+          conversationContext: {
+            phase: 'error',
+            action: 'delete_deal',
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
+      console.log('✅ Found matching deal for deletion:', matchingDeal);
+      
+      // Ask for confirmation before deleting
+      const confirmationMessage = `Please confirm the deal deletion:\n\n**Deal:** ${matchingDeal.name}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+      const confirmationResponse = {
+        message: confirmationMessage,
+        action: "confirm_delete",
+        dealId: matchingDeal._id,
+        dealName: matchingDeal.name,
+        conversationContext: {
+          phase: 'confirmation',
+          action: 'delete_deal',
+          referringTo: 'new_request',
+          dealId: matchingDeal._id,
+          dealName: matchingDeal.name
+        }
+      };
+      
+      console.log('📝 Confirmation response being sent:', JSON.stringify(confirmationResponse, null, 2));
+      
+      return confirmationResponse;
+      
+    } catch (error) {
+      console.error('Deal deletion failed:', error);
+      return {
+        message: "I encountered an error while processing the deal deletion. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'delete_deal',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleActivityCreate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('👤 Handling LLM-based activity creation with intent:', intent);
+    console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
+    
+    // Use LLM-extracted entities instead of regex
+    const activityType = intent.entities.activityType;
+    const subject = intent.entities.subject;
+    const date = intent.entities.date;
+    const account = intent.entities.account;
+    const contact = intent.entities.contact;
+    
+    console.log('📝 LLM-extracted data:', { activityType, subject, date, account, contact });
+    console.log('📝 Full entities object:', JSON.stringify(intent.entities, null, 2));
+    
+    if (!activityType || !subject || !date) {
+      console.log('❌ Missing required data from LLM extraction');
+      console.log('❌ activityType:', activityType);
+      console.log('❌ subject:', subject);
+      console.log('❌ date:', date);
+      return {
+        message: "I couldn't understand the activity creation request. Please specify the activity type, subject, and date.",
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'create_activity',
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
+    try {
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Find the account and contact in the database
+      console.log('🔍 Looking up teams for user...');
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      console.log('📋 Teams found:', teams.length);
+      
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      console.log('🏢 Using team ID:', teamId);
+      
+      console.log('🔍 Looking up accounts for team...');
+      const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+      console.log('🏦 Accounts found:', accounts.length);
+      console.log('📋 Account names:', accounts.map(a => a.name));
+      
+      const matchingAccount = account ? accounts.find(acc => acc.name.toLowerCase() === account.toLowerCase()) : null;
+      
+      let matchingContact = null;
+      if (contact) {
+        console.log('🔍 Looking up contacts for team...');
+        const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+        console.log('👥 Contacts found:', contacts.length);
+        console.log('📋 Contact names:', contacts.map(c => `${c.firstName} ${c.lastName}`));
+        
+        matchingContact = contacts.find(c => c.firstName?.toLowerCase() === contact.toLowerCase() || c.lastName?.toLowerCase() === contact.toLowerCase());
+      }
+      
+      if (!matchingAccount && !matchingContact) {
+        console.log('❌ No matching account or contact found for activity');
+        return {
+          message: `I couldn't find an account or contact named "${account || contact}" in your database. Please check the spelling or create them first.`,
+          conversationContext: {
+            phase: 'error',
+            action: 'create_activity',
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
+      console.log('✅ Found matching account/contact for activity:', matchingAccount || matchingContact);
+      
+      // Ask for confirmation before creating
+      const confirmationMessage = `Please confirm the activity creation:\n\n**Activity Type:** ${activityType}\n**Subject:** ${subject}\n**Date:** ${date}\n**Account:** ${matchingAccount?.name || matchingContact?.firstName + ' ' + matchingContact?.lastName}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+      const confirmationResponse = {
+        message: confirmationMessage,
+        action: "confirm_create",
+        activityId: null, // Will be set after creation
+        field: null,
+        value: null,
+        activityType: activityType,
+        subject: subject,
+        date: date,
+        account: matchingAccount?._id || matchingContact?._id,
+        conversationContext: {
+          phase: 'confirmation',
+          action: 'create_activity',
+          referringTo: 'new_request',
+          // Include CRUD fields in conversationContext
+          activityType: activityType,
+          subject: subject,
+          date: date,
+          account: matchingAccount?._id || matchingContact?._id,
+          accountName: matchingAccount?.name || matchingContact?.firstName + ' ' + matchingContact?.lastName
+        }
+      };
+      
+      console.log('📝 Confirmation response being sent:', JSON.stringify(confirmationResponse, null, 2));
+      
+      return confirmationResponse;
+      
+    } catch (error) {
+      console.error('Activity creation failed:', error);
+      return {
+        message: "I encountered an error while processing the activity creation. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'create_activity',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleActivityUpdate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('👤 Handling LLM-based activity update with intent:', intent);
+    console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
+    
+    // Use LLM-extracted entities instead of regex
+    const activityType = intent.entities.activityType;
+    const subject = intent.entities.subject;
+    const date = intent.entities.date;
+    const field = intent.entities.field;
+    const value = intent.entities.value;
+    
+    console.log('�� LLM-extracted data:', { activityType, subject, date, field, value });
+    console.log('📝 Full entities object:', JSON.stringify(intent.entities, null, 2));
+    
+    if (!activityType || !subject || !date || !field || !value) {
+      console.log('❌ Missing required data from LLM extraction');
+      console.log('❌ activityType:', activityType);
+      console.log('❌ subject:', subject);
+      console.log('❌ date:', date);
+      console.log('❌ field:', field);
+      console.log('❌ value:', value);
+      return {
+        message: "I couldn't understand the update request. Please specify the activity type, subject, date, and what field to update. For example: 'update deal123's amount to 100000'",
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'update_activity',
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
+    try {
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Find the activity in the database
+      console.log('🔍 Looking up teams for user...');
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      console.log('📋 Teams found:', teams.length);
+      
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      console.log('🏢 Using team ID:', teamId);
+      
+      console.log('🔍 Looking up activities for team...');
+      const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+      console.log('🔔 Activities found:', activities.length);
+      console.log('📋 Activity subjects:', activities.map(a => a.subject));
+      
+      const matchingActivity = activities.find(activity => activity.subject.toLowerCase() === subject.toLowerCase());
+      
+      if (!matchingActivity) {
+        console.log('❌ No matching activity found');
+        return {
+          message: `I couldn't find an activity with subject "${subject}" in your database. Please check the spelling or create the activity first.`,
+          conversationContext: {
+            phase: 'error',
+            action: 'update_activity',
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
+      console.log('✅ Found matching activity:', matchingActivity);
+      
+      // Ask for confirmation before updating
+      const confirmationMessage = `Please confirm the activity update:\n\n**Activity Type:** ${matchingActivity.type}\n**Subject:** ${matchingActivity.subject}\n**Status:** ${matchingActivity.status}\n**Field:** ${field}\n**New Value:** ${value}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+      const confirmationResponse = {
+        message: confirmationMessage,
+        action: "confirm_update",
+        activityId: matchingActivity._id,
+        field: field,
+        value: value,
+        activityType: matchingActivity.type,
+        subject: matchingActivity.subject,
+        status: matchingActivity.status,
+        conversationContext: {
+          phase: 'confirmation',
+          action: 'update_activity',
+          referringTo: 'new_request',
+          // Include CRUD fields in conversationContext
+          activityId: matchingActivity._id,
+          field: field,
+          value: value,
+          activityType: matchingActivity.type,
+          subject: matchingActivity.subject,
+          status: matchingActivity.status
+        }
+      };
+      
+      console.log('📝 Confirmation response being sent:', JSON.stringify(confirmationResponse, null, 2));
+      
+      return confirmationResponse;
+      
+    } catch (error) {
+      console.error('Activity update failed:', error);
+      return {
+        message: "I encountered an error while processing the activity update. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'update_activity',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleActivityDelete(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    console.log('👤 Handling LLM-based activity deletion with intent:', intent);
+    console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
+    
+    // Use LLM-extracted entity for activity subject
+    const subject = intent.entities.subject;
+    
+    console.log('📝 LLM-extracted data:', { subject });
+    console.log('📝 Full entities object:', JSON.stringify(intent.entities, null, 2));
+    
+    if (!subject) {
+      console.log('❌ Missing required data from LLM extraction');
+      console.log('❌ subject:', subject);
+      return {
+        message: "I couldn't understand the delete request. Please specify the activity subject to delete.",
+        needsClarification: true,
+        conversationContext: {
+          phase: 'clarification',
+          action: 'delete_activity',
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
+    try {
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Find the activity in the database
+      console.log('🔍 Looking up teams for user...');
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      console.log('📋 Teams found:', teams.length);
+      
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      console.log('🏢 Using team ID:', teamId);
+      
+      console.log('🔍 Looking up activities for team...');
+      const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+      console.log('🔔 Activities found:', activities.length);
+      console.log('📋 Activity subjects:', activities.map(a => a.subject));
+      
+      const matchingActivity = activities.find(activity => activity.subject.toLowerCase() === subject.toLowerCase());
+      
+      if (!matchingActivity) {
+        console.log('❌ No matching activity found');
+        return {
+          message: `I couldn't find an activity with subject "${subject}" in your database to delete.`,
+          conversationContext: {
+            phase: 'error',
+            action: 'delete_activity',
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
+      console.log('✅ Found matching activity for deletion:', matchingActivity);
+      
+      // Ask for confirmation before deleting
+      const confirmationMessage = `Please confirm the activity deletion:\n\n**Activity Type:** ${matchingActivity.type}\n**Subject:** ${matchingActivity.subject}\n**Status:** ${matchingActivity.status}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      
+      const confirmationResponse = {
+        message: confirmationMessage,
+        action: "confirm_delete",
+        activityId: matchingActivity._id,
+        activityType: matchingActivity.type,
+        subject: matchingActivity.subject,
+        status: matchingActivity.status,
+        conversationContext: {
+          phase: 'confirmation',
+          action: 'delete_activity',
+          referringTo: 'new_request',
+          activityId: matchingActivity._id,
+          activityType: matchingActivity.type,
+          subject: matchingActivity.subject,
+          status: matchingActivity.status
+        }
+      };
+      
+      console.log('📝 Confirmation response being sent:', JSON.stringify(confirmationResponse, null, 2));
+      
+      return confirmationResponse;
+      
+    } catch (error) {
+      console.error('Activity deletion failed:', error);
+      return {
+        message: "I encountered an error while processing the activity deletion. Please try again.",
+        conversationContext: {
+          phase: 'error',
+          action: 'delete_activity',
           referringTo: 'new_request'
         }
       };
