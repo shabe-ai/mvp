@@ -983,12 +983,34 @@ export class CrudIntentHandler implements IntentHandler {
           : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
         const searchName = contactName.toLowerCase();
         
-        const matches = contactFullName.includes(searchName) || 
-               searchName.includes(contactFullName) ||
-               contactFullName.split(' ').some((part: string) => searchName.includes(part)) ||
-               searchName.split(' ').some((part: string) => contactFullName.includes(part));
+        // More precise matching logic
+        const searchWords = searchName.split(' ').filter(word => word.length > 0);
+        const contactWords = contactFullName.split(' ').filter(word => word.length > 0);
+        
+        // Check for exact full name match first
+        if (contactFullName === searchName) {
+          console.log(`🔍 Exact match: "${contactFullName}" === "${searchName}"`);
+          return true;
+        }
+        
+        // Check if all search words are found in the contact name
+        const allSearchWordsFound = searchWords.every(searchWord => 
+          contactWords.some(contactWord => contactWord.includes(searchWord) || searchWord.includes(contactWord))
+        );
+        
+        // Check if all contact words are found in the search name
+        const allContactWordsFound = contactWords.every(contactWord => 
+          searchWords.some(searchWord => contactWord.includes(searchWord) || searchWord.includes(contactWord))
+        );
+        
+        const matches = allSearchWordsFound || allContactWordsFound;
         
         console.log(`🔍 Checking "${contactFullName}" against "${searchName}": ${matches}`);
+        console.log(`🔍 Search words: [${searchWords.join(', ')}]`);
+        console.log(`🔍 Contact words: [${contactWords.join(', ')}]`);
+        console.log(`🔍 All search words found: ${allSearchWordsFound}`);
+        console.log(`🔍 All contact words found: ${allContactWordsFound}`);
+        
         return matches;
       });
       
@@ -1162,6 +1184,58 @@ export class CrudIntentHandler implements IntentHandler {
     console.log('👤 Handling LLM-based contact deletion with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
+    // Check if this is a number selection response (e.g., "delete 1", "1", "number 2")
+    const message = intent.originalMessage.toLowerCase();
+    const numberMatch = message.match(/(?:delete\s+)?(?:number\s+)?(\d+)/);
+    
+    if (numberMatch) {
+      console.log('🔢 Number selection detected:', numberMatch[1]);
+      
+      // Get the conversation context to see if we have matching contacts
+      const conversationState = conversationManager.getState();
+      const lastMessage = conversationState.memory.sessionHistory[conversationState.memory.sessionHistory.length - 1];
+      
+      if (lastMessage?.conversationContext?.matchingContacts) {
+        const matchingContacts = lastMessage.conversationContext.matchingContacts;
+        const selectedIndex = parseInt(numberMatch[1]) - 1; // Convert to 0-based index
+        
+        console.log('🔍 Selected index:', selectedIndex, 'from', matchingContacts.length, 'contacts');
+        
+        if (selectedIndex >= 0 && selectedIndex < matchingContacts.length) {
+          const selectedContact = matchingContacts[selectedIndex];
+          console.log('✅ Selected contact:', selectedContact);
+          
+          // Ask for confirmation before deleting
+          const confirmationMessage = `Please confirm the contact deletion:\n\n**Contact:** ${selectedContact.name}\n**Email:** ${selectedContact.email || 'N/A'}\n**Company:** ${selectedContact.company || 'N/A'}\n\nThis action cannot be undone. Are you sure you want to delete this contact? Please respond with "yes" to confirm or "no" to cancel.`;
+          
+          return {
+            message: confirmationMessage,
+            action: "confirm_delete",
+            contactId: selectedContact.id,
+            contactName: selectedContact.name,
+            conversationContext: {
+              phase: 'confirmation',
+              action: 'delete_contact',
+              referringTo: 'new_request',
+              contactId: selectedContact.id,
+              contactName: selectedContact.name
+            }
+          };
+        } else {
+          return {
+            message: `Invalid selection. Please choose a number between 1 and ${matchingContacts.length}.`,
+            needsClarification: true,
+            conversationContext: {
+              phase: 'clarification',
+              action: 'delete_contact',
+              referringTo: 'new_request',
+              matchingContacts: matchingContacts
+            }
+          };
+        }
+      }
+    }
+    
     // Use LLM-extracted entities instead of regex
     const contactName = intent.entities.contactName;
     
@@ -1207,12 +1281,34 @@ export class CrudIntentHandler implements IntentHandler {
           : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
         const searchName = contactName.toLowerCase();
         
-        const matches = contactFullName.includes(searchName) || 
-               searchName.includes(contactFullName) ||
-               contactFullName.split(' ').some((part: string) => searchName.includes(part)) ||
-               searchName.split(' ').some((part: string) => contactFullName.includes(part));
+        // More precise matching logic
+        const searchWords = searchName.split(' ').filter(word => word.length > 0);
+        const contactWords = contactFullName.split(' ').filter(word => word.length > 0);
+        
+        // Check for exact full name match first
+        if (contactFullName === searchName) {
+          console.log(`🔍 Exact match: "${contactFullName}" === "${searchName}"`);
+          return true;
+        }
+        
+        // Check if all search words are found in the contact name
+        const allSearchWordsFound = searchWords.every(searchWord => 
+          contactWords.some(contactWord => contactWord.includes(searchWord) || searchWord.includes(contactWord))
+        );
+        
+        // Check if all contact words are found in the search name
+        const allContactWordsFound = contactWords.every(contactWord => 
+          searchWords.some(searchWord => contactWord.includes(searchWord) || searchWord.includes(contactWord))
+        );
+        
+        const matches = allSearchWordsFound || allContactWordsFound;
         
         console.log(`🔍 Checking "${contactFullName}" against "${searchName}": ${matches}`);
+        console.log(`🔍 Search words: [${searchWords.join(', ')}]`);
+        console.log(`🔍 Contact words: [${contactWords.join(', ')}]`);
+        console.log(`🔍 All search words found: ${allSearchWordsFound}`);
+        console.log(`🔍 All contact words found: ${allContactWordsFound}`);
+        
         return matches;
       });
       

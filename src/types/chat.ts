@@ -31,6 +31,13 @@ export interface Message {
     field?: string;
     value?: string;
     contactName?: string;
+    // Multiple contact selection
+    matchingContacts?: Array<{
+      id: string;
+      name: string;
+      email?: string;
+      company?: string;
+    }>;
   };
   suggestions?: string[];
   nextSteps?: string[];
