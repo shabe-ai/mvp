@@ -1162,7 +1162,7 @@ export class CrudIntentHandler implements IntentHandler {
     console.log('👤 Handling LLM-based contact deletion with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
-    // Use LLM-extracted entity for contact name
+    // Use LLM-extracted entities instead of regex
     const contactName = intent.entities.contactName;
     
     console.log('📝 LLM-extracted data:', { contactName });
@@ -1172,7 +1172,7 @@ export class CrudIntentHandler implements IntentHandler {
       console.log('❌ Missing required data from LLM extraction');
       console.log('❌ contactName:', contactName);
       return {
-        message: "I couldn't understand the delete request. Please specify the contact name to delete.",
+        message: "I couldn't understand the contact deletion request. Please specify the contact name.",
         needsClarification: true,
         conversationContext: {
           phase: 'clarification',
@@ -1200,7 +1200,8 @@ export class CrudIntentHandler implements IntentHandler {
       console.log('👥 Contacts found:', contacts.length);
       console.log('📋 Contact names:', contacts.map(c => `${c.firstName} ${c.lastName}`));
       
-      const matchingContact = contacts.find(contact => {
+      // Find ALL matching contacts (not just the first one)
+      const matchingContacts = contacts.filter(contact => {
         const contactFullName = contact.firstName && contact.lastName 
           ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
           : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
@@ -1215,10 +1216,12 @@ export class CrudIntentHandler implements IntentHandler {
         return matches;
       });
       
-      if (!matchingContact) {
+      console.log('🔍 Found matching contacts:', matchingContacts.length);
+      
+      if (matchingContacts.length === 0) {
         console.log('❌ No matching contact found');
         return {
-          message: `I couldn't find a contact named "${contactName}" in your database to delete.`,
+          message: `I couldn't find a contact named "${contactName}" in your database. Please check the spelling.`,
           conversationContext: {
             phase: 'error',
             action: 'delete_contact',
@@ -1227,10 +1230,60 @@ export class CrudIntentHandler implements IntentHandler {
         };
       }
       
-      console.log('✅ Found matching contact for deletion:', matchingContact);
+      // If multiple contacts found, ask user to specify which one
+      if (matchingContacts.length > 1) {
+        console.log('⚠️ Multiple matching contacts found, asking for clarification');
+        
+        const contactOptions = matchingContacts.map((contact, index) => {
+          const fullName = `${contact.firstName} ${contact.lastName}`;
+          const email = contact.email || 'No email';
+          const company = contact.company || 'No company';
+          return `${index + 1}. ${fullName} (${email}) at ${company}`;
+        }).join('\n');
+        
+        const clarificationMessage = `I found ${matchingContacts.length} contacts with the name "${contactName}":\n\n${contactOptions}\n\nPlease specify which one you want to delete by saying the number (1, 2, 3, etc.) or provide more details like their email or company.`;
+        
+        return {
+          message: clarificationMessage,
+          needsClarification: true,
+          data: {
+            records: matchingContacts.map((contact: any) => ({
+              id: contact._id,
+              _id: contact._id,
+              created: new Date(contact._creationTime).toLocaleDateString(),
+              name: `${contact.firstName} ${contact.lastName}`,
+              email: contact.email || '',
+              phone: contact.phone || '',
+              company: contact.company || '',
+              title: contact.title || '',
+              status: contact.leadStatus || '',
+              type: contact.contactType || '',
+              source: contact.source || ''
+            })),
+            type: 'contacts',
+            count: matchingContacts.length,
+            displayFormat: 'table'
+          },
+          conversationContext: {
+            phase: 'clarification',
+            action: 'delete_contact',
+            referringTo: 'new_request',
+            matchingContacts: matchingContacts.map(c => ({
+              id: c._id,
+              name: `${c.firstName} ${c.lastName}`,
+              email: c.email,
+              company: c.company
+            }))
+          }
+        };
+      }
+      
+      // Single contact found - proceed with deletion confirmation
+      const matchingContact = matchingContacts[0];
+      console.log('✅ Found single matching contact:', matchingContact);
       
       // Ask for confirmation before deleting
-      const confirmationMessage = `Please confirm the contact deletion:\n\n**Contact:** ${matchingContact.firstName} ${matchingContact.lastName}\n\nIs this correct? Please respond with "yes" to confirm or "no" to cancel.`;
+      const confirmationMessage = `Please confirm the contact deletion:\n\n**Contact:** ${matchingContact.firstName} ${matchingContact.lastName}\n**Email:** ${matchingContact.email || 'N/A'}\n**Company:** ${matchingContact.company || 'N/A'}\n\nThis action cannot be undone. Are you sure you want to delete this contact? Please respond with "yes" to confirm or "no" to cancel.`;
       
       const confirmationResponse = {
         message: confirmationMessage,
