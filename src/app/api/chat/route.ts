@@ -36,11 +36,22 @@ export async function POST(request: NextRequest) {
     console.log('🧠 Message content:', message);
     console.log('🧠 User ID:', actualUserId);
 
+    // Validate that we have a message
+    if (!message || typeof message !== 'string') {
+      console.log('❌ Invalid or missing message:', message);
+      return NextResponse.json({
+        message: "I didn't receive a valid message. Please try again.",
+        error: true
+      });
+    }
+
     // Check if this is a simple confirmation response
-    const isSimpleConfirmation = message.toLowerCase().trim() === 'yes' || 
-                                message.toLowerCase().trim() === 'y' ||
-                                message.toLowerCase().trim() === 'confirm' ||
-                                message.toLowerCase().trim() === 'correct';
+    const isSimpleConfirmation = message && (
+      message.toLowerCase().trim() === 'yes' || 
+      message.toLowerCase().trim() === 'y' ||
+      message.toLowerCase().trim() === 'confirm' ||
+      message.toLowerCase().trim() === 'correct'
+    );
 
     if (isSimpleConfirmation) {
       console.log('🎯 Simple confirmation detected:', message);
