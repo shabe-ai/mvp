@@ -473,7 +473,7 @@ async function handleDatabaseOperation(userMessage: string, userId: string): Pro
     }
     
     // Apply filtering based on user message
-    const filteredRecords = applyFilters(records, userMessage, dataType);
+    const filteredRecords = await applyFilters(records, userMessage, dataType);
     
     console.log('🔍 Filtering result:', {
       originalCount: records.length,
@@ -483,7 +483,8 @@ async function handleDatabaseOperation(userMessage: string, userId: string): Pro
     
     // Check if user explicitly asked for "all" records
     const lowerUserMessage = userMessage.toLowerCase();
-    const requestedAll = lowerUserMessage.includes('all') || lowerUserMessage.includes('view') && !extractFilterTerms(userMessage).length;
+    const requestedAll = lowerUserMessage.includes('all') || 
+                        (lowerUserMessage.includes('view') && !lowerUserMessage.includes('account') && !lowerUserMessage.includes('contact') && !lowerUserMessage.includes('deal') && !lowerUserMessage.includes('activity'));
     
     // If filtering returns too many results or ambiguous results, ask for clarification
     // BUT NOT if user explicitly asked for "all" records
@@ -533,119 +534,156 @@ async function handleDatabaseOperation(userMessage: string, userId: string): Pro
   }
 }
 
-// Helper function to apply filters based on user message
-function applyFilters(records: DatabaseRecord[], userMessage: string, dataType: string): DatabaseRecord[] {
-  const message = userMessage.toLowerCase();
+// LLM-powered filtering system
+async function applyFilters(records: DatabaseRecord[], userMessage: string, dataType: string): Promise<DatabaseRecord[]> {
+  console.log('🧠 Using LLM-powered filtering for:', userMessage);
+  console.log('🧠 Data type:', dataType, 'Records count:', records.length);
   
-  // Extract filter terms from the message
-  const filterTerms = extractFilterTerms(message);
-  
-  console.log('🔍 Filtering debug:', {
-    originalMessage: userMessage,
-    extractedTerms: filterTerms,
-    dataType: dataType,
-    totalRecords: records.length
-  });
-  
-  if (filterTerms.length === 0) {
-    return records; // No filters, return all records
-  }
-  
-  const filteredRecords = records.filter((record: DatabaseRecord) => {
-    if (dataType === 'contacts') {
-      const fullName = `${record.firstName || ''} ${record.lastName || ''}`.toLowerCase().trim();
-      const firstName = (record.firstName || '').toLowerCase();
-      const lastName = (record.lastName || '').toLowerCase();
-      const email = (record.email || '').toLowerCase();
-      const company = (record.company || '').toLowerCase();
-      const title = (record.title || '').toLowerCase();
-      
-      // Check for company/title specific queries
-      if (message.includes(' at ') || message.includes(' with ')) {
-        // If query contains "at company" or "with title", prioritize those matches
-        if (message.includes(' at ') && filterTerms.some(term => company.includes(term))) {
-          return true;
-        }
-        if (message.includes(' with ') && filterTerms.some(term => title.includes(term))) {
-          return true;
-        }
-      }
-      
-      return filterTerms.some(term => {
-        return fullName.includes(term) || 
-               firstName.includes(term) || 
-               lastName.includes(term) || 
-               email.includes(term) || 
-               company.includes(term) || 
-               title.includes(term);
-      });
-    } else if (dataType === 'accounts') {
-      return filterTerms.some(term => {
-        const name = (record.name || '').toLowerCase();
-        const industry = (record.industry || '').toLowerCase();
-        const website = (record.website || '').toLowerCase();
-        
-        return name.includes(term) || 
-               industry.includes(term) || 
-               website.includes(term);
-      });
-    } else if (dataType === 'deals') {
-      return filterTerms.some(term => {
-        const name = (record.name || '').toLowerCase();
-        const stage = (record.stage || '').toLowerCase();
-        const value = (record.value || '').toLowerCase();
-        
-        return name.includes(term) || 
-               stage.includes(term) || 
-               value.includes(term);
-      });
-    } else if (dataType === 'activities') {
-      return filterTerms.some(term => {
-        const type = (record.type || '').toLowerCase();
-        const subject = (record.subject || '').toLowerCase();
-        const status = (record.status || '').toLowerCase();
-        
-        return type.includes(term) || 
-               subject.includes(term) || 
-               status.includes(term);
-      });
-    }
+  try {
+    // Import OpenAI client
+    const { openaiClient } = await import('@/lib/openaiClient');
     
-    return true; // Default to include if unknown data type
-  });
-  
-  console.log('🔍 Filtering result:', {
-    filteredCount: filteredRecords.length,
-    sampleRecords: filteredRecords.slice(0, 3).map(r => ({
-      name: `${r.firstName || ''} ${r.lastName || ''}`.trim(),
-      email: r.email,
-      company: r.company
-    }))
-  });
-  
-  return filteredRecords;
-}
+    // Prepare the records data for the LLM
+    const recordsData = records.map(record => {
+      if (dataType === 'contacts') {
+        return {
+          id: record._id,
+          name: `${record.firstName || ''} ${record.lastName || ''}`.trim(),
+          email: record.email || '',
+          company: record.company || '',
+          title: record.title || '',
+          status: record.leadStatus || '',
+          type: record.contactType || ''
+        };
+      } else if (dataType === 'accounts') {
+        return {
+          id: record._id,
+          name: record.name || '',
+          industry: record.industry || '',
+          website: record.website || '',
+          size: record.size || ''
+        };
+      } else if (dataType === 'deals') {
+        return {
+          id: record._id,
+          name: record.name || '',
+          stage: record.stage || '',
+          value: record.value || '',
+          probability: record.probability || ''
+        };
+      } else if (dataType === 'activities') {
+        return {
+          id: record._id,
+          subject: record.subject || '',
+          type: record.type || '',
+          status: record.status || '',
+          dueDate: record.dueDate || ''
+        };
+      }
+      return record;
+    });
+    
+    const systemPrompt = `You are an expert database filtering system. Your job is to filter records based on the user's query.
 
-function extractFilterTerms(message: string): string[] {
-  // Remove common words that aren't useful for filtering
-  const stopWords = new Set([
-    'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
-    'show', 'view', 'list', 'see', 'get', 'find', 'search', 'all', 'my', 'our', 'their',
-    'contact', 'contacts', 'account', 'accounts', 'deal', 'deals', 'activity', 'activities'
-  ]);
-  
-  // Extract words that could be filter terms
-  const words = message.toLowerCase()
-    .replace(/[^\w\s]/g, ' ') // Remove punctuation
-    .split(/\s+/)
-    .filter(word => word.length > 2 && !stopWords.has(word));
-  
-  return [...new Set(words)]; // Remove duplicates
+**Available Records (${dataType}):**
+${JSON.stringify(recordsData, null, 2)}
+
+**User Query:** "${userMessage}"
+
+**Instructions:**
+1. Analyze the user's query to understand what they're looking for
+2. Return ONLY the IDs of records that match their criteria
+3. Be intelligent about partial matches, synonyms, and context
+4. If the user asks for "all" or doesn't specify filters, return all IDs
+5. If no records match, return an empty array
+
+**Examples:**
+- "view account acme" → Return IDs of accounts with "acme" in the name
+- "show contacts at tech company" → Return IDs of contacts at tech companies
+- "find deals in closing stage" → Return IDs of deals with "closing" stage
+- "all contacts" → Return all contact IDs
+
+**Return Format:**
+Return ONLY a JSON array of matching record IDs:
+["id1", "id2", "id3"]
+
+**Important:** Return ONLY the JSON array, no other text.`;
+
+    const response = await openaiClient.chatCompletionsCreate({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt
+        },
+        {
+          role: "user",
+          content: `Filter the ${dataType} records based on this query: "${userMessage}"`
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 500
+    }, {
+      userId: 'database-filtering',
+      operation: 'database_filtering',
+      model: 'gpt-4'
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      console.log('❌ No response from LLM filtering');
+      return records; // Fallback to all records
+    }
+
+    console.log('🧠 LLM filtering response:', content);
+
+    // Parse the response
+    let matchingIds: string[] = [];
+    try {
+      // Try to parse as JSON array
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed)) {
+        matchingIds = parsed;
+      } else if (parsed.ids && Array.isArray(parsed.ids)) {
+        matchingIds = parsed.ids;
+      }
+    } catch (error) {
+      console.log('❌ Failed to parse LLM response as JSON, trying to extract IDs');
+      // Fallback: try to extract IDs from text
+      const idMatches = content.match(/"([^"]+)"/g);
+      if (idMatches) {
+        matchingIds = idMatches.map(match => match.replace(/"/g, ''));
+      }
+    }
+
+    console.log('🧠 LLM identified matching IDs:', matchingIds);
+
+    // Filter records based on LLM response
+    const filteredRecords = records.filter(record => matchingIds.includes(record._id));
+    
+    console.log('🧠 LLM filtering result:', {
+      originalCount: records.length,
+      filteredCount: filteredRecords.length,
+      matchingIds: matchingIds.length
+    });
+
+    return filteredRecords;
+    
+  } catch (error) {
+    console.error('❌ LLM filtering failed:', error);
+    console.log('🔄 Falling back to all records');
+    return records; // Fallback to all records if LLM fails
+  }
 }
 
 function getFilterInfo(userMessage: string): string | null {
-  const filterTerms = extractFilterTerms(userMessage);
-  return filterTerms.length > 0 ? filterTerms.join(' ') : null;
+  // Since we're now using LLM-powered filtering, we'll return a simple indicator
+  // that filtering was applied based on the user's query
+  const lowerMessage = userMessage.toLowerCase();
+  if (lowerMessage.includes('all') || lowerMessage.includes('view') || lowerMessage.includes('show')) {
+    return null; // No specific filter info needed
+  }
+  return 'your query'; // Generic filter info
 }
 
 function formatRecord(record: DatabaseRecord, dataType: string): FormattedRecord {
