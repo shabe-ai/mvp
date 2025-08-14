@@ -309,6 +309,7 @@ export class DataIntentHandler implements IntentHandler {
   private async handleCountQuery(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     try {
       console.log('🔢 Handling count query for:', intent.entities.dataType);
+      console.log('🔢 User ID:', context.userId);
       
       // Import Convex for database operations
       const { convex } = await import('@/lib/convex');
@@ -317,6 +318,7 @@ export class DataIntentHandler implements IntentHandler {
       // Get user's team
       const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
       const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      console.log('🔢 Team ID:', teamId);
       
       let count = 0;
       let dataType = intent.entities.dataType || 'contacts';
@@ -332,6 +334,13 @@ export class DataIntentHandler implements IntentHandler {
             contactsLength: contacts.length,
             contactNames: contacts.map(c => c.firstName + ' ' + c.lastName)
           });
+          console.log('🔢 Full contact data:', contacts.map(c => ({
+            id: c._id,
+            firstName: c.firstName,
+            lastName: c.lastName,
+            email: c.email,
+            company: c.company
+          })));
           break;
         case 'deals':
           const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
