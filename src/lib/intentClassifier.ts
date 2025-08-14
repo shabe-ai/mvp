@@ -175,6 +175,8 @@ export class IntentClassifier {
       }
       
       console.log('🧠 Intent classification result:', result);
+      console.log('🧠 Classified action:', result.action);
+      console.log('🧠 Classified dataType:', result.entities?.dataType);
       
       return this.validateAndEnhanceIntent(result, message, conversationState, nlpResult);
       
@@ -292,6 +294,8 @@ export class IntentClassifier {
     4. Extract entities from the conversation context if available
     5. Use high confidence (0.9+) for clear requests
     6. Use lower confidence (0.5-0.7) for ambiguous requests
+    7. For count queries ("how many", "count", "total number"), use action: "view_data" with appropriate dataType
+    8. Count queries should NOT be classified as "analyze_data" - they are simple data retrieval
     
     **Examples:**
     - "yes" after contact update confirmation → action: "update_contact", needsClarification: false
@@ -306,6 +310,10 @@ export class IntentClassifier {
     - "delete deal old proposal" → action: "delete_deal", dealName: "old proposal"
     - "delete activity cancelled meeting" → action: "delete_activity", activitySubject: "cancelled meeting"
     - "show me contacts" → action: "view_data", dataType: "contacts"
+    - "how many contacts do i have" → action: "view_data", dataType: "contacts"
+    - "how many deals do i have" → action: "view_data", dataType: "deals"
+    - "count my accounts" → action: "view_data", dataType: "accounts"
+    - "what's the total number of activities" → action: "view_data", dataType: "activities"
     - "make it a pie chart" → action: "modify_chart", chartType: "pie"
     `;
   }
