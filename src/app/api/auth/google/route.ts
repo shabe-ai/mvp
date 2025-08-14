@@ -23,27 +23,12 @@ export async function GET(request: NextRequest) {
       headers: Object.fromEntries(request.headers.entries())
     });
 
-    // If no session, try to get userId from query parameter or header
-    let finalUserId = userId;
+    // If no session, redirect to login
     if (!userId) {
-      // Try to get userId from query parameter (for testing)
-      const url = new URL(request.url);
-      const testUserId = url.searchParams.get('userId');
-      if (testUserId) {
-        finalUserId = testUserId;
-        console.log('⚠️ Using test userId from query parameter:', testUserId);
-      } else {
-        // Use the hardcoded userId for now
-        finalUserId = 'user_30yNzzaqY36tW07nKprV52twdEQ';
-        console.log('⚠️ Using hardcoded userId for testing:', finalUserId);
-      }
+      return NextResponse.redirect(new URL('/sign-in', request.url));
     }
 
-    // Ensure finalUserId is always a string
-    if (!finalUserId) {
-      finalUserId = 'user_30yNzzaqY36tW07nKprV52twdEQ';
-      console.log('⚠️ No userId available, using hardcoded fallback');
-    }
+    let finalUserId = userId;
 
     // Generate OAuth URL with state parameter containing userId
     const authUrl = oauth2Client.generateAuthUrl({

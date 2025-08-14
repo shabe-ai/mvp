@@ -789,15 +789,7 @@ function getClarificationMessage(dataType: string, records: DatabaseRecord[]): s
   return `I found ${records.length} ${dataType}. Could you be more specific? For example, you could search by name, company, or other details. Here are some examples: ${sampleNames.join(', ')}`;
 }
 
-// DEPRECATED: This function is replaced by LLM-based intent classification
-// The new implementation is in intentRouter.ts -> CrudIntentHandler -> handleContactUpdate
-export async function handleContactUpdateWithConfirmation(message: string, userId: string) {
-  console.log('⚠️ Using deprecated regex-based contact update handler');
-  return {
-    message: "This contact update method is deprecated. Please use the LLM-based system.",
-    error: true
-  };
-}
+
 
 export async function handleContactDeleteWithConfirmation(message: string, userId: string) {
   try {
