@@ -1045,7 +1045,7 @@ export class CrudIntentHandler implements IntentHandler {
           // Include CRUD fields in conversationContext
           contactName: contactName,
           email: email,
-          company: company || null
+          company: company || undefined
         }
       };
       
@@ -1488,8 +1488,8 @@ export class CrudIntentHandler implements IntentHandler {
           referringTo: 'new_request',
           // Include CRUD fields in conversationContext
           accountName: accountName,
-          industry: industry || null,
-          website: website || null
+          industry: industry || undefined,
+          website: website || undefined
         }
       };
       

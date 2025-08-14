@@ -222,8 +222,8 @@ export class ConversationPruner {
     const avgMessageLength = totalMessages > 0 ? totalCharacters / totalMessages : 0;
     const estimatedTokens = Math.ceil(totalCharacters / 4);
     
-    const oldestMessage = messages[0]?.timestamp ? new Date(messages[0].timestamp) : null;
-    const newestMessage = messages[messages.length - 1]?.timestamp ? new Date(messages[messages.length - 1].timestamp) : null;
+    const oldestMessage = messages[0]?.timestamp ? new Date(messages[0].timestamp as Date | number) : null;
+    const newestMessage = messages[messages.length - 1]?.timestamp ? new Date(messages[messages.length - 1].timestamp as Date | number) : null;
     
     const conversationAge = oldestMessage && newestMessage 
       ? (newestMessage.getTime() - oldestMessage.getTime()) / (1000 * 60 * 60) // hours

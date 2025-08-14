@@ -166,7 +166,7 @@ export class SecurityScanner {
         }
       }
     } catch (error) {
-      logger.warn('Could not check admin access', { error: error.message });
+      logger.warn('Could not check admin access', { error: error instanceof Error ? error.message : String(error) });
     }
 
     // Check for missing authentication on sensitive endpoints
@@ -385,7 +385,7 @@ export class SecurityScanner {
         }
       }
     } catch (error) {
-      logger.warn('Dependency scan failed', { error: error.message });
+      logger.warn('Dependency scan failed', { error: error instanceof Error ? error.message : String(error) });
     }
 
     return vulnerabilities;
@@ -442,7 +442,7 @@ export class SecurityScanner {
    * Handle critical vulnerabilities
    */
   private handleCriticalVulnerabilities(criticalVulns: SecurityVulnerability[]): void {
-    logger.error('Critical security vulnerabilities detected', {
+    logger.error('Critical security vulnerabilities detected', undefined, {
       count: criticalVulns.length,
       vulnerabilities: criticalVulns.map(v => ({ id: v.id, title: v.title }))
     });

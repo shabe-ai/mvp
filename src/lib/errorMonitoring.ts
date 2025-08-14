@@ -99,7 +99,7 @@ export class ErrorMonitoring {
     this.lastErrorTime.set(errorKey, new Date());
 
     // Log error with structured logging
-    logger.error(errorMessage, typeof error === 'Error' ? error : undefined, {
+    logger.error(errorMessage, error instanceof Error ? error : undefined, {
       ...context,
       severity,
       category,
@@ -108,7 +108,7 @@ export class ErrorMonitoring {
     });
 
     // Send to Sentry with enhanced context
-    Sentry.captureException(typeof error === 'Error' ? error : new Error(error), {
+    Sentry.captureException(error instanceof Error ? error : new Error(error), {
       level: this.mapSeverityToSentryLevel(severity),
       tags: {
         category,
@@ -136,7 +136,7 @@ export class ErrorMonitoring {
   ): void {
     const url = new URL(request.url);
     const method = request.method;
-    const userAgent = request.headers.get('user-agent');
+    const userAgent = request.headers.get('user-agent') || undefined;
     const ip = request.headers.get('x-forwarded-for') || 
                request.headers.get('x-real-ip') || 
                'unknown';
