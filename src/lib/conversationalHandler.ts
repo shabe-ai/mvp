@@ -215,24 +215,35 @@ export class ConversationalHandler {
       // Skip edge cache for count queries to ensure fresh data
       const isCountQuery = message.toLowerCase().includes('how many') || message.toLowerCase().includes('count');
       
-      console.log('🔍 Count query check:', { message, isCountQuery });
+      logger.debug('Count query check', { 
+        message: message.substring(0, 100), 
+        isCountQuery,
+        userId: context.userId 
+      });
       
-      // Force count queries to go through structured analysis
-      if (isCountQuery) {
-        console.log('🔍 Force routing count query to structured analysis');
+              // Force count queries to go through structured analysis
+        if (isCountQuery) {
+          logger.info('Force routing count query to structured analysis', { 
+            userId: context.userId 
+          });
         
-        // Clear any cached responses for count queries
-        this.clearCacheForPattern('how many');
-        this.clearCacheForPattern('count');
-        
-        // Clear performance optimizer cache for fresh data
-        try {
-          const { performanceOptimizer } = await import('@/lib/performanceOptimizer');
-          performanceOptimizer.clearCache();
-          console.log('🔍 Cleared performance optimizer cache for count query');
-        } catch (error) {
-          console.log('🔍 Failed to clear performance optimizer cache:', error);
-        }
+                  // Clear any cached responses for count queries
+          this.clearCacheForPattern('how many');
+          this.clearCacheForPattern('count');
+          
+          // Clear performance optimizer cache for fresh data
+          try {
+            const { performanceOptimizer } = await import('@/lib/performanceOptimizer');
+            performanceOptimizer.clearCache();
+            logger.debug('Cleared performance optimizer cache for count query', { 
+              userId: context.userId 
+            });
+          } catch (error) {
+            logger.warn('Failed to clear performance optimizer cache', { 
+              error: error instanceof Error ? error.message : String(error),
+              userId: context.userId 
+            });
+          }
         
         const structured = await this.analyzeWithStructured(message, conversationManager);
         if (structured && structured.confidence > 0.7) {

@@ -3,6 +3,7 @@ import { ConversationManager } from './conversationManager';
 import { ConversationResponse } from '@/types/chat';
 import { userDataEnhancer } from './userDataEnhancer';
 import { ragMonitor } from './ragMonitor';
+import { logger } from './logger';
 
 export interface IntentHandler {
   canHandle(intent: SimplifiedIntent): boolean;
@@ -17,7 +18,11 @@ export class IntentRouter {
   }
 
   async routeIntent(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
-    console.log('🛣️ Routing intent:', intent.action, 'with confidence:', intent.confidence);
+    logger.info('Routing intent', { 
+      action: intent.action, 
+      confidence: intent.confidence,
+      userId: context.userId 
+    });
     
     const startTime = Date.now();
     
@@ -53,7 +58,10 @@ export class IntentRouter {
     const handler = this.handlers.find(h => h.canHandle(intent));
     
     if (handler) {
-      console.log('🛣️ Found handler for intent:', intent.action);
+      logger.info('Found handler for intent', { 
+        action: intent.action,
+        userId: context.userId 
+      });
       const response = await handler.handle(intent, conversationManager, context);
       
       // Log successful interaction for RAG learning
@@ -80,7 +88,10 @@ export class IntentRouter {
     }
 
     // Fallback to general conversation
-    console.log('🛣️ No specific handler found, falling back to general conversation');
+    logger.warn('No specific handler found, falling back to general conversation', { 
+      action: intent.action,
+      userId: context.userId 
+    });
     const fallbackResponse = {
       message: "I understand you want to work with your data, but I need a bit more information. Could you please be more specific about what you'd like to do?",
       needsClarification: true,
@@ -112,7 +123,10 @@ export class ChartIntentHandler implements IntentHandler {
   }
 
   async handle(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
-    console.log('📊 Handling chart intent:', intent.action);
+    logger.info('Handling chart intent', { 
+      action: intent.action,
+      userId: context.userId 
+    });
     
     // Check if user is referring to current chart for modifications
     if (conversationManager.isReferringToCurrentChart(intent.originalMessage)) {
@@ -154,7 +168,9 @@ export class ChartIntentHandler implements IntentHandler {
   }
 
   private async handleChartModification(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
-    console.log('🔄 Handling chart modification request');
+    logger.info('Handling chart modification request', { 
+      userId: context.userId 
+    });
     
     const activeChart = conversationManager.getState().currentContext.activeChart;
     if (!activeChart) {
@@ -256,7 +272,10 @@ export class DataIntentHandler implements IntentHandler {
   }
 
   async handle(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
-    console.log('📋 Handling data intent:', intent.action);
+    logger.info('Handling data intent', { 
+      action: intent.action,
+      userId: context.userId 
+    });
     
     // Check if this is a count query (how many X do I have)
     const isCountQuery = this.isCountQuery(intent);

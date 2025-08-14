@@ -35,7 +35,10 @@ export class SimplifiedIntentClassifier {
 
   async classifyIntent(message: string, conversationState: any): Promise<SimplifiedIntent> {
     try {
-      console.log('🧠 Starting simplified intent classification for:', message);
+      logger.info('Starting simplified intent classification', { 
+        message: message.substring(0, 100),
+        userId: conversationState.metadata?.userId 
+      });
       
       // Build a simple, direct prompt for GPT
       const basePrompt = this.buildSimpleClassificationPrompt(message, conversationState);
@@ -43,7 +46,9 @@ export class SimplifiedIntentClassifier {
       // Enhance prompt with RAG (user data examples) - keeping RAG intact
       const enhancedPrompt = userDataEnhancer.enhancePrompt(basePrompt, message);
       
-      console.log('🧠 Using RAG-enhanced prompt for simplified intent classification');
+      logger.debug('Using RAG-enhanced prompt for simplified intent classification', { 
+        userId: conversationState.metadata?.userId 
+      });
       
       const response = await openaiClient.chatCompletionsCreate({
         model: "gpt-4",
@@ -76,7 +81,10 @@ export class SimplifiedIntentClassifier {
       try {
         parsedIntent = JSON.parse(content);
       } catch (parseError) {
-        console.error('Failed to parse GPT response as JSON:', content);
+        logger.error('Failed to parse GPT response as JSON', parseError instanceof Error ? parseError : new Error(String(parseError)), { 
+          contentPreview: content.substring(0, 200),
+          userId: conversationState.metadata?.userId 
+        });
         // Fallback to general conversation
         return this.createFallbackIntent(message, 'Failed to parse intent response');
       }
@@ -84,10 +92,11 @@ export class SimplifiedIntentClassifier {
       // Validate and normalize the intent
       const normalizedIntent = this.normalizeIntent(parsedIntent, message);
       
-      console.log('🧠 Simplified intent classification result:', {
+      logger.info('Simplified intent classification result', {
         action: normalizedIntent.action,
         confidence: normalizedIntent.confidence,
-        entities: Object.keys(normalizedIntent.entities).length
+        entityCount: Object.keys(normalizedIntent.entities).length,
+        userId: conversationState.metadata?.userId
       });
 
       return normalizedIntent;

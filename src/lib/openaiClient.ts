@@ -1,6 +1,7 @@
 import OpenAI from "openai";
 import { convex } from "./convex";
 import { api } from "@/convex/_generated/api";
+import { logger } from "./logger";
 
 interface ChatCompletionParams {
   model: string;
@@ -65,7 +66,7 @@ class RateLimitedOpenAI {
     const { userId, operation } = config;
     
     if (!userId) {
-      console.warn("Rate limiting skipped - no userId provided");
+      logger.warn("Rate limiting skipped - no userId provided");
       return true;
     }
 
@@ -87,33 +88,35 @@ class RateLimitedOpenAI {
       const rateLimitStatus = await convex.query(api.monitoring.getRateLimitStatus, { userId });
       
       if (rateLimitStatus.userLimits.minute.count >= RATE_LIMITS.USER_PER_MINUTE) {
-        console.warn(`Rate limit exceeded: User ${userId} exceeded per-minute limit`);
+        logger.warn("Rate limit exceeded: User exceeded per-minute limit", { userId });
         return false;
       }
       if (rateLimitStatus.userLimits.hour.count >= RATE_LIMITS.USER_PER_HOUR) {
-        console.warn(`Rate limit exceeded: User ${userId} exceeded per-hour limit`);
+        logger.warn("Rate limit exceeded: User exceeded per-hour limit", { userId });
         return false;
       }
       if (rateLimitStatus.userLimits.day.count >= RATE_LIMITS.USER_PER_DAY) {
-        console.warn(`Rate limit exceeded: User ${userId} exceeded per-day limit`);
+        logger.warn("Rate limit exceeded: User exceeded per-day limit", { userId });
         return false;
       }
     } catch (error) {
-      console.error("Error checking rate limits:", error);
+      logger.error("Error checking rate limits", error instanceof Error ? error : new Error(String(error)), { 
+        userId 
+      });
       // Allow request if rate limit check fails
     }
 
     // Check global limits
     if (this.globalCounts.minute.count >= RATE_LIMITS.GLOBAL_PER_MINUTE) {
-      console.warn("Rate limit exceeded: Global per-minute limit exceeded");
+      logger.warn("Rate limit exceeded: Global per-minute limit exceeded");
       return false;
     }
     if (this.globalCounts.hour.count >= RATE_LIMITS.GLOBAL_PER_HOUR) {
-      console.warn("Rate limit exceeded: Global per-hour limit exceeded");
+      logger.warn("Rate limit exceeded: Global per-hour limit exceeded");
       return false;
     }
     if (this.globalCounts.day.count >= RATE_LIMITS.GLOBAL_PER_DAY) {
-      console.warn("Rate limit exceeded: Global per-day limit exceeded");
+      logger.warn("Rate limit exceeded: Global per-day limit exceeded");
       return false;
     }
 
@@ -129,7 +132,9 @@ class RateLimitedOpenAI {
         operation,
       });
     } catch (error) {
-      console.error("Error storing rate limit data:", error);
+      logger.error("Error storing rate limit data", error instanceof Error ? error : new Error(String(error)), { 
+        userId 
+      });
     }
 
     return true;
@@ -151,9 +156,17 @@ class RateLimitedOpenAI {
         operation: 'chat_completion',
       });
 
-      console.log(`💰 Cost tracked: User ${userId} - Model: ${model}, Input: ${inputTokens}, Output: ${outputTokens}, Cost: $${totalCost.toFixed(4)}`);
+      logger.info("Cost tracked", { 
+        userId, 
+        model, 
+        inputTokens, 
+        outputTokens, 
+        cost: totalCost.toFixed(4) 
+      });
     } catch (error) {
-      console.error("Error storing cost data:", error);
+      logger.error("Error storing cost data", error instanceof Error ? error : new Error(String(error)), { 
+        userId 
+      });
     }
   }
 
@@ -177,7 +190,9 @@ class RateLimitedOpenAI {
 
       return response;
     } catch (error) {
-      console.error("OpenAI API error:", error);
+      logger.error("OpenAI API error", error instanceof Error ? error : new Error(String(error)), { 
+        userId: config.userId 
+      });
       throw error;
     }
   }
