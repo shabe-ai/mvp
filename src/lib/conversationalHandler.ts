@@ -60,6 +60,7 @@ class ConversationCache {
 
 class EdgeCache {
   private static readonly commonPatterns = new Map([
+    // Data viewing patterns
     ['show me contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
     ['show contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
     ['list contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
@@ -69,15 +70,41 @@ class EdgeCache {
     ['show me accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
     ['show accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
     ['list accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
+    
+    // Chart patterns
     ['create a chart', { action: 'create_chart', confidence: 0.9 }],
     ['make a chart', { action: 'create_chart', confidence: 0.9 }],
     ['build a chart', { action: 'create_chart', confidence: 0.9 }],
+    
+    // Email patterns
     ['send email', { action: 'send_email', confidence: 0.9 }],
     ['send an email', { action: 'send_email', confidence: 0.9 }],
     ['email someone', { action: 'send_email', confidence: 0.9 }],
+    
+    // Help patterns
     ['help', { action: 'general_conversation', confidence: 0.8 }],
     ['what can you do', { action: 'general_conversation', confidence: 0.8 }],
-    ['how does this work', { action: 'general_conversation', confidence: 0.8 }]
+    ['how does this work', { action: 'general_conversation', confidence: 0.8 }],
+    
+    // Greeting patterns
+    ['hello', { action: 'general_conversation', confidence: 0.9 }],
+    ['hi', { action: 'general_conversation', confidence: 0.9 }],
+    ['hey', { action: 'general_conversation', confidence: 0.9 }],
+    ['good morning', { action: 'general_conversation', confidence: 0.9 }],
+    ['good afternoon', { action: 'general_conversation', confidence: 0.9 }],
+    ['good evening', { action: 'general_conversation', confidence: 0.9 }],
+    ['hello how are you', { action: 'general_conversation', confidence: 0.9 }],
+    ['hi how are you', { action: 'general_conversation', confidence: 0.9 }],
+    ['hey how are you', { action: 'general_conversation', confidence: 0.9 }],
+    ['how are you', { action: 'general_conversation', confidence: 0.9 }],
+    ['how are you doing', { action: 'general_conversation', confidence: 0.9 }],
+    ['what\'s up', { action: 'general_conversation', confidence: 0.9 }],
+    ['sup', { action: 'general_conversation', confidence: 0.9 }],
+    ['thanks', { action: 'general_conversation', confidence: 0.9 }],
+    ['thank you', { action: 'general_conversation', confidence: 0.9 }],
+    ['bye', { action: 'general_conversation', confidence: 0.9 }],
+    ['goodbye', { action: 'general_conversation', confidence: 0.9 }],
+    ['see you', { action: 'general_conversation', confidence: 0.9 }]
   ]);
 
   static get(message: string): ConversationalUnderstanding | undefined {
