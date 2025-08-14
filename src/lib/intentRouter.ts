@@ -258,6 +258,13 @@ export class DataIntentHandler implements IntentHandler {
   async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('📋 Handling data intent:', intent.action);
     
+    // Check if this is a count query (how many X do I have)
+    const isCountQuery = this.isCountQuery(intent);
+    
+    if (isCountQuery) {
+      return await this.handleCountQuery(intent, conversationManager, context);
+    }
+    
     const { handleDatabaseQuery } = await import('@/lib/chatHandlers');
     
     // Build data request from intent
@@ -276,6 +283,91 @@ export class DataIntentHandler implements IntentHandler {
         referringTo: intent.context.referringTo
       }
     };
+  }
+
+  private isCountQuery(intent: Intent): boolean {
+    const message = intent.originalMessage.toLowerCase();
+    return message.includes('how many') || message.includes('count');
+  }
+
+  private async handleCountQuery(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    try {
+      console.log('🔢 Handling count query for:', intent.entities.dataType);
+      
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Get user's team
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      
+      let count = 0;
+      let dataType = intent.entities.dataType || 'contacts';
+      
+      // Get count based on data type
+      switch (dataType) {
+        case 'contacts':
+          const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+          count = contacts.length;
+          break;
+        case 'deals':
+          const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
+          count = deals.length;
+          break;
+        case 'accounts':
+          const accounts = await convex.query(api.crm.getAccountsByTeam, { teamId });
+          count = accounts.length;
+          break;
+        case 'activities':
+          const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+          count = activities.length;
+          break;
+        default:
+          const defaultContacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+          count = defaultContacts.length;
+          dataType = 'contacts';
+      }
+      
+      // Generate appropriate response
+      const message = `You have ${count} ${dataType}${count !== 1 ? '' : ''}.`;
+      
+      return {
+        message,
+        data: {
+          records: [],
+          type: dataType,
+          count: count,
+          displayFormat: 'count'
+        },
+        suggestions: [
+          `Show me my ${dataType}`,
+          `Create a chart of my ${dataType}`,
+          `View my ${dataType} details`
+        ],
+        conversationContext: {
+          phase: 'exploration',
+          action: 'view_data',
+          referringTo: 'new_request'
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Count query failed:', error);
+      return {
+        message: `I'm having trouble counting your ${intent.entities.dataType || 'data'}. Let me show you the data instead.`,
+        suggestions: [
+          "Show me my contacts",
+          "View my deals",
+          "Check my accounts"
+        ],
+        conversationContext: {
+          phase: 'error',
+          action: 'view_data',
+          referringTo: 'new_request'
+        }
+      };
+    }
   }
 
   private buildDataRequest(intent: Intent): string {

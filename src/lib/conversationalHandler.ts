@@ -3,6 +3,7 @@ import { intentClassifier } from './intentClassifier';
 import { intentRouter } from './intentRouter';
 import { ConversationManager } from './conversationManager';
 import { logger } from './logger';
+import { edgeCaseHandler } from './edgeCaseHandler';
 
 export interface ConversationalUnderstanding {
   action: string;
@@ -64,12 +65,21 @@ class EdgeCache {
     ['show me contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
     ['show contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
     ['list contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    ['how many contacts do i have', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    ['how many contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    ['count contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
     ['show me deals', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
     ['show deals', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
     ['list deals', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
+    ['how many deals do i have', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
+    ['how many deals', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
+    ['count deals', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
     ['show me accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
     ['show accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
     ['list accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
+    ['how many accounts do i have', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
+    ['how many accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
+    ['count accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
     
     // Chart patterns
     ['create a chart', { action: 'create_chart', confidence: 0.9 }],
@@ -146,7 +156,30 @@ export class ConversationalHandler {
     try {
       logger.info('Starting conversational handling', { message: message.substring(0, 100) });
 
-      // 1. Check edge cache first (fastest path)
+      // 1. Check edge case handler first (handles greetings, etc.)
+      const edgeCaseContext = {
+        userId: context.userId,
+        operation: 'conversational_handling',
+        input: message,
+        timestamp: new Date(),
+        retryCount: 0
+      };
+      
+      const edgeCaseResult = await edgeCaseHandler.checkEdgeCases(message, edgeCaseContext);
+      if (edgeCaseResult.handled) {
+        logger.info('Edge case handled', { result: edgeCaseResult.result });
+        return {
+          message: edgeCaseResult.result.message,
+          suggestions: edgeCaseResult.result.suggestions || [],
+          conversationContext: {
+            phase: 'exploration',
+            action: 'general_conversation',
+            referringTo: 'new_request'
+          }
+        };
+      }
+
+      // 2. Check edge cache (fastest path for common patterns)
       const edgeResult = EdgeCache.get(message);
       if (edgeResult) {
         logger.info('Edge cache hit', { action: edgeResult.action, confidence: edgeResult.confidence });
