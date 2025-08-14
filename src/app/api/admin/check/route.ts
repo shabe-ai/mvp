@@ -29,20 +29,68 @@ async function checkAdminStatus(): Promise<AdminAuthResult> {
       lastName: user?.lastName
     });
 
-    // TEMPORARY: Allow admin access for any request (for testing)
-    console.log('✅ Admin check - TEMPORARY: Allowing admin access for testing');
+    if (!userId || !user) {
+      console.log('❌ Admin check - No user or session');
+      return {
+        isAdmin: false,
+        adminUser: null,
+        adminLoading: false
+      };
+    }
+
+    // Check if user is admin based on email domain or specific user IDs
+    const userEmail = user.emailAddresses?.[0]?.emailAddress;
+    
+    if (!userEmail) {
+      console.log('❌ Admin check - No email found');
+      return {
+        isAdmin: false,
+        adminUser: null,
+        adminLoading: false
+      };
+    }
+
+    console.log('🔍 Admin check - User email:', userEmail);
+
+    // Define admin emails or domains
+    const adminEmails = [
+      'admin@shabe.ai',
+      'vigeash@shabe.ai',
+      'vigeashgobal@gmail.com'
+    ];
+
+    const adminDomains = [
+      'shabe.ai'
+    ];
+
+    const emailDomain = userEmail.split('@')[1];
+    const isAdminEmail = adminEmails.includes(userEmail);
+    const isAdminDomain = adminDomains.includes(emailDomain);
+
+    console.log('🔍 Admin check - Email domain:', emailDomain);
+    console.log('🔍 Admin check - Is admin email:', isAdminEmail);
+    console.log('🔍 Admin check - Is admin domain:', isAdminDomain);
+
+    if (isAdminEmail || isAdminDomain) {
+      console.log('✅ Admin check - User is admin');
+      return {
+        isAdmin: true,
+        adminUser: {
+          id: userId,
+          email: userEmail,
+          firstName: user.firstName || undefined,
+          lastName: user.lastName || undefined
+        },
+        adminLoading: false
+      };
+    }
+
+    console.log('❌ Admin check - User is not admin');
     return {
-      isAdmin: true,
-      adminUser: {
-        id: userId || 'temp-user-id',
-        email: user?.emailAddresses?.[0]?.emailAddress || 'temp@example.com',
-        firstName: user?.firstName || undefined,
-        lastName: user?.lastName || undefined
-      },
+      isAdmin: false,
+      adminUser: null,
       adminLoading: false
     };
-
-    // Original logic (commented out for now)
     /*
     if (!userId || !user) {
       console.log('❌ Admin check - No user or session');

@@ -31,6 +31,8 @@ export interface Message {
     field?: string;
     value?: string;
     contactName?: string;
+    email?: string;
+    company?: string;
     // Multiple contact selection
     matchingContacts?: Array<{
       id: string;
@@ -73,9 +75,9 @@ export interface ConversationResponse {
     date?: string;
     // Common fields
     email?: string;
-    company?: string | null;
-    industry?: string | null;
-    website?: string | null;
+    company?: string;
+    industry?: string;
+    website?: string;
     amount?: string;
     stage?: string;
     closeDate?: string;
