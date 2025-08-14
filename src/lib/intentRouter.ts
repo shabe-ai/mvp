@@ -326,6 +326,8 @@ export class DataIntentHandler implements IntentHandler {
       // Get count based on data type
       switch (dataType) {
         case 'contacts':
+          // Force fresh database query with no caching
+          console.log('🔢 Executing fresh database query for contacts...');
           const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
           count = contacts.length;
           console.log('🔢 Contact count debug:', { 
@@ -341,6 +343,12 @@ export class DataIntentHandler implements IntentHandler {
             email: c.email,
             company: c.company
           })));
+          
+          // Double-check the count
+          if (count !== contacts.length) {
+            console.log('🔢 WARNING: Count mismatch detected!');
+            count = contacts.length;
+          }
           break;
         case 'deals':
           const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
@@ -362,6 +370,8 @@ export class DataIntentHandler implements IntentHandler {
       
       // Generate appropriate response
       const message = `You have ${count} ${dataType}${count !== 1 ? '' : ''}.`;
+      
+      console.log('🔢 Final response:', { message, count, dataType });
       
       return {
         message,
