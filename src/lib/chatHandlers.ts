@@ -886,6 +886,13 @@ export async function handleGeneralConversation(message: string, messages: Messa
     const actualUserId = userId || context.userProfile?.email || 'unknown';
     console.log('🔍 Getting data for user:', actualUserId);
     
+    // Check if this is a count query - if so, don't use general conversation
+    const isCountQuery = message.toLowerCase().includes('how many') || message.toLowerCase().includes('count');
+    if (isCountQuery) {
+      console.log('🔍 Count query detected in general conversation, redirecting to structured analysis');
+      throw new Error('Count query should use structured analysis');
+    }
+    
     // Phase 5: Edge case handling
     const edgeCaseContext = {
       userId: actualUserId,
