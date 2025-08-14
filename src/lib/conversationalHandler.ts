@@ -1,0 +1,376 @@
+import { openaiClient } from './openaiClient';
+import { intentClassifier } from './intentClassifier';
+import { intentRouter } from './intentRouter';
+import { ConversationManager } from './conversationManager';
+import { logger } from './logger';
+
+export interface ConversationalUnderstanding {
+  action: string;
+  entities: Record<string, any>;
+  confidence: number;
+  userIntent: string;
+  needsClarification: boolean;
+  clarificationQuestion?: string;
+  suggestedActions?: string[];
+}
+
+export interface ConversationalResponse {
+  message: string;
+  action?: string;
+  data?: any;
+  chartSpec?: any;
+  enhancedChart?: any;
+  suggestions?: string[];
+  needsClarification?: boolean;
+  conversationContext?: any;
+}
+
+class ConversationCache {
+  private cache = new Map<string, ConversationalUnderstanding>();
+  private maxSize = 1000;
+
+  generateKey(message: string, context: any): string {
+    const normalizedMessage = message.toLowerCase().trim();
+    const contextHash = JSON.stringify({
+      userId: context.userId,
+      teamId: context.teamId,
+      lastAction: context.lastAction
+    });
+    return `${normalizedMessage}:${contextHash}`;
+  }
+
+  get(key: string): ConversationalUnderstanding | undefined {
+    return this.cache.get(key);
+  }
+
+  set(key: string, understanding: ConversationalUnderstanding): void {
+    if (this.cache.size >= this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) {
+        this.cache.delete(firstKey);
+      }
+    }
+    this.cache.set(key, understanding);
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
+class EdgeCache {
+  private static readonly commonPatterns = new Map([
+    ['show me contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    ['show contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    ['list contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    ['show me deals', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
+    ['show deals', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
+    ['list deals', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
+    ['show me accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
+    ['show accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
+    ['list accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
+    ['create a chart', { action: 'create_chart', confidence: 0.9 }],
+    ['make a chart', { action: 'create_chart', confidence: 0.9 }],
+    ['build a chart', { action: 'create_chart', confidence: 0.9 }],
+    ['send email', { action: 'send_email', confidence: 0.9 }],
+    ['send an email', { action: 'send_email', confidence: 0.9 }],
+    ['email someone', { action: 'send_email', confidence: 0.9 }],
+    ['help', { action: 'general_conversation', confidence: 0.8 }],
+    ['what can you do', { action: 'general_conversation', confidence: 0.8 }],
+    ['how does this work', { action: 'general_conversation', confidence: 0.8 }]
+  ]);
+
+  static get(message: string): ConversationalUnderstanding | undefined {
+    const normalized = message.toLowerCase().trim();
+    const pattern = this.commonPatterns.get(normalized);
+    
+    if (pattern) {
+      return {
+        action: pattern.action,
+        entities: pattern,
+        confidence: pattern.confidence,
+        userIntent: message,
+        needsClarification: false
+      };
+    }
+    
+    return undefined;
+  }
+}
+
+export class ConversationalHandler {
+  private static instance: ConversationalHandler;
+  private cache = new ConversationCache();
+
+  static getInstance(): ConversationalHandler {
+    if (!ConversationalHandler.instance) {
+      ConversationalHandler.instance = new ConversationalHandler();
+    }
+    return ConversationalHandler.instance;
+  }
+
+  async handleConversation(
+    message: string,
+    conversationManager: ConversationManager,
+    context: any
+  ): Promise<ConversationalResponse> {
+    const startTime = Date.now();
+    
+    try {
+      logger.info('Starting conversational handling', { message: message.substring(0, 100) });
+
+      // 1. Check edge cache first (fastest path)
+      const edgeResult = EdgeCache.get(message);
+      if (edgeResult) {
+        logger.info('Edge cache hit', { action: edgeResult.action, confidence: edgeResult.confidence });
+        return await this.executeAction(edgeResult, conversationManager, context);
+      }
+
+      // 2. Start both analyses in parallel
+      const [structuredPromise, cachedPromise] = await Promise.all([
+        this.analyzeWithStructured(message, conversationManager),
+        this.getCachedUnderstanding(message, context)
+      ]);
+
+      // 3. Try structured analysis first (faster)
+      try {
+        const structured = await Promise.race([
+          structuredPromise,
+          new Promise<null>(resolve => setTimeout(() => resolve(null), 300))
+        ]) as ConversationalUnderstanding | null;
+
+        if (structured && structured.confidence > 0.8) {
+          logger.info('Using structured analysis', { action: structured.action, confidence: structured.confidence });
+          return await this.executeAction(structured, conversationManager, context);
+        }
+      } catch (error) {
+        logger.warn('Structured analysis failed, falling back to GPT', { error: error instanceof Error ? error.message : String(error) });
+      }
+
+      // 4. Use cached GPT result if available
+      const cached = await cachedPromise;
+      if (cached) {
+        logger.info('Using cached GPT understanding', { action: cached.action, confidence: cached.confidence });
+        return await this.executeAction(cached, conversationManager, context);
+      }
+
+      // 5. Fallback to fresh GPT analysis
+      logger.info('Using fresh GPT analysis');
+      const understanding = await this.analyzeWithGPT(message, context);
+      return await this.executeAction(understanding, conversationManager, context);
+
+    } catch (error) {
+      logger.error('Conversational handling failed', undefined, { error: error instanceof Error ? error.message : String(error) });
+      
+      // Fallback to basic structured approach
+      const fallbackIntent = await intentClassifier.classifyIntent(message, conversationManager.getState());
+      return await intentRouter.routeIntent(fallbackIntent, conversationManager, context);
+    } finally {
+      const duration = Date.now() - startTime;
+      logger.info('Conversational handling completed', { duration });
+    }
+  }
+
+  private async analyzeWithStructured(
+    message: string,
+    conversationManager: ConversationManager
+  ): Promise<ConversationalUnderstanding | null> {
+    try {
+      const intent = await intentClassifier.classifyIntent(message, conversationManager.getState());
+      
+      return {
+        action: intent.action,
+        entities: intent.entities,
+        confidence: intent.confidence,
+        userIntent: message,
+        needsClarification: intent.metadata?.needsClarification || false,
+        clarificationQuestion: intent.metadata?.clarificationQuestion
+      };
+    } catch (error) {
+      logger.warn('Structured analysis failed', { error: error instanceof Error ? error.message : String(error) });
+      return null;
+    }
+  }
+
+  private async getCachedUnderstanding(
+    message: string,
+    context: any
+  ): Promise<ConversationalUnderstanding | null> {
+    const key = this.cache.generateKey(message, context);
+    return this.cache.get(key) || null;
+  }
+
+  private async analyzeWithGPT(
+    message: string,
+    context: any
+  ): Promise<ConversationalUnderstanding> {
+    const prompt = this.buildGPTPrompt(message, context);
+    
+    const response = await openaiClient.chatCompletionsCreate({
+      model: "gpt-4",
+      messages: [
+        {
+          role: "system",
+          content: "You are a helpful CRM assistant. Understand what the user wants and extract structured information for actions. Be conversational but precise."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.1,
+      max_tokens: 500
+    }, {
+      userId: context.userId,
+      operation: 'conversational_understanding',
+      model: 'gpt-4'
+    });
+
+    const content = response.choices[0]?.message?.content;
+    if (!content) {
+      throw new Error('No response from GPT');
+    }
+
+    try {
+      const result = JSON.parse(content);
+      
+      const understanding: ConversationalUnderstanding = {
+        action: result.action || 'general_conversation',
+        entities: result.entities || {},
+        confidence: Math.min(Math.max(result.confidence || 0.7, 0), 1),
+        userIntent: message,
+        needsClarification: result.needsClarification || false,
+        clarificationQuestion: result.clarificationQuestion,
+        suggestedActions: result.suggestedActions
+      };
+
+      // Cache the result
+      const key = this.cache.generateKey(message, context);
+      this.cache.set(key, understanding);
+
+      return understanding;
+    } catch (error) {
+      logger.error('Failed to parse GPT response', undefined, { content, error: error instanceof Error ? error.message : String(error) });
+      
+      // Fallback understanding
+      return {
+        action: 'general_conversation',
+        entities: {},
+        confidence: 0.5,
+        userIntent: message,
+        needsClarification: true,
+        clarificationQuestion: "I'm not sure what you'd like me to do. Could you please clarify?"
+      };
+    }
+  }
+
+  private buildGPTPrompt(message: string, context: any): string {
+    return `
+Analyze this user message and extract structured information for CRM actions.
+
+**User Message:** "${message}"
+
+**Available Actions:**
+- view_data: Show contacts, deals, accounts, or activities
+- create_chart: Create charts and visualizations
+- modify_chart: Change existing charts
+- send_email: Send emails to contacts
+- create_contact: Create new contacts
+- update_contact: Update existing contacts
+- delete_contact: Delete contacts
+- create_account: Create new accounts
+- update_account: Update existing accounts
+- delete_account: Delete accounts
+- create_deal: Create new deals
+- update_deal: Update existing deals
+- delete_deal: Delete deals
+- create_activity: Create new activities
+- update_activity: Update existing activities
+- delete_activity: Delete activities
+- general_conversation: General chat, questions, help
+
+**Context:**
+- User: ${context.userProfile?.name || 'Unknown'}
+- Company: ${context.companyData?.name || 'Unknown'}
+- Recent actions: ${context.lastAction || 'None'}
+
+**Instructions:**
+1. Understand the user's intent naturally
+2. Extract relevant entities (names, fields, values, etc.)
+3. Map to the most appropriate action
+4. Set confidence based on clarity (0.5-1.0)
+5. Identify if clarification is needed
+
+**Return JSON:**
+{
+  "action": "action_name",
+  "entities": {
+    "contactName": "extracted name",
+    "field": "field to update",
+    "value": "new value",
+    "dataType": "contacts|deals|accounts|activities",
+    "chartType": "line|bar|pie|area|scatter"
+  },
+  "confidence": 0.8,
+  "needsClarification": false,
+  "clarificationQuestion": "question if needed",
+  "suggestedActions": ["action1", "action2"]
+}
+
+**Examples:**
+- "Show me contacts" → {"action": "view_data", "entities": {"dataType": "contacts"}, "confidence": 0.95}
+- "Update John's email" → {"action": "update_contact", "entities": {"contactName": "John", "field": "email"}, "confidence": 0.8, "needsClarification": true, "clarificationQuestion": "What's John's new email address?"}
+- "Create a pie chart of deals" → {"action": "create_chart", "entities": {"chartType": "pie", "dataType": "deals"}, "confidence": 0.9}
+- "Send email to Sarah" → {"action": "send_email", "entities": {"contactName": "Sarah"}, "confidence": 0.8, "needsClarification": true, "clarificationQuestion": "What would you like to say to Sarah?"}
+`;
+  }
+
+  private async executeAction(
+    understanding: ConversationalUnderstanding,
+    conversationManager: ConversationManager,
+    context: any
+  ): Promise<ConversationalResponse> {
+    // Convert conversational understanding to structured intent
+    const structuredIntent = {
+      action: understanding.action as any, // Type assertion for compatibility
+      confidence: understanding.confidence,
+      originalMessage: understanding.userIntent,
+      entities: understanding.entities,
+      context: { referringTo: 'new_request' as const },
+      metadata: {
+        isAmbiguous: false,
+        needsClarification: understanding.needsClarification,
+        clarificationQuestion: understanding.clarificationQuestion
+      }
+    };
+
+    // Use existing intent router
+    const response = await intentRouter.routeIntent(structuredIntent, conversationManager, context);
+
+    // Enhance response with conversational elements
+    return {
+      ...response,
+      message: this.enhanceResponseMessage(response.message, understanding),
+      suggestions: understanding.suggestedActions || response.suggestions
+    };
+  }
+
+  private enhanceResponseMessage(
+    originalMessage: string,
+    understanding: ConversationalUnderstanding
+  ): string {
+    // Add conversational elements to make responses more natural
+    if (understanding.confidence < 0.7) {
+      return `I think you want me to ${understanding.action.replace('_', ' ')}. ${originalMessage}`;
+    }
+    
+    return originalMessage;
+  }
+
+  // Public method to clear cache (useful for testing)
+  clearCache(): void {
+    this.cache.clear();
+  }
+}
+
+export const conversationalHandler = ConversationalHandler.getInstance();
