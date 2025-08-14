@@ -338,51 +338,98 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get conversation manager
-    const conversationManager = await getConversationManager(actualUserId, 'session-id');
+    // Get conversation manager with error handling
+    let conversationManager;
+    try {
+      conversationManager = await getConversationManager(actualUserId, 'session-id');
+    } catch (error) {
+      logger.error('Failed to get conversation manager', undefined, { 
+        userId: actualUserId, 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      
+      // Return graceful fallback
+      return NextResponse.json({
+        message: "I'm having trouble accessing your conversation history. Let me help you with a fresh start:",
+        suggestions: [
+          "Show me my contacts",
+          "Create a chart",
+          "View my deals",
+          "Help me with accounts"
+        ],
+        conversationContext: {
+          phase: 'exploration',
+          action: 'general_conversation',
+          referringTo: 'new_request'
+        }
+      });
+    }
     
     if (conversationManager) {
       console.log('🧠 Using conversational processing for:', messageContent);
       console.log('🧠 Message content:', messageContent);
       console.log('🧠 User ID:', actualUserId);
       
-      // Use conversational handler for natural language understanding
-      console.log('🧠 Starting conversational handling...');
-      const response = await conversationalHandler.handleConversation(messageContent, conversationManager, {
-        messages,
-        userId: actualUserId,
-        userProfile: requestContext.userProfile,
-        companyData: requestContext.companyData,
-        lastAction: conversationManager.getState().memory.sessionHistory.length > 0 
-          ? conversationManager.getState().memory.sessionHistory[conversationManager.getState().memory.sessionHistory.length - 1]?.conversationContext?.action 
-          : undefined,
-        ...requestContext
-      });
-      console.log('🧠 Conversational response:', JSON.stringify(response, null, 2));
-      
-      // Update conversation state with response
-      conversationManager.updateContext(messageContent, response.conversationContext?.action);
-      
-      // Add assistant response to history
-      const assistantMessage = {
-        role: 'assistant' as const,
-        content: response.message,
-        timestamp: new Date(),
-        conversationContext: response.conversationContext
-      };
-      conversationManager.addToHistory(assistantMessage);
-      
-      // Return structured response
-      return NextResponse.json({
-        message: response.message,
-        chartSpec: response.chartSpec,
-        enhancedChart: response.enhancedChart,
-        data: response.data,
-        suggestions: response.suggestions,
-        needsClarification: response.needsClarification,
-        conversationContext: response.conversationContext,
-        action: response.action // Add action to trigger table refresh
-      });
+      try {
+        // Use conversational handler for natural language understanding
+        console.log('🧠 Starting conversational handling...');
+        const response = await conversationalHandler.handleConversation(messageContent, conversationManager, {
+          messages,
+          userId: actualUserId,
+          userProfile: requestContext.userProfile,
+          companyData: requestContext.companyData,
+          lastAction: conversationManager.getState().memory.sessionHistory.length > 0 
+            ? conversationManager.getState().memory.sessionHistory[conversationManager.getState().memory.sessionHistory.length - 1]?.conversationContext?.action 
+            : undefined,
+          ...requestContext
+        });
+        console.log('🧠 Conversational response:', JSON.stringify(response, null, 2));
+        
+        // Update conversation state with response
+        conversationManager.updateContext(messageContent, response.conversationContext?.action);
+        
+        // Add assistant response to history
+        const assistantMessage = {
+          role: 'assistant' as const,
+          content: response.message,
+          timestamp: new Date(),
+          conversationContext: response.conversationContext
+        };
+        conversationManager.addToHistory(assistantMessage);
+        
+        // Return structured response
+        return NextResponse.json({
+          message: response.message,
+          chartSpec: response.chartSpec,
+          enhancedChart: response.enhancedChart,
+          data: response.data,
+          suggestions: response.suggestions,
+          needsClarification: response.needsClarification,
+          conversationContext: response.conversationContext,
+          action: response.action // Add action to trigger table refresh
+        });
+      } catch (conversationError) {
+        logger.error('Conversational handling failed in main route', undefined, { 
+          userId: actualUserId,
+          error: conversationError instanceof Error ? conversationError.message : String(conversationError)
+        });
+        
+        // Return graceful fallback
+        return NextResponse.json({
+          message: "I encountered an issue while processing your request. Let me help you with something I can do:",
+          suggestions: [
+            "Show me my contacts",
+            "Create a simple chart",
+            "View my deals",
+            "Help me with a specific task"
+          ],
+          conversationContext: {
+            phase: 'exploration',
+            action: 'general_conversation',
+            referringTo: 'new_request'
+          }
+        });
+      }
     }
     
     // Fallback for when conversation manager is not available

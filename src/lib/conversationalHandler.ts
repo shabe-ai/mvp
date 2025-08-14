@@ -153,35 +153,29 @@ export class ConversationalHandler {
         return await this.executeAction(edgeResult, conversationManager, context);
       }
 
-      // 2. Start both analyses in parallel
-      const [structuredPromise, cachedPromise] = await Promise.all([
-        this.analyzeWithStructured(message, conversationManager),
-        this.getCachedUnderstanding(message, context)
-      ]);
-
-      // 3. Try structured analysis first (faster)
+      // 2. Try structured analysis (reliable and fast)
       try {
-        const structured = await Promise.race([
-          structuredPromise,
-          new Promise<null>(resolve => setTimeout(() => resolve(null), 300))
-        ]) as ConversationalUnderstanding | null;
-
-        if (structured && structured.confidence > 0.8) {
+        const structured = await this.analyzeWithStructured(message, conversationManager);
+        if (structured && structured.confidence > 0.7) {
           logger.info('Using structured analysis', { action: structured.action, confidence: structured.confidence });
           return await this.executeAction(structured, conversationManager, context);
         }
       } catch (error) {
-        logger.warn('Structured analysis failed, falling back to GPT', { error: error instanceof Error ? error.message : String(error) });
+        logger.warn('Structured analysis failed, using GPT fallback', { error: error instanceof Error ? error.message : String(error) });
       }
 
-      // 4. Use cached GPT result if available
-      const cached = await cachedPromise;
-      if (cached) {
-        logger.info('Using cached GPT understanding', { action: cached.action, confidence: cached.confidence });
-        return await this.executeAction(cached, conversationManager, context);
+      // 3. Check cached GPT result
+      try {
+        const cached = await this.getCachedUnderstanding(message, context);
+        if (cached) {
+          logger.info('Using cached GPT understanding', { action: cached.action, confidence: cached.confidence });
+          return await this.executeAction(cached, conversationManager, context);
+        }
+      } catch (error) {
+        logger.warn('Cache lookup failed, proceeding to fresh GPT analysis', { error: error instanceof Error ? error.message : String(error) });
       }
 
-      // 5. Fallback to fresh GPT analysis
+      // 4. Fallback to fresh GPT analysis
       logger.info('Using fresh GPT analysis');
       const understanding = await this.analyzeWithGPT(message, context);
       return await this.executeAction(understanding, conversationManager, context);
@@ -189,9 +183,8 @@ export class ConversationalHandler {
     } catch (error) {
       logger.error('Conversational handling failed', undefined, { error: error instanceof Error ? error.message : String(error) });
       
-      // Fallback to basic structured approach
-      const fallbackIntent = await intentClassifier.classifyIntent(message, conversationManager.getState());
-      return await intentRouter.routeIntent(fallbackIntent, conversationManager, context);
+      // Ultimate fallback - return a helpful response
+      return this.getFallbackResponse(message);
     } finally {
       const duration = Date.now() - startTime;
       logger.info('Conversational handling completed', { duration });
@@ -231,62 +224,76 @@ export class ConversationalHandler {
     message: string,
     context: any
   ): Promise<ConversationalUnderstanding> {
-    const prompt = this.buildGPTPrompt(message, context);
-    
-    const response = await openaiClient.chatCompletionsCreate({
-      model: "gpt-4",
-      messages: [
-        {
-          role: "system",
-          content: "You are a helpful CRM assistant. Understand what the user wants and extract structured information for actions. Be conversational but precise."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.1,
-      max_tokens: 500
-    }, {
-      userId: context.userId,
-      operation: 'conversational_understanding',
-      model: 'gpt-4'
-    });
-
-    const content = response.choices[0]?.message?.content;
-    if (!content) {
-      throw new Error('No response from GPT');
-    }
-
     try {
-      const result = JSON.parse(content);
+      const prompt = this.buildGPTPrompt(message, context);
       
-      const understanding: ConversationalUnderstanding = {
-        action: result.action || 'general_conversation',
-        entities: result.entities || {},
-        confidence: Math.min(Math.max(result.confidence || 0.7, 0), 1),
-        userIntent: message,
-        needsClarification: result.needsClarification || false,
-        clarificationQuestion: result.clarificationQuestion,
-        suggestedActions: result.suggestedActions
-      };
+      const response = await openaiClient.chatCompletionsCreate({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: "You are a helpful CRM assistant. Understand what the user wants and extract structured information for actions. Be conversational but precise."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 500
+      }, {
+        userId: context.userId,
+        operation: 'conversational_understanding',
+        model: 'gpt-4'
+      });
 
-      // Cache the result
-      const key = this.cache.generateKey(message, context);
-      this.cache.set(key, understanding);
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error('No response from GPT');
+      }
 
-      return understanding;
-    } catch (error) {
-      logger.error('Failed to parse GPT response', undefined, { content, error: error instanceof Error ? error.message : String(error) });
+      try {
+        const result = JSON.parse(content);
+        
+        const understanding: ConversationalUnderstanding = {
+          action: result.action || 'general_conversation',
+          entities: result.entities || {},
+          confidence: Math.min(Math.max(result.confidence || 0.7, 0), 1),
+          userIntent: message,
+          needsClarification: result.needsClarification || false,
+          clarificationQuestion: result.clarificationQuestion,
+          suggestedActions: result.suggestedActions
+        };
+
+        // Cache the result
+        const key = this.cache.generateKey(message, context);
+        this.cache.set(key, understanding);
+
+        return understanding;
+      } catch (parseError) {
+        logger.error('Failed to parse GPT response', undefined, { content, error: parseError instanceof Error ? parseError.message : String(parseError) });
+        
+        // Fallback understanding
+        return {
+          action: 'general_conversation',
+          entities: {},
+          confidence: 0.5,
+          userIntent: message,
+          needsClarification: true,
+          clarificationQuestion: "I'm not sure what you'd like me to do. Could you please clarify?"
+        };
+      }
+    } catch (gptError) {
+      logger.error('GPT analysis failed', undefined, { error: gptError instanceof Error ? gptError.message : String(gptError) });
       
-      // Fallback understanding
+      // Return a safe fallback
       return {
         action: 'general_conversation',
         entities: {},
-        confidence: 0.5,
+        confidence: 0.3,
         userIntent: message,
         needsClarification: true,
-        clarificationQuestion: "I'm not sure what you'd like me to do. Could you please clarify?"
+        clarificationQuestion: "I'm having trouble processing your request. Could you try rephrasing it?"
       };
     }
   }
@@ -357,29 +364,64 @@ Analyze this user message and extract structured information for CRM actions.
     conversationManager: ConversationManager,
     context: any
   ): Promise<ConversationalResponse> {
-    // Convert conversational understanding to structured intent
-    const structuredIntent = {
-      action: understanding.action as any, // Type assertion for compatibility
-      confidence: understanding.confidence,
-      originalMessage: understanding.userIntent,
-      entities: understanding.entities,
-      context: { referringTo: 'new_request' as const },
-      metadata: {
-        isAmbiguous: false,
-        needsClarification: understanding.needsClarification,
-        clarificationQuestion: understanding.clarificationQuestion
-      }
-    };
+    try {
+      // Convert conversational understanding to structured intent
+      const structuredIntent = {
+        action: understanding.action as any, // Type assertion for compatibility
+        confidence: understanding.confidence,
+        originalMessage: understanding.userIntent,
+        entities: understanding.entities,
+        context: { referringTo: 'new_request' as const },
+        metadata: {
+          isAmbiguous: false,
+          needsClarification: understanding.needsClarification,
+          clarificationQuestion: understanding.clarificationQuestion
+        }
+      };
 
-    // Use existing intent router
-    const response = await intentRouter.routeIntent(structuredIntent, conversationManager, context);
+      // Use existing intent router with timeout
+      const response = await this.withTimeout(
+        intentRouter.routeIntent(structuredIntent, conversationManager, context),
+        10000 // 10 second timeout
+      );
 
-    // Enhance response with conversational elements
-    return {
-      ...response,
-      message: this.enhanceResponseMessage(response.message, understanding),
-      suggestions: understanding.suggestedActions || response.suggestions
-    };
+      // Enhance response with conversational elements
+      return {
+        ...response,
+        message: this.enhanceResponseMessage(response.message, understanding),
+        suggestions: understanding.suggestedActions || response.suggestions
+      };
+    } catch (error) {
+      logger.error('Action execution failed', undefined, { 
+        action: understanding.action, 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      
+      // Return a graceful error response
+      return {
+        message: "I encountered an issue while processing your request. Let me help you with something else:",
+        suggestions: [
+          "Show me my contacts",
+          "Create a simple chart",
+          "View my deals",
+          "Help me with a specific task"
+        ],
+        conversationContext: {
+          phase: 'exploration',
+          action: 'general_conversation',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  // Helper method to add timeout to any promise
+  private async withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error(`Operation timed out after ${timeoutMs}ms`)), timeoutMs);
+    });
+
+    return Promise.race([promise, timeoutPromise]);
   }
 
   private enhanceResponseMessage(
@@ -397,6 +439,26 @@ Analyze this user message and extract structured information for CRM actions.
   // Public method to clear cache (useful for testing)
   clearCache(): void {
     this.cache.clear();
+  }
+
+  // Ultimate fallback response when everything else fails
+  private getFallbackResponse(message: string): ConversationalResponse {
+    logger.warn('Using ultimate fallback response', { message: message.substring(0, 100) });
+    
+    return {
+      message: "I'm having trouble understanding that right now. Let me help you with something I can do well. You can:",
+      suggestions: [
+        "Show me my contacts",
+        "Create a chart of my deals",
+        "View my accounts",
+        "Help me with a specific task"
+      ],
+      conversationContext: {
+        phase: 'exploration',
+        action: 'general_conversation',
+        referringTo: 'new_request'
+      }
+    };
   }
 }
 
