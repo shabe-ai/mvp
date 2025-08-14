@@ -57,6 +57,16 @@ class ConversationCache {
   clear(): void {
     this.cache.clear();
   }
+
+  // Get all keys for pattern matching
+  getKeys(): string[] {
+    return Array.from(this.cache.keys());
+  }
+
+  // Delete a specific key
+  delete(key: string): void {
+    this.cache.delete(key);
+  }
 }
 
 class EdgeCache {
@@ -88,6 +98,8 @@ class EdgeCache {
     ['show me their names', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
     ['who are my contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
     ['list contact names', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    
+    // Note: Removed count patterns from edge cache to ensure fresh database queries
     
     // Chart patterns
     ['create a chart', { action: 'create_chart', confidence: 0.9 }],
@@ -188,10 +200,15 @@ export class ConversationalHandler {
       }
 
       // 2. Check edge cache (fastest path for common patterns)
-      const edgeResult = EdgeCache.get(message);
-      if (edgeResult) {
-        logger.info('Edge cache hit', { action: edgeResult.action, confidence: edgeResult.confidence });
-        return await this.executeAction(edgeResult, conversationManager, context);
+      // Skip edge cache for count queries to ensure fresh data
+      const isCountQuery = message.toLowerCase().includes('how many') || message.toLowerCase().includes('count');
+      
+      if (!isCountQuery) {
+        const edgeResult = EdgeCache.get(message);
+        if (edgeResult) {
+          logger.info('Edge cache hit', { action: edgeResult.action, confidence: edgeResult.confidence });
+          return await this.executeAction(edgeResult, conversationManager, context);
+        }
       }
 
       // 2. Try structured analysis (reliable and fast)
@@ -205,15 +222,17 @@ export class ConversationalHandler {
         logger.warn('Structured analysis failed, using GPT fallback', { error: error instanceof Error ? error.message : String(error) });
       }
 
-      // 3. Check cached GPT result
-      try {
-        const cached = await this.getCachedUnderstanding(message, context);
-        if (cached) {
-          logger.info('Using cached GPT understanding', { action: cached.action, confidence: cached.confidence });
-          return await this.executeAction(cached, conversationManager, context);
+      // 3. Check cached GPT result (skip for count queries)
+      if (!isCountQuery) {
+        try {
+          const cached = await this.getCachedUnderstanding(message, context);
+          if (cached) {
+            logger.info('Using cached GPT understanding', { action: cached.action, confidence: cached.confidence });
+            return await this.executeAction(cached, conversationManager, context);
+          }
+        } catch (error) {
+          logger.warn('Cache lookup failed, proceeding to fresh GPT analysis', { error: error instanceof Error ? error.message : String(error) });
         }
-      } catch (error) {
-        logger.warn('Cache lookup failed, proceeding to fresh GPT analysis', { error: error instanceof Error ? error.message : String(error) });
       }
 
       // 4. Fallback to fresh GPT analysis
@@ -505,6 +524,20 @@ Analyze this user message and extract structured information for CRM actions.
   // Public method to clear cache (useful for testing)
   clearCache(): void {
     this.cache.clear();
+  }
+
+  // Clear cache for specific patterns (useful for data updates)
+  clearCacheForPattern(pattern: string): void {
+    const keysToDelete: string[] = [];
+    const allKeys = this.cache.getKeys();
+    
+    for (const key of allKeys) {
+      if (key.toLowerCase().includes(pattern.toLowerCase())) {
+        keysToDelete.push(key);
+      }
+    }
+    keysToDelete.forEach(key => this.cache.delete(key));
+    logger.info('Cleared cache for pattern', { pattern, clearedCount: keysToDelete.length });
   }
 
   // Ultimate fallback response when everything else fails
