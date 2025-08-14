@@ -202,6 +202,11 @@ export class ConversationalHandler {
       // Force count queries to go through structured analysis
       if (isCountQuery) {
         console.log('🔍 Force routing count query to structured analysis');
+        
+        // Clear any cached responses for count queries
+        this.clearCacheForPattern('how many');
+        this.clearCacheForPattern('count');
+        
         const structured = await this.analyzeWithStructured(message, conversationManager);
         if (structured && structured.confidence > 0.7) {
           console.log('🔍 Using structured analysis for count query');
