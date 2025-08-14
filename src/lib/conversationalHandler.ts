@@ -75,21 +75,15 @@ class EdgeCache {
     ['show me contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
     ['show contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
     ['list contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
-    ['how many contacts do i have', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
-    ['how many contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
-    ['count contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    // Count patterns removed to ensure fresh database queries
     ['show me deals', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
     ['show deals', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
     ['list deals', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
-    ['how many deals do i have', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
-    ['how many deals', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
-    ['count deals', { action: 'view_data', dataType: 'deals', confidence: 0.95 }],
+    // Count patterns removed to ensure fresh database queries
     ['show me accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
     ['show accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
     ['list accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
-    ['how many accounts do i have', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
-    ['how many accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
-    ['count accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
+    // Count patterns removed to ensure fresh database queries
     
     // Name listing patterns
     ['what are their names', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
@@ -204,6 +198,16 @@ export class ConversationalHandler {
       const isCountQuery = message.toLowerCase().includes('how many') || message.toLowerCase().includes('count');
       
       console.log('🔍 Count query check:', { message, isCountQuery });
+      
+      // Force count queries to go through structured analysis
+      if (isCountQuery) {
+        console.log('🔍 Force routing count query to structured analysis');
+        const structured = await this.analyzeWithStructured(message, conversationManager);
+        if (structured && structured.confidence > 0.7) {
+          console.log('🔍 Using structured analysis for count query');
+          return await this.executeAction(structured, conversationManager, context);
+        }
+      }
       
       if (!isCountQuery) {
         const edgeResult = EdgeCache.get(message);
