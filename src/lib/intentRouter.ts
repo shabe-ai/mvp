@@ -21,34 +21,8 @@ export class IntentRouter {
     
     const startTime = Date.now();
     
-    // Check if this is a confirmation response that needs special handling
-    const currentState = conversationManager.getState();
-    const lastMessage = currentState.memory.sessionHistory[currentState.memory.sessionHistory.length - 1];
-    const isConfirmationResponse = (
-      lastMessage?.conversationContext?.action === 'update_contact' && 
-      lastMessage?.conversationContext?.phase === 'confirmation' &&
-      (intent.originalMessage.toLowerCase().includes('yes') || 
-       intent.originalMessage.toLowerCase().includes('confirm') ||
-       intent.originalMessage.toLowerCase().includes('correct') ||
-       intent.originalMessage.toLowerCase().includes('ok') ||
-       intent.originalMessage.toLowerCase().includes('sure'))
-    );
-    
-    console.log('🔍 Confirmation check in router:', {
-      isConfirmationResponse,
-      lastMessageAction: lastMessage?.conversationContext?.action,
-      lastMessagePhase: lastMessage?.conversationContext?.phase,
-      userResponse: intent.originalMessage.toLowerCase()
-    });
-    
-    // If this is a confirmation response, override the intent and route to confirmation handler
-    if (isConfirmationResponse) {
-      console.log('✅ Confirmation detected in router! Overriding intent classification');
-      // Override the intent to force it to be handled as a confirmation
-      intent.action = 'update_contact';
-      intent.metadata.needsClarification = false;
-      intent.confidence = 0.95;
-    }
+    // Simplified confirmation logic - let the individual handlers deal with confirmations
+    // This removes the complex override logic that was causing inconsistencies
     
     // If intent needs clarification, return clarification response
     if (intent.metadata.needsClarification) {
