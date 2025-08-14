@@ -203,12 +203,16 @@ export class ConversationalHandler {
       // Skip edge cache for count queries to ensure fresh data
       const isCountQuery = message.toLowerCase().includes('how many') || message.toLowerCase().includes('count');
       
+      console.log('🔍 Count query check:', { message, isCountQuery });
+      
       if (!isCountQuery) {
         const edgeResult = EdgeCache.get(message);
         if (edgeResult) {
           logger.info('Edge cache hit', { action: edgeResult.action, confidence: edgeResult.confidence });
           return await this.executeAction(edgeResult, conversationManager, context);
         }
+      } else {
+        console.log('🔍 Skipping edge cache for count query');
       }
 
       // 2. Try structured analysis (reliable and fast)
@@ -256,7 +260,14 @@ export class ConversationalHandler {
     conversationManager: ConversationManager
   ): Promise<ConversationalUnderstanding | null> {
     try {
+      console.log('🔍 Starting structured analysis for:', message);
       const intent = await intentClassifier.classifyIntent(message, conversationManager.getState());
+      
+      console.log('🔍 Structured analysis result:', {
+        action: intent.action,
+        dataType: intent.entities.dataType,
+        confidence: intent.confidence
+      });
       
       return {
         action: intent.action,
@@ -463,6 +474,8 @@ Analyze this user message and extract structured information for CRM actions.
           clarificationQuestion: understanding.clarificationQuestion
         }
       };
+      
+      console.log('🚀 Structured intent:', structuredIntent);
 
       // Use existing intent router with timeout
       const response = await this.withTimeout(
