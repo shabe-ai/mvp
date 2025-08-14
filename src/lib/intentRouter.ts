@@ -264,6 +264,13 @@ export class DataIntentHandler implements IntentHandler {
     if (isCountQuery) {
       return await this.handleCountQuery(intent, conversationManager, context);
     }
+
+    // Check if this is a name list query (what are their names)
+    const isNameListQuery = this.isNameListQuery(intent);
+    
+    if (isNameListQuery) {
+      return await this.handleNameListQuery(intent, conversationManager, context);
+    }
     
     const { handleDatabaseQuery } = await import('@/lib/chatHandlers');
     
@@ -290,6 +297,15 @@ export class DataIntentHandler implements IntentHandler {
     return message.includes('how many') || message.includes('count');
   }
 
+  private isNameListQuery(intent: Intent): boolean {
+    const message = intent.originalMessage.toLowerCase();
+    return message.includes('what are their names') || 
+           message.includes('what are the names') || 
+           message.includes('list their names') ||
+           message.includes('who are my contacts') ||
+           message.includes('list contact names');
+  }
+
   private async handleCountQuery(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     try {
       console.log('🔢 Handling count query for:', intent.entities.dataType);
@@ -310,6 +326,12 @@ export class DataIntentHandler implements IntentHandler {
         case 'contacts':
           const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
           count = contacts.length;
+          console.log('🔢 Contact count debug:', { 
+            teamId, 
+            count, 
+            contactsLength: contacts.length,
+            contactNames: contacts.map(c => c.firstName + ' ' + c.lastName)
+          });
           break;
         case 'deals':
           const deals = await convex.query(api.crm.getDealsByTeam, { teamId });
@@ -356,6 +378,96 @@ export class DataIntentHandler implements IntentHandler {
       console.error('❌ Count query failed:', error);
       return {
         message: `I'm having trouble counting your ${intent.entities.dataType || 'data'}. Let me show you the data instead.`,
+        suggestions: [
+          "Show me my contacts",
+          "View my deals",
+          "Check my accounts"
+        ],
+        conversationContext: {
+          phase: 'error',
+          action: 'view_data',
+          referringTo: 'new_request'
+        }
+      };
+    }
+  }
+
+  private async handleNameListQuery(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+    try {
+      console.log('📝 Handling name list query for:', intent.entities.dataType);
+      
+      // Import Convex for database operations
+      const { convex } = await import('@/lib/convex');
+      const { api } = await import('@/convex/_generated/api');
+      
+      // Get user's team
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      
+      let dataType = intent.entities.dataType || 'contacts';
+      let records: any[] = [];
+      
+      // Get records based on data type
+      switch (dataType) {
+        case 'contacts':
+          records = await convex.query(api.crm.getContactsByTeam, { teamId });
+          break;
+        case 'deals':
+          records = await convex.query(api.crm.getDealsByTeam, { teamId });
+          break;
+        case 'accounts':
+          records = await convex.query(api.crm.getAccountsByTeam, { teamId });
+          break;
+        case 'activities':
+          records = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+          break;
+        default:
+          records = await convex.query(api.crm.getContactsByTeam, { teamId });
+          dataType = 'contacts';
+      }
+      
+      // Generate names list
+      let namesList: string[] = [];
+      let message = '';
+      
+      if (dataType === 'contacts') {
+        namesList = records.map(contact => `${contact.firstName} ${contact.lastName}`.trim());
+        message = `Your contacts are: ${namesList.join(', ')}.`;
+      } else if (dataType === 'deals') {
+        namesList = records.map(deal => deal.name || deal.title || 'Unnamed Deal');
+        message = `Your deals are: ${namesList.join(', ')}.`;
+      } else if (dataType === 'accounts') {
+        namesList = records.map(account => account.name || 'Unnamed Account');
+        message = `Your accounts are: ${namesList.join(', ')}.`;
+      } else {
+        namesList = records.map(activity => activity.subject || activity.title || 'Unnamed Activity');
+        message = `Your activities are: ${namesList.join(', ')}.`;
+      }
+      
+      return {
+        message,
+        data: {
+          records: records,
+          type: dataType,
+          count: records.length,
+          displayFormat: 'list'
+        },
+        suggestions: [
+          `Show me my ${dataType}`,
+          `Create a chart of my ${dataType}`,
+          `View my ${dataType} details`
+        ],
+        conversationContext: {
+          phase: 'exploration',
+          action: 'view_data',
+          referringTo: 'new_request'
+        }
+      };
+      
+    } catch (error) {
+      console.error('❌ Name list query failed:', error);
+      return {
+        message: `I'm having trouble listing your ${intent.entities.dataType || 'contacts'}. Let me show you the data instead.`,
         suggestions: [
           "Show me my contacts",
           "View my deals",

@@ -81,6 +81,14 @@ class EdgeCache {
     ['how many accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
     ['count accounts', { action: 'view_data', dataType: 'accounts', confidence: 0.95 }],
     
+    // Name listing patterns
+    ['what are their names', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    ['what are the names', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    ['list their names', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    ['show me their names', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    ['who are my contacts', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    ['list contact names', { action: 'view_data', dataType: 'contacts', confidence: 0.95 }],
+    
     // Chart patterns
     ['create a chart', { action: 'create_chart', confidence: 0.9 }],
     ['make a chart', { action: 'create_chart', confidence: 0.9 }],
@@ -286,7 +294,16 @@ export class ConversationalHandler {
       }
 
       try {
-        const result = JSON.parse(content);
+        // Try to extract JSON from the response (in case GPT returns markdown)
+        let jsonContent = content;
+        if (content.includes('```json')) {
+          const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+          if (jsonMatch) {
+            jsonContent = jsonMatch[1];
+          }
+        }
+        
+        const result = JSON.parse(jsonContent);
         
         const understanding: ConversationalUnderstanding = {
           action: result.action || 'general_conversation',
@@ -306,14 +323,30 @@ export class ConversationalHandler {
       } catch (parseError) {
         logger.error('Failed to parse GPT response', undefined, { content, error: parseError instanceof Error ? parseError.message : String(parseError) });
         
-        // Fallback understanding
+        // Try to extract intent from the content even if JSON parsing failed
+        const lowerContent = content.toLowerCase();
+        let action = 'general_conversation';
+        let needsClarification = true;
+        let clarificationQuestion = "I'm not sure what you'd like me to do. Could you please clarify?";
+        
+        // Simple intent extraction from content
+        if (lowerContent.includes('contact') || lowerContent.includes('name')) {
+          action = 'view_data';
+          needsClarification = false;
+          clarificationQuestion = "I'm not sure what you'd like me to do. Could you please clarify?";
+        } else if (lowerContent.includes('chart') || lowerContent.includes('visualize')) {
+          action = 'create_chart';
+        } else if (lowerContent.includes('analyze') || lowerContent.includes('analysis')) {
+          action = 'analyze_data';
+        }
+        
         return {
-          action: 'general_conversation',
+          action,
           entities: {},
-          confidence: 0.5,
+          confidence: 0.3,
           userIntent: message,
-          needsClarification: true,
-          clarificationQuestion: "I'm not sure what you'd like me to do. Could you please clarify?"
+          needsClarification,
+          clarificationQuestion
         };
       }
     } catch (gptError) {
