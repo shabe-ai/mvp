@@ -102,6 +102,68 @@ export class EdgeCaseHandler {
       priority: 'medium'
     });
 
+    // Greetings and casual conversation
+    this.edgeCases.push({
+      type: 'input',
+      pattern: (input: any) => {
+        if (typeof input !== 'string') return false;
+        const greetingPatterns = [
+          /^hello\s*how\s*are\s*you/i,
+          /^hi\s*how\s*are\s*you/i,
+          /^hey\s*how\s*are\s*you/i,
+          /^how\s*are\s*you/i,
+          /^how\s*are\s*you\s*doing/i,
+          /^what's?\s*up/i,
+          /^sup\b/i,
+          /^hello\b/i,
+          /^hi\b/i,
+          /^hey\b/i,
+          /^good\s*(morning|afternoon|evening)/i,
+          /^thanks?\s*you?/i,
+          /^bye\b/i,
+          /^goodbye\b/i,
+          /^see\s*you/i
+        ];
+        return greetingPatterns.some(pattern => pattern.test(input.trim()));
+      },
+      handler: async (input: any, context: EdgeCaseContext) => {
+        const lowerInput = input.toLowerCase().trim();
+        
+        // Generate appropriate greeting response
+        let response = "Hello! I'm doing great, thank you for asking! ";
+        
+        if (lowerInput.includes('how are you')) {
+          response += "I'm here to help you with your CRM tasks. What would you like to work on today?";
+        } else if (lowerInput.includes('good morning')) {
+          response += "Good morning! Ready to help you manage your contacts, deals, and accounts.";
+        } else if (lowerInput.includes('good afternoon')) {
+          response += "Good afternoon! How can I assist you with your business data today?";
+        } else if (lowerInput.includes('good evening')) {
+          response += "Good evening! I'm here to help you with any CRM tasks you need.";
+        } else if (lowerInput.includes('what') && lowerInput.includes('up')) {
+          response += "Not much, just ready to help you with your CRM! What's on your agenda?";
+        } else if (lowerInput.includes('thanks') || lowerInput.includes('thank you')) {
+          response = "You're very welcome! I'm happy to help. Is there anything else you'd like me to assist you with?";
+        } else if (lowerInput.includes('bye') || lowerInput.includes('goodbye') || lowerInput.includes('see you')) {
+          response = "Goodbye! Have a great day. Feel free to come back anytime you need help with your CRM.";
+        } else {
+          response += "I'm here to help you with your contacts, deals, accounts, and analytics. What would you like to do?";
+        }
+        
+        return {
+          message: response,
+          suggestions: [
+            "Show me my contacts",
+            "Create a chart",
+            "View my deals",
+            "Help me with accounts"
+          ],
+          handled: true
+        };
+      },
+      priority: 'high'
+    });
+
     // Ambiguous contact names
     this.edgeCases.push({
       type: 'data',
