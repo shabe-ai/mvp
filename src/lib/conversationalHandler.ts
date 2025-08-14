@@ -1,9 +1,11 @@
 import { openaiClient } from './openaiClient';
-import { intentClassifier } from './intentClassifier';
+import { simplifiedIntentClassifier } from './simplifiedIntentClassifier';
 import { intentRouter } from './intentRouter';
 import { ConversationManager } from './conversationManager';
 import { logger } from './logger';
 import { edgeCaseHandler } from './edgeCaseHandler';
+import { enhancedRAGHandler } from './enhancedRAGHandler';
+import { adaptiveLearningSystem } from './adaptiveLearningSystem';
 
 export interface ConversationalUnderstanding {
   action: string;
@@ -24,6 +26,22 @@ export interface ConversationalResponse {
   suggestions?: string[];
   needsClarification?: boolean;
   conversationContext?: any;
+  ragInsights?: {
+    relevantDocuments?: any[];
+    documentAnalysis?: any;
+    contextEnhancement?: string;
+  };
+  personalizationApplied?: {
+    communicationStyle?: string;
+    detailLevel?: string;
+    responseLength?: string;
+    proactiveSuggestions?: boolean;
+  };
+  learningInsights?: {
+    patternDetected?: string;
+    preferenceApplied?: string;
+    improvementSuggestion?: string;
+  };
 }
 
 class ConversationCache {
@@ -297,7 +315,7 @@ export class ConversationalHandler {
   ): Promise<ConversationalUnderstanding | null> {
     try {
       console.log('🔍 Starting structured analysis for:', message);
-      const intent = await intentClassifier.classifyIntent(message, conversationManager.getState());
+      const intent = await simplifiedIntentClassifier.classifyIntent(message, conversationManager.getState());
       
       console.log('🔍 Structured analysis result:', {
         action: intent.action,
@@ -496,6 +514,8 @@ Analyze this user message and extract structured information for CRM actions.
     conversationManager: ConversationManager,
     context: any
   ): Promise<ConversationalResponse> {
+    const startTime = Date.now();
+    
     try {
       // Convert conversational understanding to structured intent
       const structuredIntent = {
@@ -513,17 +533,53 @@ Analyze this user message and extract structured information for CRM actions.
       
       console.log('🚀 Structured intent:', structuredIntent);
 
+      // Phase 2: Enhanced RAG - Integrate RAG results and document analysis
+      const ragEnhancedResponse = await enhancedRAGHandler.enhanceWithRAG(
+        understanding.userIntent,
+        structuredIntent,
+        conversationManager.getState(),
+        context
+      );
+      
+      // Phase 3: Adaptive Learning - Apply learning and personalization
+      const adaptiveResponse = await adaptiveLearningSystem.generateAdaptiveResponse(
+        ragEnhancedResponse.message,
+        context.userId,
+        structuredIntent.action,
+        context
+      );
+      
+      // Log interaction for learning (Phase 3)
+      await adaptiveLearningSystem.logInteraction({
+        userId: context.userId,
+        message: understanding.userIntent,
+        intent: structuredIntent.action,
+        entities: structuredIntent.entities,
+        response: adaptiveResponse.message,
+        success: !structuredIntent.metadata.needsClarification,
+        responseTime: Date.now() - startTime,
+        timestamp: new Date(),
+        context: {
+          sessionId: 'session-id',
+          conversationPhase: conversationManager.getState().currentContext.conversationPhase.current,
+          referringTo: structuredIntent.context.referringTo || 'new_request'
+        }
+      });
+
       // Use existing intent router with timeout
       const response = await this.withTimeout(
         intentRouter.routeIntent(structuredIntent, conversationManager, context),
         10000 // 10 second timeout
       );
 
-      // Enhance response with conversational elements
+      // Merge all phases and enhance response with conversational elements
       return {
         ...response,
-        message: this.enhanceResponseMessage(response.message, understanding),
-        suggestions: understanding.suggestedActions || response.suggestions
+        message: this.enhanceResponseMessage(adaptiveResponse.message, understanding),
+        suggestions: adaptiveResponse.suggestions || understanding.suggestedActions || response.suggestions,
+        ragInsights: ragEnhancedResponse.ragInsights,
+        personalizationApplied: adaptiveResponse.personalizationApplied,
+        learningInsights: adaptiveResponse.learningInsights
       };
     } catch (error) {
       logger.error('Action execution failed', undefined, { 

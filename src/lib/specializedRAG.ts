@@ -198,7 +198,7 @@ Use these examples to determine the appropriate chart type, data structure, and 
 `;
   }
 
-  private findRelevantChartExamples(query: string): ChartExample[] {
+  public findRelevantChartExamples(query: string): ChartExample[] {
     const queryLower = query.toLowerCase();
     const keywords = ['chart', 'graph', 'pie', 'bar', 'line', 'deals', 'contacts', 'stage', 'status'];
     
@@ -234,7 +234,7 @@ Use these examples to determine the appropriate analysis method and insights to 
 `;
   }
 
-  private findRelevantAnalysisExamples(query: string): AnalysisExample[] {
+  public findRelevantAnalysisExamples(query: string): AnalysisExample[] {
     const queryLower = query.toLowerCase();
     const analysisKeywords = ['analyze', 'which', 'most', 'pipeline', 'sales', 'account'];
     

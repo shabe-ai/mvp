@@ -1,12 +1,12 @@
-import { Intent } from './intentClassifier';
+import { SimplifiedIntent } from './simplifiedIntentClassifier';
 import { ConversationManager } from './conversationManager';
 import { ConversationResponse } from '@/types/chat';
 import { userDataEnhancer } from './userDataEnhancer';
 import { ragMonitor } from './ragMonitor';
 
 export interface IntentHandler {
-  canHandle(intent: Intent): boolean;
-  handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse>;
+  canHandle(intent: SimplifiedIntent): boolean;
+  handle(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse>;
 }
 
 export class IntentRouter {
@@ -16,7 +16,7 @@ export class IntentRouter {
     this.handlers.push(handler);
   }
 
-  async routeIntent(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  async routeIntent(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('🛣️ Routing intent:', intent.action, 'with confidence:', intent.confidence);
     
     const startTime = Date.now();
@@ -107,11 +107,11 @@ export class IntentRouter {
 
 // Chart Intent Handler
 export class ChartIntentHandler implements IntentHandler {
-  canHandle(intent: Intent): boolean {
+  canHandle(intent: SimplifiedIntent): boolean {
     return ['create_chart', 'modify_chart', 'analyze_data', 'export_data'].includes(intent.action);
   }
 
-  async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  async handle(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('📊 Handling chart intent:', intent.action);
     
     // Check if user is referring to current chart for modifications
@@ -153,7 +153,7 @@ export class ChartIntentHandler implements IntentHandler {
     };
   }
 
-  private async handleChartModification(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleChartModification(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('🔄 Handling chart modification request');
     
     const activeChart = conversationManager.getState().currentContext.activeChart;
@@ -224,7 +224,7 @@ export class ChartIntentHandler implements IntentHandler {
     }
   }
 
-  private buildChartRequest(intent: Intent, conversationManager: ConversationManager): string {
+  private buildChartRequest(intent: SimplifiedIntent, conversationManager: ConversationManager): string {
     let request = '';
     
     if (intent.action === 'create_chart') {
@@ -251,11 +251,11 @@ export class ChartIntentHandler implements IntentHandler {
 
 // Data Intent Handler
 export class DataIntentHandler implements IntentHandler {
-  canHandle(intent: Intent): boolean {
+  canHandle(intent: SimplifiedIntent): boolean {
     return ['view_data', 'explore_data'].includes(intent.action);
   }
 
-  async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  async handle(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('📋 Handling data intent:', intent.action);
     
     // Check if this is a count query (how many X do I have)
@@ -292,12 +292,12 @@ export class DataIntentHandler implements IntentHandler {
     };
   }
 
-  private isCountQuery(intent: Intent): boolean {
+  private isCountQuery(intent: SimplifiedIntent): boolean {
     const message = intent.originalMessage.toLowerCase();
     return message.includes('how many') || message.includes('count');
   }
 
-  private isNameListQuery(intent: Intent): boolean {
+  private isNameListQuery(intent: SimplifiedIntent): boolean {
     const message = intent.originalMessage.toLowerCase();
     return message.includes('what are their names') || 
            message.includes('what are the names') || 
@@ -306,7 +306,7 @@ export class DataIntentHandler implements IntentHandler {
            message.includes('list contact names');
   }
 
-  private async handleCountQuery(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleCountQuery(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     try {
       console.log('🔢 Handling count query for:', intent.entities.dataType);
       console.log('🔢 User ID:', context.userId);
@@ -341,8 +341,12 @@ export class DataIntentHandler implements IntentHandler {
             firstName: c.firstName,
             lastName: c.lastName,
             email: c.email,
-            company: c.company
+            company: c.company,
+            createdAt: c.createdAt,
+            updatedAt: c.updatedAt
           })));
+          console.log('🔢 Contact IDs:', contacts.map(c => c._id));
+          console.log('🔢 Contact emails:', contacts.map(c => c.email));
           
           // Double-check the count
           if (count !== contacts.length) {
@@ -411,7 +415,7 @@ export class DataIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleNameListQuery(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleNameListQuery(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     try {
       console.log('📝 Handling name list query for:', intent.entities.dataType);
       
@@ -501,7 +505,7 @@ export class DataIntentHandler implements IntentHandler {
     }
   }
 
-  private buildDataRequest(intent: Intent): string {
+  private buildDataRequest(intent: SimplifiedIntent): string {
     let request = 'view';
     if (intent.entities.dataType) request += ` ${intent.entities.dataType}`;
     if (intent.entities.dimension) request += ` by ${intent.entities.dimension}`;
@@ -511,11 +515,11 @@ export class DataIntentHandler implements IntentHandler {
 
 // Analysis Intent Handler
 export class AnalyzeIntentHandler implements IntentHandler {
-  canHandle(intent: Intent): boolean {
+  canHandle(intent: SimplifiedIntent): boolean {
     return ['analyze_data'].includes(intent.action);
   }
 
-  async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  async handle(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('🔍 Handling analysis intent:', intent.action);
     
     // Import analysis engine
@@ -565,7 +569,7 @@ export class AnalyzeIntentHandler implements IntentHandler {
     };
   }
 
-  private async handleSalesPipelineAnalysis(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleSalesPipelineAnalysis(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     try {
       console.log('📊 Analyzing sales pipeline...');
       
@@ -650,7 +654,7 @@ export class AnalyzeIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleChurnAnalysis(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleChurnAnalysis(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     try {
       console.log('🔮 Analyzing customer churn...');
       
@@ -727,7 +731,7 @@ export class AnalyzeIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleRevenueForecast(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleRevenueForecast(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     try {
       console.log('💰 Forecasting revenue...');
       
@@ -803,7 +807,7 @@ export class AnalyzeIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleMarketOpportunityAnalysis(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleMarketOpportunityAnalysis(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     try {
       console.log('🎯 Analyzing market opportunities...');
       
@@ -883,7 +887,7 @@ export class AnalyzeIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleAccountContactAnalysis(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleAccountContactAnalysis(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     try {
       console.log('🔍 Analyzing accounts by contact count');
       
@@ -990,7 +994,7 @@ export class AnalyzeIntentHandler implements IntentHandler {
 
 // CRUD Intent Handler
 export class CrudIntentHandler implements IntentHandler {
-  canHandle(intent: Intent): boolean {
+  canHandle(intent: SimplifiedIntent): boolean {
     return [
       'create_contact', 'update_contact', 'delete_contact',
       'create_account', 'update_account', 'delete_account',
@@ -1000,7 +1004,7 @@ export class CrudIntentHandler implements IntentHandler {
     ].includes(intent.action);
   }
 
-  async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  async handle(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling CRUD intent:', intent.action);
     
     // Check if this is a confirmation response
@@ -1129,7 +1133,7 @@ export class CrudIntentHandler implements IntentHandler {
     };
   }
 
-  private async handleContactCreate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleContactCreate(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling LLM-based contact creation with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
@@ -1181,8 +1185,8 @@ export class CrudIntentHandler implements IntentHandler {
         const searchName = contactName.toLowerCase();
         
         // More precise matching logic
-        const searchWords = searchName.split(' ').filter(word => word.length > 0);
-        const contactWords = contactFullName.split(' ').filter(word => word.length > 0);
+        const searchWords = searchName.split(' ').filter((word: string) => word.length > 0);
+        const contactWords = contactFullName.split(' ').filter((word: string) => word.length > 0);
         
         // Check for exact full name match first
         if (contactFullName === searchName) {
@@ -1191,13 +1195,13 @@ export class CrudIntentHandler implements IntentHandler {
         }
         
         // Check if all search words are found in the contact name
-        const allSearchWordsFound = searchWords.every(searchWord => 
-          contactWords.some(contactWord => contactWord.includes(searchWord) || searchWord.includes(contactWord))
+        const allSearchWordsFound = searchWords.every((searchWord: string) => 
+          contactWords.some((contactWord: string) => contactWord.includes(searchWord) || searchWord.includes(contactWord))
         );
         
         // Check if all contact words are found in the search name
-        const allContactWordsFound = contactWords.every(contactWord => 
-          searchWords.some(searchWord => contactWord.includes(searchWord) || searchWord.includes(contactWord))
+        const allContactWordsFound = contactWords.every((contactWord: string) => 
+          searchWords.some((searchWord: string) => contactWord.includes(searchWord) || searchWord.includes(contactWord))
         );
         
         const matches = allSearchWordsFound || allContactWordsFound;
@@ -1263,7 +1267,7 @@ export class CrudIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleContactUpdate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleContactUpdate(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling LLM-based contact update with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
@@ -1377,7 +1381,7 @@ export class CrudIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleContactDelete(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleContactDelete(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling LLM-based contact deletion with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
@@ -1479,8 +1483,8 @@ export class CrudIntentHandler implements IntentHandler {
         const searchName = contactName.toLowerCase();
         
         // More precise matching logic
-        const searchWords = searchName.split(' ').filter(word => word.length > 0);
-        const contactWords = contactFullName.split(' ').filter(word => word.length > 0);
+        const searchWords = searchName.split(' ').filter((word: string) => word.length > 0);
+        const contactWords = contactFullName.split(' ').filter((word: string) => word.length > 0);
         
         // Check for exact full name match first
         if (contactFullName === searchName) {
@@ -1489,13 +1493,13 @@ export class CrudIntentHandler implements IntentHandler {
         }
         
         // Check if all search words are found in the contact name
-        const allSearchWordsFound = searchWords.every(searchWord => 
-          contactWords.some(contactWord => contactWord.includes(searchWord) || searchWord.includes(contactWord))
+        const allSearchWordsFound = searchWords.every((searchWord: string) => 
+          contactWords.some((contactWord: string) => contactWord.includes(searchWord) || searchWord.includes(contactWord))
         );
         
         // Check if all contact words are found in the search name
-        const allContactWordsFound = contactWords.every(contactWord => 
-          searchWords.some(searchWord => contactWord.includes(searchWord) || searchWord.includes(contactWord))
+        const allContactWordsFound = contactWords.every((contactWord: string) => 
+          searchWords.some((searchWord: string) => contactWord.includes(searchWord) || searchWord.includes(contactWord))
         );
         
         const matches = allSearchWordsFound || allContactWordsFound;
@@ -1609,7 +1613,7 @@ export class CrudIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleAccountCreate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleAccountCreate(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling LLM-based account creation with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
@@ -1707,7 +1711,7 @@ export class CrudIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleAccountUpdate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleAccountUpdate(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling LLM-based account update with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
@@ -1808,7 +1812,7 @@ export class CrudIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleAccountDelete(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleAccountDelete(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling LLM-based account deletion with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
@@ -1900,7 +1904,7 @@ export class CrudIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleDealCreate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleDealCreate(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling LLM-based deal creation with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
@@ -2007,7 +2011,7 @@ export class CrudIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleDealUpdate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleDealUpdate(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling LLM-based deal update with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
@@ -2108,7 +2112,7 @@ export class CrudIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleDealDelete(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleDealDelete(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling LLM-based deal deletion with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
@@ -2200,7 +2204,7 @@ export class CrudIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleActivityCreate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleActivityCreate(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling LLM-based activity creation with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
@@ -2317,7 +2321,7 @@ export class CrudIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleActivityUpdate(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleActivityUpdate(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling LLM-based activity update with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
@@ -2426,7 +2430,7 @@ export class CrudIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleActivityDelete(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleActivityDelete(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling LLM-based activity deletion with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
     
@@ -2522,7 +2526,7 @@ export class CrudIntentHandler implements IntentHandler {
     }
   }
 
-  private async handleContactUpdateConfirmation(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  private async handleContactUpdateConfirmation(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('👤 Handling contact update confirmation with intent:', intent);
     console.log('👤 Full intent object:', JSON.stringify(intent, null, 2));
 
@@ -2623,11 +2627,11 @@ export class CrudIntentHandler implements IntentHandler {
 
 // General Conversation Handler
 export class GeneralConversationHandler implements IntentHandler {
-  canHandle(intent: Intent): boolean {
+  canHandle(intent: SimplifiedIntent): boolean {
     return intent.action === 'general_conversation';
   }
 
-  async handle(intent: Intent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
+  async handle(intent: SimplifiedIntent, conversationManager: ConversationManager, context: any): Promise<ConversationResponse> {
     console.log('💬 Handling general conversation intent');
     
     const { handleGeneralConversation } = await import('@/lib/chatHandlers');

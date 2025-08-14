@@ -87,7 +87,7 @@ Please use these examples as context to better understand the user's intent and 
   /**
    * Find relevant examples based on keyword matching
    */
-  private findRelevantExamples(query: string): InteractionExample[] {
+  public findRelevantExamples(query: string): InteractionExample[] {
     const queryLower = query.toLowerCase();
     const queryWords = queryLower.split(' ').filter(word => word.length > 2);
     
