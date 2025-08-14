@@ -207,10 +207,37 @@ export class ConversationalHandler {
         this.clearCacheForPattern('how many');
         this.clearCacheForPattern('count');
         
+        // Clear performance optimizer cache for fresh data
+        try {
+          const { performanceOptimizer } = await import('@/lib/performanceOptimizer');
+          performanceOptimizer.clearCache();
+          console.log('🔍 Cleared performance optimizer cache for count query');
+        } catch (error) {
+          console.log('🔍 Failed to clear performance optimizer cache:', error);
+        }
+        
         const structured = await this.analyzeWithStructured(message, conversationManager);
         if (structured && structured.confidence > 0.7) {
           console.log('🔍 Using structured analysis for count query');
           return await this.executeAction(structured, conversationManager, context);
+        } else {
+          console.log('🔍 Structured analysis failed or low confidence for count query, forcing structured routing anyway');
+          // Force structured routing even if confidence is low for count queries
+          if (structured) {
+            console.log('🔍 Using structured analysis with lower confidence for count query');
+            return await this.executeAction(structured, conversationManager, context);
+          } else {
+            // If structured analysis completely failed, create a basic count intent
+            console.log('🔍 Creating basic count intent for query:', message);
+            const basicCountIntent = {
+              action: 'view_data' as const,
+              entities: { dataType: 'contacts' },
+              confidence: 0.8,
+              userIntent: message,
+              needsClarification: false
+            };
+            return await this.executeAction(basicCountIntent, conversationManager, context);
+          }
         }
       }
       
