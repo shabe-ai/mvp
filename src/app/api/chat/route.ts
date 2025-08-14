@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { getConversationManager } from '@/lib/conversationManager';
-import { intentClassifier } from "@/lib/intentClassifier";
+// Removed old intent classifier import - using simplified version in conversational handler
 import { intentRouter } from "@/lib/intentRouter";
 import { conversationalHandler } from '@/lib/conversationalHandler';
 import { logger } from '@/lib/logger';

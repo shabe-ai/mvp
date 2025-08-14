@@ -1,4 +1,4 @@
-import { Intent } from './intentClassifier';
+import { SimplifiedIntent } from './simplifiedIntentClassifier';
 
 export interface InteractionExample {
   query: string;
