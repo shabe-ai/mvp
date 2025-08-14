@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { getConversationManager } from '@/lib/conversationManager';
 import { intentClassifier } from "@/lib/intentClassifier";
 import { intentRouter } from "@/lib/intentRouter";
+import { conversationalHandler } from '@/lib/conversationalHandler';
 import { logger } from '@/lib/logger';
 import { errorMonitoring } from '@/lib/errorMonitoring';
 import { ConversationPruner } from '@/lib/conversationPruner';
@@ -341,23 +342,23 @@ export async function POST(request: NextRequest) {
     const conversationManager = await getConversationManager(actualUserId, 'session-id');
     
     if (conversationManager) {
-      console.log('🧠 Using intent-based processing for:', messageContent);
+      console.log('🧠 Using conversational processing for:', messageContent);
       console.log('🧠 Message content:', messageContent);
       console.log('🧠 User ID:', actualUserId);
       
-      // Classify intent using LLM
-      console.log('🧠 Starting intent classification...');
-      const intent = await intentClassifier.classifyIntent(messageContent, conversationManager.getState());
-      console.log('🧠 Classified intent:', JSON.stringify(intent, null, 2));
-      
-      // Route intent to appropriate handler
-      console.log('🧠 Starting intent routing...');
-      const response = await intentRouter.routeIntent(intent, conversationManager, {
+      // Use conversational handler for natural language understanding
+      console.log('🧠 Starting conversational handling...');
+      const response = await conversationalHandler.handleConversation(messageContent, conversationManager, {
         messages,
         userId: actualUserId,
+        userProfile: requestContext.userProfile,
+        companyData: requestContext.companyData,
+        lastAction: conversationManager.getState().memory.sessionHistory.length > 0 
+          ? conversationManager.getState().memory.sessionHistory[conversationManager.getState().memory.sessionHistory.length - 1]?.conversationContext?.action 
+          : undefined,
         ...requestContext
       });
-      console.log('🧠 Intent routing response:', JSON.stringify(response, null, 2));
+      console.log('🧠 Conversational response:', JSON.stringify(response, null, 2));
       
       // Update conversation state with response
       conversationManager.updateContext(messageContent, response.conversationContext?.action);
