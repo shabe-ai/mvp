@@ -110,11 +110,15 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
       bgColor: 'bg-blue-50',
       columns: ['name', 'email', 'company', 'title', 'leadStatus'],
       formatters: {
-        name: (record: DataRecord) => record.name || 'N/A',
+        name: (record: DataRecord) => {
+          const firstName = record.firstName || '';
+          const lastName = record.lastName || '';
+          return firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || 'N/A';
+        },
         email: (record: DataRecord) => record.email || 'N/A',
         company: (record: DataRecord) => record.company || 'N/A',
         title: (record: DataRecord) => record.title || 'N/A',
-        leadStatus: (record: DataRecord) => record.status || 'new'
+        leadStatus: (record: DataRecord) => record.leadStatus || 'new'
       }
     },
     accounts: {
@@ -165,6 +169,10 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
     loading,
     error
   });
+ 
+  // Debug: Log raw data from Convex to verify freshness
+  console.log('🔍 Raw Convex data for', activeTable, ':', data);
+  console.log('🔍 Sample contact record:', data[0]);
   
   const filteredData = data.filter(record => {
     if (!searchTerm) return true;
