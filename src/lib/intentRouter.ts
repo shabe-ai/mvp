@@ -106,7 +106,7 @@ class DataIntentHandler implements IntentHandler {
       userId: context.userId
     });
 
-    // For view_data actions, provide a quick response using available data
+    // For view_data actions, provide intelligent responses using available data
     if (intent.action === 'view_data') {
       logger.info('Processing view_data action', {
         originalMessage: intent.originalMessage,
@@ -115,65 +115,159 @@ class DataIntentHandler implements IntentHandler {
       
       const userMessage = intent.originalMessage.toLowerCase();
       
-      // Check if user is asking about contact count
-      if (userMessage.includes('contact') && 
-          (userMessage.includes('how many') || userMessage.includes('count'))) {
+      // Get team ID from context
+      const teamId = context.conversationManager?.getState()?.teamId;
+      
+      if (!teamId) {
+        return {
+          type: 'text',
+          content: "I need to know which team's data you're asking about. Please try again.",
+          data: { error: 'No team ID available' }
+        };
+      }
+
+      try {
+        // Use Convex client directly for all data queries
+        const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
         
-        logger.info('Detected contact count query, using direct Convex query', {
+        // Determine what data the user is asking about
+        let dataType = 'contacts'; // default
+        let queryType = 'list'; // default
+        
+        // Detect data type from user message
+        if (userMessage.includes('contact')) {
+          dataType = 'contacts';
+        } else if (userMessage.includes('deal')) {
+          dataType = 'deals';
+        } else if (userMessage.includes('account')) {
+          dataType = 'accounts';
+        } else if (userMessage.includes('activity') || userMessage.includes('task')) {
+          dataType = 'activities';
+        }
+        
+        // Detect query type
+        if (userMessage.includes('how many') || userMessage.includes('count')) {
+          queryType = 'count';
+        } else if (userMessage.includes('name') || userMessage.includes('list') || userMessage.includes('show')) {
+          queryType = 'list';
+        } else if (userMessage.includes('email') || userMessage.includes('phone') || userMessage.includes('company')) {
+          queryType = 'details';
+        }
+        
+        logger.info('Data query analysis', {
+          dataType,
+          queryType,
           userMessage,
           userId: context.userId
         });
-        
-        try {
-          // Get team ID from context
-          const teamId = context.conversationManager?.getState()?.teamId;
-          
-          logger.info('Team ID for contact query', {
-            teamId,
-            userId: context.userId
-          });
-          
-          if (teamId) {
-            // Use Convex client directly instead of fetch
-            const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-            const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
-            
-            logger.info('Successfully retrieved contacts from Convex', {
-              contactCount: contacts.length,
-              userId: context.userId
-            });
-            
-            return {
-              type: 'text',
-              content: `You have ${contacts.length} contacts in your database.`,
-              data: {
-                contactCount: contacts.length,
-                contacts: contacts.slice(0, 5) // Show first 5 for reference
-              }
-            };
-          }
-        } catch (error) {
-          logger.error('Error getting contact count', error as Error, { userId: context.userId });
-        }
-       
-       // Return a fallback response instead of calling conversational handler
-       return {
-         type: 'text',
-         content: "I'm having trouble accessing your contacts right now. Please try again in a moment.",
-         data: {
-           error: 'Failed to retrieve contacts'
-         }
-       };
-      }
-    }
 
-    // For non-count view_data operations, use conversational handler
-    if (intent.action === 'view_data') {
-      return await conversationalHandler.handleConversation(
-        intent.context.userGoal || 'Data operation',
-        context.conversationManager,
-        context
-      );
+        // Fetch data based on type
+        let data: any[] = [];
+        let content = '';
+        
+        switch (dataType) {
+          case 'contacts':
+            data = await convex.query(api.crm.getContactsByTeam, { teamId });
+            break;
+          case 'deals':
+            data = await convex.query(api.crm.getDealsByTeam, { teamId });
+            break;
+          case 'accounts':
+            data = await convex.query(api.crm.getAccountsByTeam, { teamId });
+            break;
+          case 'activities':
+            data = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+            break;
+          default:
+            data = await convex.query(api.crm.getContactsByTeam, { teamId });
+        }
+
+        logger.info('Successfully retrieved data from Convex', {
+          dataType,
+          dataCount: data.length,
+          userId: context.userId
+        });
+
+        // Generate intelligent response based on query type
+        switch (queryType) {
+          case 'count':
+            content = `You have ${data.length} ${dataType} in your database.`;
+            break;
+            
+          case 'list':
+            if (dataType === 'contacts') {
+              const names = data.map(contact => {
+                const firstName = contact.firstName || '';
+                const lastName = contact.lastName || '';
+                return firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || 'Unknown';
+              });
+              
+              if (names.length <= 10) {
+                content = `Here are your ${dataType}:\n${names.join(', ')}`;
+              } else {
+                content = `You have ${data.length} ${dataType}. Here are the first 10:\n${names.slice(0, 10).join(', ')}...`;
+              }
+            } else {
+              const items = data.map(item => item.name || item.title || item.subject || 'Unknown');
+              if (items.length <= 10) {
+                content = `Here are your ${dataType}:\n${items.join(', ')}`;
+              } else {
+                content = `You have ${data.length} ${dataType}. Here are the first 10:\n${items.slice(0, 10).join(', ')}...`;
+              }
+            }
+            break;
+            
+          case 'details':
+            if (dataType === 'contacts') {
+              const details = data.slice(0, 5).map(contact => {
+                const name = contact.firstName && contact.lastName ? 
+                  `${contact.firstName} ${contact.lastName}` : 
+                  contact.firstName || contact.lastName || 'Unknown';
+                const email = contact.email || 'No email';
+                const phone = contact.phone || 'No phone';
+                const company = contact.company || 'No company';
+                return `${name} (${email}, ${phone}, ${company})`;
+              });
+              content = `Here are the details for your ${dataType}:\n${details.join('\n')}`;
+            } else {
+              const details = data.slice(0, 5).map(item => {
+                const name = item.name || item.title || item.subject || 'Unknown';
+                const description = item.description || 'No description';
+                return `${name}: ${description}`;
+              });
+              content = `Here are the details for your ${dataType}:\n${details.join('\n')}`;
+            }
+            break;
+            
+          default:
+            content = `You have ${data.length} ${dataType} in your database.`;
+        }
+
+        return {
+          type: 'text',
+          content,
+          data: {
+            dataType,
+            queryType,
+            count: data.length,
+            items: data.slice(0, 10) // Show first 10 items
+          }
+        };
+        
+      } catch (error) {
+        logger.error('Error retrieving data', error as Error, { 
+          dataType: 'unknown',
+          userId: context.userId 
+        });
+        
+        return {
+          type: 'text',
+          content: "I'm having trouble accessing your data right now. Please try again in a moment.",
+          data: {
+            error: 'Failed to retrieve data'
+          }
+        };
+      }
     }
     
     // For other data operations, use conversational handler

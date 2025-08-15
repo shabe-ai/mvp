@@ -141,8 +141,15 @@ Available actions:
 Examples:
 - "how many contacts do i have" → action: "view_data", entities: {"dataType": "contacts", "query": "count"}
 - "show me my contacts" → action: "view_data", entities: {"dataType": "contacts"}
+- "what are the names of the contacts" → action: "view_data", entities: {"dataType": "contacts", "query": "list"}
+- "list all contacts" → action: "view_data", entities: {"dataType": "contacts", "query": "list"}
+- "show contact details" → action: "view_data", entities: {"dataType": "contacts", "query": "details"}
 - "count my deals" → action: "view_data", entities: {"dataType": "deals", "query": "count"}
 - "how many accounts" → action: "view_data", entities: {"dataType": "accounts", "query": "count"}
+- "show me all deals" → action: "view_data", entities: {"dataType": "deals", "query": "list"}
+- "what activities do i have" → action: "view_data", entities: {"dataType": "activities", "query": "list"}
+- "list my accounts" → action: "view_data", entities: {"dataType": "accounts", "query": "list"}
+- "show contact emails" → action: "view_data", entities: {"dataType": "contacts", "query": "details"}
 - "create a bar chart" → action: "create_chart", entities: {"chartType": "bar"}
 - "send email to john" → action: "send_email", entities: {"recipient": "john"}
 
