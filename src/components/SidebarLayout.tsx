@@ -44,8 +44,8 @@ export default function SidebarLayout({
           size="sm"
           onClick={() => setSidebarOpen(!sidebarOpen)}
           className={`
-            absolute top-4 z-10 
-            ${sidebarOpen ? '-right-4' : 'right-2'}
+            absolute top-4 z-50 
+            ${sidebarOpen ? '-right-4' : 'left-0'}
             bg-white border border-[#d9d2c7] shadow-sm
             hover:bg-[#f3e89a]/10 w-8 h-8 p-0
           `}

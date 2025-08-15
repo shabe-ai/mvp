@@ -99,7 +99,41 @@ class DataIntentHandler implements IntentHandler {
       userId: context.userId
     });
 
-    // Use conversational handler for data operations
+    // For view_data actions, provide a quick response using available data
+    if (intent.action === 'view_data') {
+      const userGoal = intent.context.userGoal || '';
+      
+      // Check if user is asking about contact count
+      if (userGoal.toLowerCase().includes('contact') && 
+          (userGoal.toLowerCase().includes('how many') || userGoal.toLowerCase().includes('count'))) {
+        
+        try {
+          // Get team ID from context
+          const teamId = context.conversationManager?.getState()?.teamId;
+          
+          if (teamId) {
+            // Import Convex client for direct query
+            const { convex } = await import('@/lib/convex');
+            const { api } = await import('@/convex/_generated/api');
+            
+            const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+            
+            return {
+              type: 'text',
+              content: `You have ${contacts.length} contacts in your database.`,
+              data: {
+                contactCount: contacts.length,
+                contacts: contacts.slice(0, 5) // Show first 5 for reference
+              }
+            };
+          }
+        } catch (error) {
+          logger.error('Error getting contact count', error as Error, { userId: context.userId });
+        }
+      }
+    }
+
+    // Use conversational handler for other data operations
     return await conversationalHandler.handleConversation(
       intent.context.userGoal || 'Data operation',
       context.conversationManager,
