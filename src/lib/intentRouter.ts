@@ -200,9 +200,17 @@ class DataIntentHandler implements IntentHandler {
         });
 
         // Generate intelligent response based on query type
+        logger.info('Generating response content', {
+          queryType,
+          dataType,
+          dataLength: data.length,
+          userId: context.userId
+        });
+        
         switch (queryType) {
           case 'count':
             content = `You have ${data.length} ${dataType} in your database.`;
+            logger.info('Generated count response', { content, userId: context.userId });
             break;
             
           case 'list':
@@ -259,6 +267,13 @@ class DataIntentHandler implements IntentHandler {
           type: 'text',
           content
         };
+        
+        logger.info('Final response object', {
+          type: response.type,
+          content: response.content,
+          hasData: queryType === 'list' || queryType === 'details',
+          userId: context.userId
+        });
         
         // Add data field only for list and details queries where it's useful
         if (queryType === 'list' || queryType === 'details') {
