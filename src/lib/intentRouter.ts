@@ -165,10 +165,28 @@ class DataIntentHandler implements IntentHandler {
         } catch (error) {
           logger.error('Error getting contact count', error as Error, { userId: context.userId });
         }
+       
+       // Return a fallback response instead of calling conversational handler
+       return {
+         type: 'text',
+         content: "I'm having trouble accessing your contacts right now. Please try again in a moment.",
+         data: {
+           error: 'Failed to retrieve contacts'
+         }
+       };
       }
     }
 
-    // Use conversational handler for other data operations
+    // For non-count view_data operations, use conversational handler
+    if (intent.action === 'view_data') {
+      return await conversationalHandler.handleConversation(
+        intent.context.userGoal || 'Data operation',
+        context.conversationManager,
+        context
+      );
+    }
+    
+    // For other data operations, use conversational handler
     return await conversationalHandler.handleConversation(
       intent.context.userGoal || 'Data operation',
       context.conversationManager,
