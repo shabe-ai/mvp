@@ -48,7 +48,7 @@ class IntentRouter {
 
     // Fallback to general conversation
     return await conversationalHandler.handleConversation(
-      intent.context.userGoal || 'General conversation',
+      intent.originalMessage || intent.context.userGoal || 'General conversation',
       context.conversationManager,
       context
     );
@@ -101,11 +101,11 @@ class DataIntentHandler implements IntentHandler {
 
     // For view_data actions, provide a quick response using available data
     if (intent.action === 'view_data') {
-      const userGoal = intent.context.userGoal || '';
+      const userMessage = intent.originalMessage.toLowerCase();
       
       // Check if user is asking about contact count
-      if (userGoal.toLowerCase().includes('contact') && 
-          (userGoal.toLowerCase().includes('how many') || userGoal.toLowerCase().includes('count'))) {
+      if (userMessage.includes('contact') && 
+          (userMessage.includes('how many') || userMessage.includes('count'))) {
         
         try {
           // Get team ID from context

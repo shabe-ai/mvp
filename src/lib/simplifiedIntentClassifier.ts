@@ -138,6 +138,14 @@ Available actions:
 - delete_activity: User wants to delete an activity
 - general_conversation: General chat, questions, or unclear requests
 
+Examples:
+- "how many contacts do i have" → action: "view_data", entities: {"dataType": "contacts", "query": "count"}
+- "show me my contacts" → action: "view_data", entities: {"dataType": "contacts"}
+- "count my deals" → action: "view_data", entities: {"dataType": "deals", "query": "count"}
+- "how many accounts" → action: "view_data", entities: {"dataType": "accounts", "query": "count"}
+- "create a bar chart" → action: "create_chart", entities: {"chartType": "bar"}
+- "send email to john" → action: "send_email", entities: {"recipient": "john"}
+
 Extract relevant entities like:
 - chartType: line, bar, pie, area, scatter
 - dataType: contacts, deals, accounts, activities
@@ -145,6 +153,7 @@ Extract relevant entities like:
 - contactName, accountName, dealName, activitySubject
 - field, value, date, amount, email, phone, company, industry, website
 - recipient, subject, content_type (for emails)
+- query: count, list, show, display (for view_data actions)
 
 Conversation context: ${conversationContext}
 

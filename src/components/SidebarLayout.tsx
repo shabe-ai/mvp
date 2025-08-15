@@ -37,27 +37,28 @@ export default function SidebarLayout({
         <div className="h-full overflow-hidden">
           {sidebar}
         </div>
-        
-        {/* Toggle Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className={`
-            absolute top-4 z-50 
-            ${sidebarOpen ? '-right-4' : 'left-0'}
-            bg-white border border-[#d9d2c7] shadow-sm
-            hover:bg-[#f3e89a]/10 w-8 h-8 p-0
-          `}
-        >
-          {sidebarOpen ? (
-            <ChevronLeft className="h-4 w-4 text-black" />
-          ) : (
-            <ChevronRight className="h-4 w-4 text-black" />
-          )}
-        </Button>
       </div>
-
+      
+      {/* Toggle Button - Always visible */}
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setSidebarOpen(!sidebarOpen)}
+        className={`
+          absolute top-4 z-50 
+          ${sidebarOpen ? 'left-80' : 'left-0'}
+          bg-white border border-[#d9d2c7] shadow-sm
+          hover:bg-[#f3e89a]/10 w-8 h-8 p-0
+          transition-all duration-300 ease-in-out
+        `}
+      >
+        {sidebarOpen ? (
+          <ChevronLeft className="h-4 w-4 text-black" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-black" />
+        )}
+      </Button>
+      
       {/* Main Content */}
       <div className="flex-1 min-w-0 h-full overflow-hidden">
         {children}
