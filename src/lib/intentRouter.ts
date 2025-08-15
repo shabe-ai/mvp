@@ -1,6 +1,8 @@
 import { SimplifiedIntent } from './simplifiedIntentClassifier';
 import { conversationalHandler } from './conversationalHandler';
 import { logger } from './logger';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../convex/_generated/api';
 
 interface IntentHandler {
   canHandle(intent: SimplifiedIntent): boolean;
@@ -132,23 +134,11 @@ class DataIntentHandler implements IntentHandler {
           });
           
           if (teamId) {
-            // Use a simple API call instead of dynamic imports
-            const response = await fetch('/api/contacts', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ teamId })
-            });
+            // Use Convex client directly instead of fetch
+            const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+            const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
             
-            if (!response.ok) {
-              throw new Error(`API call failed: ${response.status}`);
-            }
-            
-            const data = await response.json();
-            const contacts = data.contacts || [];
-            
-            logger.info('Successfully retrieved contacts from API', {
+            logger.info('Successfully retrieved contacts from Convex', {
               contactCount: contacts.length,
               userId: context.userId
             });
