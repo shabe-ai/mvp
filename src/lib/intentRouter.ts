@@ -48,7 +48,7 @@ class IntentRouter {
 
     // Fallback to general conversation
     return await conversationalHandler.handleConversation(
-      intent.userGoal || 'General conversation',
+      intent.context.userGoal || 'General conversation',
       context.conversationManager,
       context
     );
@@ -77,7 +77,7 @@ class ChartIntentHandler implements IntentHandler {
 
     // Use conversational handler for chart operations
     return await conversationalHandler.handleConversation(
-      intent.userGoal || 'Chart operation',
+      intent.context.userGoal || 'Chart operation',
       context.conversationManager,
       context
     );
@@ -87,9 +87,10 @@ class ChartIntentHandler implements IntentHandler {
 // Data Intent Handler
 class DataIntentHandler implements IntentHandler {
   canHandle(intent: SimplifiedIntent): boolean {
-    return intent.action === 'query_data' || 
-           intent.action === 'analyze_data' || 
-           intent.action === 'export_data';
+    return intent.action === 'analyze_data' || 
+           intent.action === 'export_data' ||
+           intent.action === 'explore_data' ||
+           intent.action === 'view_data';
   }
 
   async handle(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
@@ -100,7 +101,7 @@ class DataIntentHandler implements IntentHandler {
 
     // Use conversational handler for data operations
     return await conversationalHandler.handleConversation(
-      intent.userGoal || 'Data operation',
+      intent.context.userGoal || 'Data operation',
       context.conversationManager,
       context
     );
@@ -129,7 +130,7 @@ class CrudIntentHandler implements IntentHandler {
 
     // Use conversational handler for CRUD operations
     return await conversationalHandler.handleConversation(
-      intent.userGoal || 'CRUD operation',
+      intent.context.userGoal || 'CRUD operation',
       context.conversationManager,
       context
     );
@@ -139,9 +140,7 @@ class CrudIntentHandler implements IntentHandler {
 // Email Intent Handler
 class EmailIntentHandler implements IntentHandler {
   canHandle(intent: SimplifiedIntent): boolean {
-    return intent.action === 'send_email' || 
-           intent.action === 'draft_email' || 
-           intent.action === 'schedule_email';
+    return intent.action === 'send_email';
   }
 
   async handle(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
@@ -152,7 +151,7 @@ class EmailIntentHandler implements IntentHandler {
 
     // Use conversational handler for email operations
     return await conversationalHandler.handleConversation(
-      intent.userGoal || 'Email operation',
+      intent.context.userGoal || 'Email operation',
       context.conversationManager,
       context
     );
@@ -162,9 +161,7 @@ class EmailIntentHandler implements IntentHandler {
 // Analysis Intent Handler
 class AnalysisIntentHandler implements IntentHandler {
   canHandle(intent: SimplifiedIntent): boolean {
-    return intent.action === 'analyze_performance' || 
-           intent.action === 'generate_report' || 
-           intent.action === 'provide_insights';
+    return intent.action === 'analyze_data';
   }
 
   async handle(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
@@ -175,7 +172,7 @@ class AnalysisIntentHandler implements IntentHandler {
 
     // Use conversational handler for analysis operations
     return await conversationalHandler.handleConversation(
-      intent.userGoal || 'Analysis operation',
+      intent.context.userGoal || 'Analysis operation',
       context.conversationManager,
       context
     );

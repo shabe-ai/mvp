@@ -585,7 +585,18 @@ export default function Chat({ onAction }: ChatProps = {}) {
                 <div className="mt-4">
                   {message.enhancedChart ? (
                     <EnhancedChartDisplay
-                      chartSpec={message.chartSpec}
+                      chartSpec={{
+                        ...message.chartSpec,
+                        chartConfig: {
+                          ...message.chartSpec.chartConfig,
+                          margin: {
+                            top: message.chartSpec.chartConfig?.margin?.top || 20,
+                            right: message.chartSpec.chartConfig?.margin?.right || 30,
+                            left: message.chartSpec.chartConfig?.margin?.left || 20,
+                            bottom: message.chartSpec.chartConfig?.margin?.bottom || 60
+                          }
+                        }
+                      }}
                       narrative={message.narrative}
                       onUpdate={handleChartUpdate}
                       onExport={handleChartExport}
@@ -594,7 +605,18 @@ export default function Chat({ onAction }: ChatProps = {}) {
                     />
                   ) : (
                     <ChartDisplay
-                      chartSpec={message.chartSpec}
+                      chartSpec={{
+                        ...message.chartSpec,
+                        chartConfig: {
+                          ...message.chartSpec.chartConfig,
+                          margin: {
+                            top: message.chartSpec.chartConfig?.margin?.top || 20,
+                            right: message.chartSpec.chartConfig?.margin?.right || 30,
+                            left: message.chartSpec.chartConfig?.margin?.left || 20,
+                            bottom: message.chartSpec.chartConfig?.margin?.bottom || 60
+                          }
+                        }
+                      }}
                       narrative={message.narrative}
                     />
                   )}
@@ -606,7 +628,10 @@ export default function Chat({ onAction }: ChatProps = {}) {
                 <div className="mt-4">
                   <PreviewCard
                     title="Data Preview"
-                    data={message.data}
+                    initialData={{
+                      title: "Data Preview",
+                      content: JSON.stringify(message.data, null, 2)
+                    }}
                     isEditable={false}
                   />
                 </div>
