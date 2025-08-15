@@ -623,11 +623,26 @@ Analyze this user message and extract structured information for CRM actions.
         5000 // 5 second timeout
       );
 
+      logger.info('Intent router response received', {
+        responseType: response.type,
+        responseContent: response.content,
+        responseMessage: response.message,
+        hasContent: !!response.content,
+        hasMessage: !!response.message,
+        userId: context.userId
+      });
+
       // Merge all phases and enhance response with conversational elements
       // Use response.content if available (from DataIntentHandler), otherwise use adaptiveResponse.message
       const responseMessage = response.content || adaptiveResponse.message;
       
-      return {
+      logger.info('Final response message determined', {
+        responseMessage,
+        source: response.content ? 'response.content' : 'adaptiveResponse.message',
+        userId: context.userId
+      });
+      
+      const finalResponse = {
         ...response,
         message: this.enhanceResponseMessage(responseMessage, understanding),
         suggestions: adaptiveResponse.suggestions || understanding.suggestedActions || response.suggestions,
@@ -635,6 +650,14 @@ Analyze this user message and extract structured information for CRM actions.
         personalizationApplied: adaptiveResponse.personalizationApplied,
         learningInsights: adaptiveResponse.learningInsights
       };
+      
+      logger.info('Final conversational response', {
+        finalMessage: finalResponse.message,
+        hasMessage: !!finalResponse.message,
+        userId: context.userId
+      });
+      
+      return finalResponse;
     } catch (error) {
       logger.error('Action execution failed', undefined, { 
         action: understanding.action, 
