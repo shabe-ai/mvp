@@ -624,9 +624,12 @@ Analyze this user message and extract structured information for CRM actions.
       );
 
       // Merge all phases and enhance response with conversational elements
+      // Use response.content if available (from DataIntentHandler), otherwise use adaptiveResponse.message
+      const responseMessage = response.content || adaptiveResponse.message;
+      
       return {
         ...response,
-        message: this.enhanceResponseMessage(adaptiveResponse.message, understanding),
+        message: this.enhanceResponseMessage(responseMessage, understanding),
         suggestions: adaptiveResponse.suggestions || understanding.suggestedActions || response.suggestions,
         ragInsights: ragEnhancedResponse.ragInsights,
         personalizationApplied: adaptiveResponse.personalizationApplied,
