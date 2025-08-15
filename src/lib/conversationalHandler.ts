@@ -248,24 +248,64 @@ export class ConversationalHandler {
         const structured = await this.analyzeWithStructured(message, conversationManager);
         if (structured && structured.confidence > 0.7) {
           console.log('🔍 Using structured analysis for count query');
-          return await this.executeAction(structured, conversationManager, context);
+          // Route directly to intent router for count queries to avoid timeout
+          const simplifiedIntent = {
+            action: structured.action as 'create_chart' | 'modify_chart' | 'analyze_data' | 'export_data' | 'explore_data' | 'view_data' | 'send_email' | 'create_contact' | 'update_contact' | 'delete_contact' | 'create_account' | 'update_account' | 'delete_account' | 'create_deal' | 'update_deal' | 'delete_deal' | 'create_activity' | 'update_activity' | 'delete_activity' | 'general_conversation',
+            confidence: structured.confidence,
+            originalMessage: message,
+            entities: structured.entities,
+            context: {
+              referringTo: 'new_request' as const,
+              userGoal: message
+            },
+            metadata: {
+              isAmbiguous: structured.needsClarification,
+              needsClarification: structured.needsClarification,
+              clarificationQuestion: structured.clarificationQuestion
+            }
+          };
+          return await intentRouter.routeIntent(simplifiedIntent, { ...context, conversationManager });
         } else {
           console.log('🔍 Structured analysis failed or low confidence for count query, forcing structured routing anyway');
           // Force structured routing even if confidence is low for count queries
           if (structured) {
             console.log('🔍 Using structured analysis with lower confidence for count query');
-            return await this.executeAction(structured, conversationManager, context);
+            // Route directly to intent router for count queries to avoid timeout
+            const simplifiedIntent = {
+              action: structured.action as 'create_chart' | 'modify_chart' | 'analyze_data' | 'export_data' | 'explore_data' | 'view_data' | 'send_email' | 'create_contact' | 'update_contact' | 'delete_contact' | 'create_account' | 'update_account' | 'delete_account' | 'create_deal' | 'update_deal' | 'delete_deal' | 'create_activity' | 'update_activity' | 'delete_activity' | 'general_conversation',
+              confidence: structured.confidence,
+              originalMessage: message,
+              entities: structured.entities,
+              context: {
+                referringTo: 'new_request' as const,
+                userGoal: message
+              },
+              metadata: {
+                isAmbiguous: structured.needsClarification,
+                needsClarification: structured.needsClarification,
+                clarificationQuestion: structured.clarificationQuestion
+              }
+            };
+            return await intentRouter.routeIntent(simplifiedIntent, { ...context, conversationManager });
           } else {
             // If structured analysis completely failed, create a basic count intent
             console.log('🔍 Creating basic count intent for query:', message);
-            const basicCountIntent = {
+            const simplifiedIntent = {
               action: 'view_data' as const,
-              entities: { dataType: 'contacts' },
               confidence: 0.8,
-              userIntent: message,
-              needsClarification: false
+              originalMessage: message,
+              entities: { dataType: 'contacts' },
+              context: {
+                referringTo: 'new_request' as const,
+                userGoal: message
+              },
+              metadata: {
+                isAmbiguous: false,
+                needsClarification: false
+              }
             };
-            return await this.executeAction(basicCountIntent, conversationManager, context);
+            // Route directly to intent router for count queries to avoid timeout
+            return await intentRouter.routeIntent(simplifiedIntent, { ...context, conversationManager });
           }
         }
       }
