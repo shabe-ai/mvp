@@ -579,7 +579,7 @@ Analyze this user message and extract structured information for CRM actions.
 
       // Use existing intent router with timeout
       const response = await this.withTimeout(
-        intentRouter.routeIntent(structuredIntent, context),
+        intentRouter.routeIntent(structuredIntent, { ...context, conversationManager }),
         10000 // 10 second timeout
       );
 

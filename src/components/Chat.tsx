@@ -560,6 +560,15 @@ export default function Chat({ onAction }: ChatProps = {}) {
     fileInput.click();
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!isLoading && input.trim()) {
+        handleSubmit(e as unknown as React.FormEvent);
+      }
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Messages Container */}
@@ -711,7 +720,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
           <Button
             type="button"
             onClick={handleUploadClick}
-            variant="outline"
+            className="bg-[#f3e89a] text-black hover:bg-[#efe076]"
             size="icon"
             disabled={isLoading}
           >
@@ -719,14 +728,14 @@ export default function Chat({ onAction }: ChatProps = {}) {
           </Button>
           
           <Input
+            placeholder="Type your message..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
+            onKeyDown={handleKeyDown}
             disabled={isLoading}
-            className="flex-1"
           />
           
-          <Button type="submit" disabled={isLoading || !input.trim()}>
+          <Button type="submit" disabled={isLoading || !input.trim()} className="bg-[#f3e89a] text-black hover:bg-[#efe076]">
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </form>
