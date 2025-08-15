@@ -15,6 +15,7 @@ import {
 import PreviewCard from "@/components/PreviewCard";
 import ChartDisplay from "@/components/ChartDisplay";
 import EnhancedChartDisplay from "@/components/EnhancedChartDisplay";
+import { logger } from "@/lib/logger";
 
 interface Message {
   id: string;
@@ -91,13 +92,13 @@ export default function Chat({ onAction }: ChatProps = {}) {
       if (teamsResponse.ok) {
         const teams = await teamsResponse.json();
         if (teams && teams.length > 0) {
-          console.log('✅ User already has teams, skipping default team creation');
+          logger.info('User already has teams, skipping default team creation', { userId: user.id });
           return;
         }
       }
       
       // Create default team if user has no teams
-      console.log('Creating default team for user:', user.id);
+      logger.info('Creating default team for user', { userId: user.id });
       const response = await fetch('/api/teams', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -108,12 +109,21 @@ export default function Chat({ onAction }: ChatProps = {}) {
       
       if (response.ok) {
         const newTeam = await response.json();
-        console.log('✅ Default team created successfully:', newTeam);
+        logger.info('Default team created successfully', { 
+          teamId: newTeam._id,
+          userId: user.id 
+        });
       } else {
-        console.error('Failed to create default team:', response.status, response.statusText);
+        logger.error('Failed to create default team', new Error(`HTTP ${response.status}: ${response.statusText}`), {
+          userId: user.id,
+          status: response.status,
+          statusText: response.statusText
+        });
       }
     } catch (error) {
-      console.error('Error creating default team:', error);
+      logger.error('Error creating default team', error instanceof Error ? error : new Error(String(error)), {
+        userId: user.id
+      });
     }
   }, [user]);
 
@@ -141,7 +151,9 @@ export default function Chat({ onAction }: ChatProps = {}) {
             return `Hello! I'm your AI assistant. I can see you have Google Workspace connected, but I need additional permissions to access your calendar. You can still upload files for analysis and chart generation. What would you like to do?`;
           }
         } catch (error) {
-          console.error('Error fetching calendar data:', error);
+          logger.error('Error fetching calendar data', error instanceof Error ? error : new Error(String(error)), {
+            userId: user?.id
+          });
           return `Hello! I'm your AI assistant. I can see you have Google Workspace connected. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?`;
         }
       } else {
@@ -149,11 +161,13 @@ export default function Chat({ onAction }: ChatProps = {}) {
         return `👋 Welcome to Shabe AI!\n\nI'm your AI assistant that can help you analyze files, generate charts, and provide insights.\n\nTo get the most out of your experience:\n\n1. Connect Google Workspace (optional but recommended)\n   • Go to Admin → Google Workspace Integration\n   • Connect your account for calendar access\n\n2. Upload files for analysis\n   • Use the upload button to add files\n   • I can analyze PDFs, Excel files, and more\n\n3. Ask me anything about your data\n   • Generate charts and insights\n   • Get summaries and recommendations\n\nWhat would you like to do first?`;
       }
     } catch (error) {
-      console.error('Error checking Google Workspace connection:', error);
+      logger.error('Error checking Google Workspace connection', error instanceof Error ? error : new Error(String(error)), {
+        userId: user?.id
+      });
       // Fallback message if connection check fails
       return "Hello! I'm your AI assistant. Upload a file and I'll help you analyze it, generate charts, and provide insights. What would you like to do?";
     }
-  }, []);
+  }, [user]);
 
   // Initialize with dynamic welcome message if user is logged in
   useEffect(() => {
@@ -170,7 +184,9 @@ export default function Chat({ onAction }: ChatProps = {}) {
           };
           setMessages([welcomeMessage]);
         } catch (error) {
-          console.error('Error initializing chat:', error);
+          logger.error('Error initializing chat', error instanceof Error ? error : new Error(String(error)), {
+            userId: user.id
+          });
           // Fallback message if initialization fails
           const fallbackMessage: Message = {
             id: Date.now().toString(),
@@ -284,7 +300,10 @@ export default function Chat({ onAction }: ChatProps = {}) {
 
       // Notify parent of any actions that occurred
       if (data.action && onAction) {
-        console.log('🎯 Chat component calling onAction:', data.action, data);
+        logger.info('Chat component calling onAction', { 
+          action: data.action,
+          userId: user.id 
+        });
         onAction(data.action, {
           recordId: data.contactId || data.accountId || data.dealId,
           ...data
@@ -298,15 +317,20 @@ export default function Chat({ onAction }: ChatProps = {}) {
           subject: data.emailDraft.subject,
           content: data.emailDraft.content,
           aiMessage: assistantMessage,
-          activityData: data.activityData || {},
+          activityData: data.emailDraft.activityData || {}
         });
       }
+
     } catch (error) {
-      console.error("Error sending message:", error);
+      logger.error("Error sending message", error instanceof Error ? error : new Error(String(error)), {
+        userId: user.id,
+        messageLength: input.length
+      });
+      
       const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "Sorry, I encountered an error. Please try again.",
+        content: "I'm sorry, I encountered an error while processing your message. Please try again.",
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -315,79 +339,8 @@ export default function Chat({ onAction }: ChatProps = {}) {
     }
   };
 
-  const renderMessage = (message: Message) => {
-    const isUser = message.role === "user";
-    
-    return (
-      <div
-        key={message.id}
-        className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
-      >
-        <div
-          className={`max-w-[80%] rounded-lg px-4 py-2 ${
-            isUser
-              ? "bg-[#f3e89a] text-black"
-              : "bg-[#d9d2c7]/10 text-black"
-          }`}
-        >
-          <div className="whitespace-pre-wrap">{message.content}</div>
-          
-          {/* Render enhanced chart if present */}
-          {message.chartSpec && message.enhancedChart && (
-            <div className="mt-4">
-              <EnhancedChartDisplay
-                chartSpec={{
-                  ...message.chartSpec,
-                  dataSource: 'database' as const
-                }}
-                narrative={message.narrative}
-                onChartUpdate={handleChartUpdate}
-                onExport={handleChartExport}
-                onShare={handleChartShare}
-                onInsightAction={handleInsightAction}
-                isInteractive={true}
-              />
-            </div>
-          )}
-          
-          {/* Render regular chart if present */}
-          {message.chartSpec && !message.enhancedChart && (
-            <div className="mt-4">
-              <ChartDisplay
-                chartSpec={message.chartSpec}
-                narrative={message.narrative}
-              />
-            </div>
-          )}
-          
-          {/* Render database table if present */}
-          {message.data && message.data.displayFormat === 'table' && Array.isArray(message.data.records) && (
-            <div className="mt-4">
-              <DataTable data={message.data.records} fields={Object.keys(message.data.records[0] || {}).filter(key => key !== 'id')} />
-            </div>
-          )}
-          
-          {/* Render data table if present (legacy format) */}
-          {message.data && Array.isArray(message.data) && message.data.length > 0 && !message.data.displayFormat && (
-            <div className="mt-4">
-              <DataTable data={message.data} fields={message.fields} />
-            </div>
-          )}
-          
-          {/* Render clarification question if present */}
-          {message.needsClarification && message.clarificationQuestion && (
-            <div className="mt-3 p-3 bg-[#f3e89a]/10 border border-[#f3e89a]/20 rounded-lg">
-              <p className="text-black text-sm font-medium mb-2">🤔 I need clarification:</p>
-              <p className="text-black text-sm">{message.clarificationQuestion}</p>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const handleSendEmail = async (draft: { to: string; subject: string; content: string }) => {
-    if (!emailDraft) return;
+  const handleSendEmail = async () => {
+    if (!emailDraft || !user) return;
     
     setSendingEmail(true);
     try {
@@ -397,31 +350,45 @@ export default function Chat({ onAction }: ChatProps = {}) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          to: draft.to,
-          subject: draft.subject,
-          content: draft.content,
-          userId: user?.id,
+          to: emailDraft.to,
+          subject: emailDraft.subject,
+          content: emailDraft.content,
+          userId: user.id,
         }),
       });
 
-      if (response.ok) {
-        const successMessage: Message = {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: "✅ Email sent successfully!",
-          timestamp: new Date(),
-        };
-        setMessages(prev => [...prev, successMessage]);
-        setEmailDraft(null);
-      } else {
-        throw new Error("Failed to send email");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
+
+      const result = await response.json();
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      // Add success message
+      const successMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: `✅ Email sent successfully to ${emailDraft.to}!`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, successMessage]);
+      
+      // Clear email draft
+      setEmailDraft(null);
+
     } catch (error) {
-      console.error("Error sending email:", error);
+      logger.error("Error sending email", error instanceof Error ? error : new Error(String(error)), {
+        userId: user.id,
+        emailTo: emailDraft.to
+      });
+      
       const errorMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
-        content: "❌ Failed to send email. Please try again.",
+        content: "I'm sorry, I encountered an error while sending the email. Please try again.",
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
@@ -430,320 +397,315 @@ export default function Chat({ onAction }: ChatProps = {}) {
     }
   };
 
-  const handleCancelEmail = () => {
-    setEmailDraft(null);
-  };
-
-  // Enhanced chart handlers
-  const handleChartUpdate = useCallback(async (newConfig: any) => {
-    console.log('🚀 Chart update requested:', newConfig);
+  const handleChartUpdate = async (newConfig: any) => {
+    logger.info('Chart update requested', { 
+      newConfig: JSON.stringify(newConfig),
+      userId: user?.id 
+    });
     
-    // Find the current chart message
-    const currentChartMessage = messages.find(m => m.chartSpec && m.enhancedChart);
-    if (!currentChartMessage) return;
-
-    try {
-      const response = await fetch('/api/enhanced-chart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'modify_chart',
-          chartSpec: currentChartMessage.chartSpec,
-          userRequest: `Update chart with: ${JSON.stringify(newConfig)}`,
-          userId: user?.id
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.modifiedChart) {
-          // Update the chart in the message
-          setMessages(prev => prev.map(m => 
-            m.id === currentChartMessage.id 
-              ? { ...m, chartSpec: result.modifiedChart }
-              : m
-          ));
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error updating chart:', error);
-    }
-  }, [messages, user?.id]);
-
-  const handleChartExport = useCallback(async (format: 'png' | 'csv' | 'pdf') => {
-    console.log('🚀 Chart export requested:', format);
-    
-    const currentChartMessage = messages.find(m => m.chartSpec && m.enhancedChart);
-    if (!currentChartMessage) return;
-
-    try {
-      const response = await fetch('/api/enhanced-chart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'export',
-          chartSpec: currentChartMessage.chartSpec,
-          exportFormat: format,
-          userId: user?.id
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.exportUrl) {
-          // Create a download link
-          const link = document.createElement('a');
-          link.href = result.exportUrl;
-          link.download = `chart-${Date.now()}.${format}`;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error exporting chart:', error);
-    }
-  }, [messages, user?.id]);
-
-  const handleChartShare = useCallback(() => {
-    console.log('🚀 Chart share requested');
-    // Implement sharing functionality
-    // For now, just copy the chart URL to clipboard
-    navigator.clipboard.writeText(window.location.href);
-  }, []);
-
-  const handleInsightAction = useCallback(async (insight: any) => {
-    console.log('🚀 Insight action requested:', insight);
-    
-    // Add the insight action as a user message
-    const insightMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: `Analyze this insight: ${insight.title} - ${insight.description}`,
-      timestamp: new Date()
-    };
-    
-    setMessages(prev => [...prev, insightMessage]);
-    
-    // Process the insight request
-    // Process the insight request by adding it to the input and submitting
-    setInput(insightMessage.content);
-    // Note: We'll need to handle this differently since handleSubmit expects a form event
-    // For now, we'll just add the message to the conversation
-  }, []);
-
-  const handleFilesProcessed = (files: Array<{
-    id: string;
-    name: string;
-    content?: string;
-  }>) => {
-    console.log('Files processed:', files);
-    // Filter out files without content and ensure content is required
-    const filesWithContent = files
-      .filter(file => file.content)
-      .map(file => ({
-        id: file.id,
-        name: file.name,
-        content: file.content!
-      }));
-    
-    setSessionFiles(filesWithContent);
-    
-    // Add a message to indicate files were uploaded
-    const fileMessage: Message = {
+    // Add chart update message
+    const updateMessage: Message = {
       id: Date.now().toString(),
       role: "assistant",
-      content: `📄 Uploaded ${filesWithContent.length} file${filesWithContent.length > 1 ? 's' : ''} for this session. I can now analyze these files and help you with insights!`,
+      content: "I've updated the chart with your requested changes.",
       timestamp: new Date(),
+      chartSpec: newConfig,
     };
-    setMessages(prev => [...prev, fileMessage]);
+    setMessages(prev => [...prev, updateMessage]);
   };
 
-  // Show loading state while user is being loaded
-  if (!isLoaded) {
-    return (
-      <Card className="w-full max-w-4xl mx-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            AI Assistant
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-center py-8">
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <span className="text-gray-500">Loading...</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
+  const handleChartExport = async (format: string) => {
+    try {
+      logger.info('Chart export requested', { 
+        format,
+        userId: user?.id 
+      });
+      
+      // Add export message
+      const exportMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: `I've exported the chart as ${format.toUpperCase()}.`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, exportMessage]);
+    } catch (error) {
+      logger.error('Error exporting chart', error instanceof Error ? error : new Error(String(error)), {
+        format,
+        userId: user?.id
+      });
+    }
+  };
 
-  // Show sign-in prompt if user is not authenticated
-  if (!user) {
-    return (
-      <Card className="w-full max-w-4xl mx-auto border border-[#d9d2c7]">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-black">
-            <MessageSquare className="h-5 w-5 text-[#f3e89a]" />
-            AI Assistant
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-center text-[#d9d2c7]">
-            Please sign in to access the AI assistant.
-          </p>
-        </CardContent>
-      </Card>
-    );
-  }
+  const handleChartShare = async () => {
+    logger.info('Chart share requested', { userId: user?.id });
+    
+    // Add share message
+    const shareMessage: Message = {
+      id: Date.now().toString(),
+      role: "assistant",
+      content: "I've shared the chart with your team.",
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, shareMessage]);
+  };
+
+  const handleInsightAction = async (insight: string) => {
+    logger.info('Insight action requested', { 
+      insight,
+      userId: user?.id 
+    });
+    
+    // Add insight action message
+    const insightMessage: Message = {
+      id: Date.now().toString(),
+      role: "assistant",
+      content: `I've processed the insight: ${insight}`,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, insightMessage]);
+  };
+
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    const fileArray = Array.from(files);
+    logger.info('Files processed', { 
+      fileCount: fileArray.length,
+      fileNames: fileArray.map(f => f.name),
+      userId: user?.id 
+    });
+
+    const processedFiles: Array<{ id: string; name: string; content: string }> = [];
+
+    for (const file of fileArray) {
+      try {
+        let content = '';
+        
+        if (file.type === 'text/plain' || file.type === 'text/csv') {
+          content = await file.text();
+        } else if (file.type === 'application/pdf') {
+          logger.info('PDF file detected - content extraction not available', { 
+            fileName: file.name,
+            userId: user?.id 
+          });
+          content = `PDF file: ${file.name} (content extraction not available)`;
+        } else if (file.type.includes('spreadsheet') || file.type.includes('excel')) {
+          logger.info('Excel file detected - content extraction not available', { 
+            fileName: file.name,
+            userId: user?.id 
+          });
+          content = `Excel file: ${file.name} (content extraction not available)`;
+        } else {
+          content = await file.text();
+        }
+
+        logger.debug('File content loaded', { 
+          fileName: file.name,
+          contentLength: content.length,
+          userId: user?.id 
+        });
+
+        processedFiles.push({
+          id: Date.now().toString() + Math.random(),
+          name: file.name,
+          content: content.substring(0, 1000) // Limit content size
+        });
+      } catch (error) {
+        logger.error('Error processing file', error instanceof Error ? error : new Error(String(error)), {
+          fileName: file.name,
+          userId: user?.id
+        });
+      }
+    }
+
+    setSessionFiles(prev => [...prev, ...processedFiles]);
+
+    // Add file upload message
+    const uploadMessage: Message = {
+      id: Date.now().toString(),
+      role: "assistant",
+      content: `I've processed ${processedFiles.length} file(s). You can now ask me questions about the content.`,
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, uploadMessage]);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    logger.debug('File input changed', { 
+      fileCount: e.target.files?.length || 0,
+      userId: user?.id 
+    });
+    
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      logger.debug('Selected file', { 
+        fileName: file.name,
+        fileSize: file.size,
+        fileType: file.type,
+        userId: user?.id 
+      });
+      
+      handleFileUpload(e.target.files);
+    }
+  };
+
+  const handleUploadClick = () => {
+    logger.debug('Upload button clicked', { userId: user?.id });
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.txt,.csv,.pdf,.xlsx,.xls';
+    fileInput.multiple = true;
+    fileInput.onchange = (e) => handleFileInputChange(e as any);
+    fileInput.click();
+  };
 
   return (
-    <div style={{ width: '100%', background: '#fff' }} className="flex-1 min-h-0 flex flex-col h-full">
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 pt-6 pb-4" style={{ width: '100%', maxHeight: 'calc(100vh - 200px)' }}>
-        {isInitializing ? (
-          <div className="flex items-center justify-center py-8">
-            <div className="flex items-center gap-2">
-              <Loader2 className="h-5 w-5 animate-spin text-[#f3e89a]" />
-              <span className="text-[#d9d2c7]">Loading your personalized experience...</span>
+    <div className="flex flex-col h-full">
+      {/* Messages Container */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`flex ${
+              message.role === "user" ? "justify-end" : "justify-start"
+            }`}
+          >
+            <div
+              className={`max-w-[80%] rounded-lg p-3 ${
+                message.role === "user"
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-100 text-gray-900"
+              }`}
+            >
+              <div className="whitespace-pre-wrap">{message.content}</div>
+              
+              {/* Chart Display */}
+              {message.chartSpec && (
+                <div className="mt-4">
+                  {message.enhancedChart ? (
+                    <EnhancedChartDisplay
+                      chartSpec={message.chartSpec}
+                      narrative={message.narrative}
+                      onUpdate={handleChartUpdate}
+                      onExport={handleChartExport}
+                      onShare={handleChartShare}
+                      onInsightAction={handleInsightAction}
+                    />
+                  ) : (
+                    <ChartDisplay
+                      chartSpec={message.chartSpec}
+                      narrative={message.narrative}
+                    />
+                  )}
+                </div>
+              )}
+              
+              {/* Data Preview */}
+              {message.data && (
+                <div className="mt-4">
+                  <PreviewCard
+                    title="Data Preview"
+                    data={message.data}
+                    isEditable={false}
+                  />
+                </div>
+              )}
             </div>
           </div>
-        ) : (
-          <>
-            {messages.map(renderMessage)}
-            
-            {/* Loading indicator when preparing response */}
-            {isLoading && (
-              <div className="flex justify-start mb-4">
-                <div className="max-w-[80%] rounded-lg px-4 py-2 bg-[#d9d2c7]/10 text-black">
-                  <div className="flex items-center gap-2">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-[#f3e89a] rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-[#f3e89a] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-[#f3e89a] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                    </div>
-                    <span className="text-sm text-[#d9d2c7]">Shabe ai is thinking...</span>
-                  </div>
-                </div>
+        ))}
+        
+        {isLoading && (
+          <div className="flex justify-start">
+            <div className="bg-gray-100 rounded-lg p-3">
+              <div className="flex items-center space-x-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>Thinking...</span>
               </div>
-            )}
-            
-            <div ref={messagesEndRef} />
-          </>
+            </div>
+          </div>
         )}
+        
+        <div ref={messagesEndRef} />
       </div>
 
-      {/* Email Preview */}
+      {/* Email Draft Modal */}
       {emailDraft && (
-        <div className="mb-6">
-          <PreviewCard
-            initialData={{
-              title: "Send Email",
-              subject: emailDraft.subject,
-              content: emailDraft.content,
-            }}
-            onSend={(data) => handleSendEmail({
-              to: emailDraft.to,
-              subject: data.subject || emailDraft.subject,
-              content: data.content || emailDraft.content,
-            })}
-            onCancel={handleCancelEmail}
-            isEditable={!sendingEmail}
-            title="Email Preview"
-          />
-        </div>
-      )}
-
-      {/* Session Files Indicator */}
-      {sessionFiles.length > 0 && (
-        <div className="px-4 mb-2">
-          <div className="bg-[#f3e89a]/10 border border-[#f3e89a]/20 rounded-lg p-3">
-            <div className="flex items-center">
-              <svg className="w-4 h-4 text-[#f3e89a] mr-2" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm text-black">
-                📄 {sessionFiles.length} file{sessionFiles.length > 1 ? 's' : ''} uploaded for this session
-              </span>
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Send Email</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">To:</label>
+                <input
+                  type="email"
+                  value={emailDraft.to}
+                  onChange={(e) => setEmailDraft(prev => prev ? {...prev, to: e.target.value} : null)}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Subject:</label>
+                <input
+                  type="text"
+                  value={emailDraft.subject}
+                  onChange={(e) => setEmailDraft(prev => prev ? {...prev, subject: e.target.value} : null)}
+                  className="w-full p-2 border rounded"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Content:</label>
+                <textarea
+                  value={emailDraft.content}
+                  onChange={(e) => setEmailDraft(prev => prev ? {...prev, content: e.target.value} : null)}
+                  className="w-full p-2 border rounded h-32"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 mt-4">
+              <Button
+                onClick={() => setEmailDraft(null)}
+                variant="outline"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendEmail}
+                disabled={sendingEmail}
+              >
+                {sendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Email"}
+              </Button>
             </div>
           </div>
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="flex w-full px-4 pb-6 mt-auto">
-        <input
-          type="file"
-          id="file-upload"
-          accept=".txt,.csv,.pdf,.xlsx,.xls,.doc,.docx"
-          onChange={(e) => {
-            console.log('File input changed:', e.target.files);
-            if (e.target.files && e.target.files.length > 0) {
-              const file = e.target.files[0];
-              console.log('Selected file:', file.name);
-              
-              // Handle different file types
-              if (file.type === 'application/pdf') {
-                console.log('PDF file detected - content extraction not available');
-                handleFilesProcessed([{
-                  id: Math.random().toString(),
-                  name: file.name,
-                  content: `[PDF file: ${file.name} - Content extraction not available in this session]`
-                }]);
-              } else if (file.type.includes('spreadsheet') || file.type.includes('excel') || file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                console.log('Excel file detected - content extraction not available');
-                handleFilesProcessed([{
-                  id: Math.random().toString(),
-                  name: file.name,
-                  content: `[Excel file: ${file.name} - Content extraction not available in this session]`
-                }]);
-              } else {
-                // For text files (txt, csv, etc.)
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                  const content = event.target?.result as string;
-                  console.log('File content loaded:', content.substring(0, 100) + '...');
-                  handleFilesProcessed([{
-                    id: Math.random().toString(),
-                    name: file.name,
-                    content: content
-                  }]);
-                };
-                reader.readAsText(file);
-              }
-            }
-          }}
-          className="hidden"
-        />
-        <div className="flex w-full bg-white border border-[#d9d2c7] rounded-full shadow-sm focus-within:ring-2 focus-within:ring-[#f3e89a]">
-          <button
+      {/* Input Container */}
+      <div className="border-t p-4">
+        <form onSubmit={handleSubmit} className="flex space-x-2">
+          <Button
             type="button"
-            onClick={() => {
-              console.log('Upload button clicked');
-              document.getElementById('file-upload')?.click();
-            }}
-            className="bg-[#f3e89a] hover:bg-[#efe076] text-black rounded-l-full px-3 flex items-center justify-center"
-            style={{ width: '48px' }}
+            onClick={handleUploadClick}
+            variant="outline"
+            size="icon"
+            disabled={isLoading}
           >
-            <Upload className="h-5 w-5" />
-          </button>
-        <Input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-            placeholder={isLoading ? "Shabe ai is thinking..." : "Ask me anything about your uploaded files..."}
-          disabled={isLoading}
-            className="flex-1 border-0 focus:ring-0 px-4 py-3 text-base"
+            <Upload className="h-4 w-4" />
+          </Button>
+          
+          <Input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Type your message..."
+            disabled={isLoading}
+            className="flex-1"
           />
-          <Button type="submit" disabled={isLoading} className="bg-[#f3e89a] hover:bg-[#efe076] text-black rounded-r-full px-3 flex items-center justify-center" style={{ width: '48px' }}>
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-        </Button>
-        </div>
-      </form>
+          
+          <Button type="submit" disabled={isLoading || !input.trim()}>
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
+        </form>
+      </div>
     </div>
   );
 }

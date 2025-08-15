@@ -98,11 +98,15 @@ export async function POST(request: NextRequest) {
       messageContent.toLowerCase().trim() === 'yes' || 
       messageContent.toLowerCase().trim() === 'y' ||
       messageContent.toLowerCase().trim() === 'confirm' ||
+      messageContent.toLowerCase().trim() === 'confirm' ||
       messageContent.toLowerCase().trim() === 'correct'
     );
 
     if (isSimpleConfirmation) {
-      console.log('🎯 Simple confirmation detected:', messageContent);
+      logger.info('Simple confirmation detected', { 
+        messageContent: messageContent.substring(0, 50),
+        userId: actualUserId 
+      });
       
       // Check if there's a pending confirmation in the conversation
       const conversationManager = await getConversationManager(actualUserId, 'session-id');
@@ -110,16 +114,17 @@ export async function POST(request: NextRequest) {
         const currentState = conversationManager.getState();
         const lastMessage = currentState.memory.sessionHistory[currentState.memory.sessionHistory.length - 1];
         
-        console.log('🔍 Checking for pending confirmation:', {
+        logger.debug('Checking for pending confirmation', {
           lastMessageExists: !!lastMessage,
           lastMessageAction: lastMessage?.conversationContext?.action,
-          lastMessagePhase: lastMessage?.conversationContext?.phase
+          lastMessagePhase: lastMessage?.conversationContext?.phase,
+          userId: actualUserId
         });
         
         if (lastMessage?.conversationContext?.action === 'update_contact' && 
             lastMessage?.conversationContext?.phase === 'confirmation') {
           
-          console.log('✅ Pending update confirmation found! Processing directly...');
+          logger.info('Pending update confirmation found, processing directly', { userId: actualUserId });
           
           // Extract confirmation data
           const contactId = lastMessage.conversationContext.contactId;
@@ -127,11 +132,17 @@ export async function POST(request: NextRequest) {
           const value = lastMessage.conversationContext.value;
           const contactName = lastMessage.conversationContext.contactName;
           
-          console.log('📝 Confirmation data:', { contactId, field, value, contactName });
+          logger.debug('Confirmation data extracted', { 
+            contactId, 
+            field, 
+            value, 
+            contactName,
+            userId: actualUserId 
+          });
           
           if (contactId && field && value) {
             try {
-              console.log('🚀 Starting direct database update...');
+              logger.info('Starting direct database update', { userId: actualUserId });
               
               // Import Convex for database operations
               const { convex } = await import('@/lib/convex');
@@ -143,7 +154,10 @@ export async function POST(request: NextRequest) {
                 updates: { [field]: value }
               });
 
-              console.log('✅ Direct database update successful:', result);
+              logger.info('Direct database update successful', { 
+                result,
+                userId: actualUserId 
+              });
               
               // Update conversation state
               conversationManager.updateContext(messageContent, 'update_contact');
@@ -173,7 +187,9 @@ export async function POST(request: NextRequest) {
               });
               
             } catch (error) {
-              console.error('❌ Direct database update failed:', error);
+              logger.error('Direct database update failed', error instanceof Error ? error : new Error(String(error)), {
+                userId: actualUserId
+              });
               return NextResponse.json({
                 message: "I encountered an error while updating the contact. Please try again.",
                 conversationContext: {
@@ -187,17 +203,21 @@ export async function POST(request: NextRequest) {
         } else if (lastMessage?.conversationContext?.action === 'delete_contact' && 
                    lastMessage?.conversationContext?.phase === 'confirmation') {
           
-          console.log('✅ Pending delete confirmation found! Processing directly...');
+          logger.info('Pending delete confirmation found, processing directly', { userId: actualUserId });
           
           // Extract confirmation data
           const contactId = lastMessage.conversationContext.contactId;
           const contactName = lastMessage.conversationContext.contactName;
           
-          console.log('📝 Delete confirmation data:', { contactId, contactName });
+          logger.debug('Delete confirmation data extracted', { 
+            contactId, 
+            contactName,
+            userId: actualUserId 
+          });
           
           if (contactId) {
             try {
-              console.log('🚀 Starting direct database deletion...');
+              logger.info('Starting direct database deletion', { userId: actualUserId });
               
               // Import Convex for database operations
               const { convex } = await import('@/lib/convex');
@@ -208,7 +228,10 @@ export async function POST(request: NextRequest) {
                 contactId: contactId as any
               });
 
-              console.log('✅ Direct database deletion successful:', result);
+              logger.info('Direct database deletion successful', { 
+                result,
+                userId: actualUserId 
+              });
               
               // Update conversation state
               conversationManager.updateContext(messageContent, 'delete_contact');
@@ -238,7 +261,9 @@ export async function POST(request: NextRequest) {
               });
               
             } catch (error) {
-              console.error('❌ Direct database deletion failed:', error);
+              logger.error('Direct database deletion failed', error instanceof Error ? error : new Error(String(error)), {
+                userId: actualUserId
+              });
               return NextResponse.json({
                 message: "I encountered an error while deleting the contact. Please try again.",
                 conversationContext: {
@@ -249,130 +274,22 @@ export async function POST(request: NextRequest) {
               });
             }
           }
-        } else if (lastMessage?.conversationContext?.action === 'create_contact' && 
-                   lastMessage?.conversationContext?.phase === 'confirmation') {
-          
-          console.log('✅ Pending create confirmation found! Processing directly...');
-          
-          // Extract confirmation data
-          const contactName = lastMessage.conversationContext.contactName;
-          const email = lastMessage.conversationContext.email;
-          const company = lastMessage.conversationContext.company;
-          
-          console.log('📝 Create confirmation data:', { contactName, email, company });
-          
-          if (contactName && email) {
-            try {
-              console.log('🚀 Starting direct database creation...');
-              
-              // Import Convex for database operations
-              const { convex } = await import('@/lib/convex');
-              const { api } = await import('@/convex/_generated/api');
-              
-              // Get user's team
-              const teams = await convex.query(api.crm.getTeamsByUser, { userId: actualUserId });
-              const teamId = teams.length > 0 ? teams[0]._id : 'default';
-              
-              // Parse name into first and last name
-              const nameParts = contactName.trim().split(' ');
-              const firstName = nameParts[0] || '';
-              const lastName = nameParts.slice(1).join(' ') || '';
-              
-              // Create the contact in the database
-              const result = await convex.mutation(api.crm.createContact, {
-                teamId,
-                createdBy: actualUserId,
-                firstName,
-                lastName,
-                email,
-                company: company || '',
-                phone: '',
-                title: '',
-                leadStatus: 'new',
-                contactType: 'contact',
-                source: 'chat_creation'
-              });
-
-              console.log('✅ Direct database creation successful:', result);
-              
-              // Update conversation state
-              conversationManager.updateContext(messageContent, 'create_contact');
-              
-              // Add assistant response to history
-              const assistantMessage = {
-                role: 'assistant' as const,
-                content: `Perfect! I've successfully created the contact ${contactName} with email ${email}${company ? ` at ${company}` : ''}. The contact has been added to your database.`,
-                timestamp: new Date(),
-                conversationContext: {
-                  phase: 'exploration',
-                  action: 'create_contact',
-                  referringTo: 'new_request'
-                }
-              };
-              conversationManager.addToHistory(assistantMessage);
-              
-              return NextResponse.json({
-                message: `Perfect! I've successfully created the contact ${contactName} with email ${email}${company ? ` at ${company}` : ''}. The contact has been added to your database.`,
-                action: "contact_created",
-                suggestions: conversationManager.getSuggestions(),
-                conversationContext: {
-                  phase: 'exploration',
-                  action: 'create_contact',
-                  referringTo: 'new_request'
-                }
-              });
-              
-            } catch (error) {
-              console.error('❌ Direct database creation failed:', error);
-              return NextResponse.json({
-                message: "I encountered an error while creating the contact. Please try again.",
-                conversationContext: {
-                  phase: 'error',
-                  action: 'create_contact',
-                  referringTo: 'new_request'
-                }
-              });
-            }
-          }
         }
       }
     }
 
-    // Get conversation manager with error handling
-    let conversationManager;
-    try {
-      conversationManager = await getConversationManager(actualUserId, 'session-id');
-    } catch (error) {
-      logger.error('Failed to get conversation manager', undefined, { 
-        userId: actualUserId, 
-        error: error instanceof Error ? error.message : String(error) 
-      });
-      
-      // Return graceful fallback
-      return NextResponse.json({
-        message: "I'm having trouble accessing your conversation history. Let me help you with a fresh start:",
-        suggestions: [
-          "Show me my contacts",
-          "Create a chart",
-          "View my deals",
-          "Help me with accounts"
-        ],
-        conversationContext: {
-          phase: 'exploration',
-          action: 'general_conversation',
-          referringTo: 'new_request'
-        }
-      });
-    }
+    // Get conversation manager for the user
+    const conversationManager = await getConversationManager(actualUserId, 'session-id');
     
     if (conversationManager) {
-      console.log('🧠 Using conversational processing for:', messageContent);
-      console.log('🧠 Message content:', messageContent);
-      console.log('🧠 User ID:', actualUserId);
+      logger.info('Using conversational processing', { 
+        messageContent: messageContent.substring(0, 100),
+        userId: actualUserId 
+      });
       
       try {
         // Use conversational handler for natural language understanding
-        console.log('🧠 Starting conversational handling...');
+        logger.info('Starting conversational handling', { userId: actualUserId });
         const response = await conversationalHandler.handleConversation(messageContent, conversationManager, {
           messages,
           userId: actualUserId,
@@ -383,7 +300,10 @@ export async function POST(request: NextRequest) {
             : undefined,
           ...requestContext
         });
-        console.log('🧠 Conversational response:', JSON.stringify(response, null, 2));
+        logger.debug('Conversational response received', { 
+          responseAction: response.conversationContext?.action,
+          userId: actualUserId 
+        });
         
         // Update conversation state with response
         conversationManager.updateContext(messageContent, response.conversationContext?.action);
@@ -433,7 +353,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Fallback for when conversation manager is not available
-    console.log('⚠️ No conversation manager available, using fallback');
+    logger.warn('No conversation manager available, using fallback', { userId: actualUserId });
     return NextResponse.json({
       message: "I'm having trouble processing your request. Please try again.",
       error: true
