@@ -27,7 +27,9 @@ class IntentRouter {
     logger.info('Routing intent', {
       action: intent.action,
       confidence: intent.confidence,
-      userId: context.userId
+      userId: context.userId,
+      originalMessage: intent.originalMessage,
+      entities: intent.entities
     });
 
     // Find the appropriate handler
@@ -36,6 +38,7 @@ class IntentRouter {
     if (handler) {
       logger.info('Found handler for intent', {
         action: intent.action,
+        handlerType: handler.constructor.name,
         userId: context.userId
       });
       return await handler.handle(intent, context);
@@ -96,20 +99,37 @@ class DataIntentHandler implements IntentHandler {
   async handle(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
     logger.info('Handling data intent', {
       action: intent.action,
+      originalMessage: intent.originalMessage,
+      entities: intent.entities,
       userId: context.userId
     });
 
     // For view_data actions, provide a quick response using available data
     if (intent.action === 'view_data') {
+      logger.info('Processing view_data action', {
+        originalMessage: intent.originalMessage,
+        userId: context.userId
+      });
+      
       const userMessage = intent.originalMessage.toLowerCase();
       
       // Check if user is asking about contact count
       if (userMessage.includes('contact') && 
           (userMessage.includes('how many') || userMessage.includes('count'))) {
         
+        logger.info('Detected contact count query, using direct Convex query', {
+          userMessage,
+          userId: context.userId
+        });
+        
         try {
           // Get team ID from context
           const teamId = context.conversationManager?.getState()?.teamId;
+          
+          logger.info('Team ID for contact query', {
+            teamId,
+            userId: context.userId
+          });
           
           if (teamId) {
             // Import Convex client for direct query
@@ -117,6 +137,11 @@ class DataIntentHandler implements IntentHandler {
             const { api } = await import('@/convex/_generated/api');
             
             const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+            
+            logger.info('Successfully retrieved contacts from Convex', {
+              contactCount: contacts.length,
+              userId: context.userId
+            });
             
             return {
               type: 'text',
