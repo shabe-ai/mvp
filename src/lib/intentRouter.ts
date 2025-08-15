@@ -115,20 +115,31 @@ class DataIntentHandler implements IntentHandler {
       
       const userMessage = intent.originalMessage.toLowerCase();
       
-      // Get team ID from context
-      const teamId = context.conversationManager?.getState()?.teamId;
-      
-      if (!teamId) {
-        return {
-          type: 'text',
-          content: "I need to know which team's data you're asking about. Please try again.",
-          data: { error: 'No team ID available' }
-        };
-      }
+
 
       try {
         // Use Convex client directly for all data queries
         const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+        
+        // Get team ID by querying user's teams
+        let teamId: string;
+        try {
+          const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+          teamId = teams.length > 0 ? teams[0]._id : 'default';
+          
+          logger.info('Team ID retrieved for data query', {
+            teamId,
+            teamsCount: teams.length,
+            userId: context.userId
+          });
+        } catch (error) {
+          logger.error('Failed to get team ID', error as Error, { userId: context.userId });
+          return {
+            type: 'text',
+            content: "I'm having trouble accessing your team data. Please try again in a moment.",
+            data: { error: 'Failed to get team ID' }
+          };
+        }
         
         // Determine what data the user is asking about
         let dataType = 'contacts'; // default
