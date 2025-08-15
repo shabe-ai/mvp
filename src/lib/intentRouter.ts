@@ -132,13 +132,23 @@ class DataIntentHandler implements IntentHandler {
           });
           
           if (teamId) {
-            // Import Convex client for direct query
-            const { convex } = await import('@/lib/convex');
-            const { api } = await import('@/convex/_generated/api');
+            // Use a simple API call instead of dynamic imports
+            const response = await fetch('/api/contacts', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ teamId })
+            });
             
-            const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+            if (!response.ok) {
+              throw new Error(`API call failed: ${response.status}`);
+            }
             
-            logger.info('Successfully retrieved contacts from Convex', {
+            const data = await response.json();
+            const contacts = data.contacts || [];
+            
+            logger.info('Successfully retrieved contacts from API', {
               contactCount: contacts.length,
               userId: context.userId
             });

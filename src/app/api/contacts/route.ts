@@ -17,4 +17,21 @@ export async function GET(req: NextRequest) {
     console.error("Error fetching contacts:", error);
     return NextResponse.json({ error: "Failed to fetch contacts" }, { status: 500 });
   }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const body = await req.json();
+    const { teamId } = body;
+    
+    if (!teamId) {
+      return NextResponse.json({ error: "teamId is required" }, { status: 400 });
+    }
+    
+    const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+    return NextResponse.json({ contacts });
+  } catch (error) {
+    console.error("Error fetching contacts:", error);
+    return NextResponse.json({ error: "Failed to fetch contacts" }, { status: 500 });
+  }
 } 
