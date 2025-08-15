@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import ChatWithSidebar from "@/components/ChatWithSidebar";
+import ConvexProviderWrapper from "@/components/ConvexProvider";
 
 export default async function Home() {
   const { userId } = await auth();
@@ -8,7 +9,9 @@ export default async function Home() {
     <div className="flex flex-col bg-white w-full h-screen min-h-0">
       <main className="flex-1 min-h-0 w-full bg-white flex flex-col p-0 m-0 overflow-hidden">
         {userId ? (
-          <ChatWithSidebar />
+          <ConvexProviderWrapper>
+            <ChatWithSidebar />
+          </ConvexProviderWrapper>
         ) : (
           <div className="text-center py-12 w-full max-w-2xl mx-auto">
             <h2 className="text-3xl font-bold text-black mb-4">

@@ -100,7 +100,7 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
 
   const data = getDataForTable(activeTable);
   const loading = !teams || (teamId && data === undefined) || false;
-  const error: string | null = null; // No error handling needed for direct queries
+  const error: string | null = null; // Convex handles errors internally
 
   const tableConfigs: Record<TableType, TableConfig> = {
     contacts: {

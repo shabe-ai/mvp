@@ -8,8 +8,6 @@ export const metadata = {
   description: "Enterprise conversational workspace with AI-powered chat, email, events, and reports",
 };
 
-
-
 export default function RootLayout({
   children,
 }: {
@@ -25,7 +23,7 @@ export default function RootLayout({
           {/* Main Content */}
           <main className="flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white flex flex-col" style={{ maxWidth: '100vw' }}>
             <PostHogProvider>
-              {children}
+                {children}
             </PostHogProvider>
           </main>
         </body>
