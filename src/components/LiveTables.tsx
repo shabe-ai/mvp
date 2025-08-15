@@ -14,6 +14,8 @@ import {
   ChevronDown
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 type TableType = 'contacts' | 'accounts' | 'deals' | 'activities';
 
@@ -57,10 +59,48 @@ interface LiveTablesProps {
 export default function LiveTables({ onRecordSelect, highlightedRecordId }: LiveTablesProps) {
   const { user } = useUser();
   const [activeTable, setActiveTable] = useState<TableType>('contacts');
-  const [data, setData] = useState<DataRecord[]>([]);
-  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  // Get user's teams for data access
+  const teams = useQuery(api.crm.getTeamsByUser, user?.id ? { userId: user.id } : "skip");
+  const teamId = teams && teams.length > 0 ? teams[0]._id : null;
+
+  // Direct Convex queries for each table type
+  const contacts = useQuery(
+    api.crm.getContactsByTeam, 
+    teamId ? { teamId: teamId.toString() } : "skip"
+  );
+  const accounts = useQuery(
+    api.crm.getAccountsByTeam, 
+    teamId ? { teamId: teamId.toString() } : "skip"
+  );
+  const deals = useQuery(
+    api.crm.getDealsByTeam, 
+    teamId ? { teamId: teamId.toString() } : "skip"
+  );
+  const activities = useQuery(
+    api.crm.getActivitiesByTeam, 
+    teamId ? { teamId: teamId.toString() } : "skip"
+  );
+
+  // Get data based on active table
+  const getDataForTable = (tableType: TableType): DataRecord[] => {
+    switch (tableType) {
+      case 'contacts':
+        return contacts || [];
+      case 'accounts':
+        return accounts || [];
+      case 'deals':
+        return deals || [];
+      case 'activities':
+        return activities || [];
+      default:
+        return [];
+    }
+  };
+
+  const data = getDataForTable(activeTable);
+  const loading = !teams || (teamId && data === undefined) || false;
+  const error: string | null = null; // No error handling needed for direct queries
 
   const tableConfigs: Record<TableType, TableConfig> = {
     contacts: {
@@ -117,79 +157,6 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
     }
   };
 
-  // Fetch data when activeTable changes
-  useEffect(() => {
-    console.log('🔍 LiveTables useEffect triggered:', { user: user?.id, activeTable });
-    if (!user?.id) {
-      console.log('🔍 No user ID, skipping fetch');
-      return;
-    }
-    
-    console.log('🔍 Calling fetchTableData for:', activeTable);
-    fetchTableData();
-  }, [activeTable, user?.id]);
-
-  const fetchTableData = async () => {
-    console.log('🔍 fetchTableData called for:', activeTable);
-    if (!user?.id) {
-      console.log('🔍 No user ID in fetchTableData');
-      return;
-    }
-    
-    console.log('🔍 Starting API call to /api/chat');
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const requestBody = {
-        messages: [{ role: 'user', content: `view all ${activeTable}` }],
-        userId: user.id,
-        sessionFiles: [],
-        companyData: {},
-        userData: {}
-      };
-      
-      console.log('🔍 Making API call with body:', requestBody);
-      
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      
-      console.log('🔍 LiveTables API response:', result);
-      console.log('🔍 LiveTables data structure:', {
-        hasData: !!result.data,
-        hasRecords: !!result.data?.records,
-        isArray: Array.isArray(result.data?.records),
-        recordCount: result.data?.records?.length || 0,
-        dataType: result.data?.type
-      });
-      
-      if (result.data && Array.isArray(result.data.records)) {
-        console.log('🔍 Setting data with records:', result.data.records);
-        setData(result.data.records);
-      } else {
-        console.log('🔍 No valid data found, setting empty array');
-        setData([]);
-      }
-    } catch (err) {
-      console.error('Error fetching table data:', err);
-      setError('Failed to load data');
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Filter data based on search term
   console.log('🔍 LiveTables current state:', {
     dataLength: data.length,
@@ -220,7 +187,10 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
           <Button
             variant="ghost"
             size="sm"
-            onClick={fetchTableData}
+            onClick={() => {
+              // Re-fetch data when refreshing
+              setActiveTable(activeTable); // Keep activeTable as is
+            }}
             disabled={loading}
             className="text-black hover:bg-[#f3e89a]/20"
           >
