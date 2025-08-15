@@ -2,9 +2,9 @@ import {withSentryConfig} from "@sentry/nextjs";
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Temporarily disable ESLint to fix import plugin issue
+  // ESLint is now properly configured for TypeScript
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
   typescript: {
     // Enable TypeScript checks during builds

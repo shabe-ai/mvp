@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "echo 'ESLint temporarily disabled due to import plugin issue'"
+    "lint": "eslint src --ext .ts,.tsx --max-warnings 50"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.25.4",
@@ -46,6 +46,8 @@
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19",
+    "@typescript-eslint/eslint-plugin": "^8.39.1",
+    "@typescript-eslint/parser": "^8.39.1",
     "eslint": "^9",
     "eslint-config-next": "15.4.1",
     "tailwindcss": "^4",
