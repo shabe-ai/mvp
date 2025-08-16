@@ -318,15 +318,8 @@ class DataIntentHandler implements IntentHandler {
              userId: context.userId
            });
            
-           // Add data field only for details queries where it's useful
-           if (queryType === 'details') {
-             response.data = {
-               dataType,
-               queryType,
-               count: data.length,
-               items: data.slice(0, 10) // Show first 10 items
-             };
-           }
+           // Don't add data field to avoid triggering Data Preview modal
+           // The formatted content is sufficient for user display
         
         return response;
         
