@@ -159,10 +159,15 @@ class DataIntentHandler implements IntentHandler {
                    // Detect query type
            if (userMessage.includes('how many') || userMessage.includes('count')) {
              queryType = 'count';
-           } else if (userMessage.includes('details') || userMessage.includes('email') || userMessage.includes('phone') || userMessage.includes('company') || userMessage.includes("'s")) {
+           } else if (userMessage.includes('details') || userMessage.includes('email') || userMessage.includes('phone') || userMessage.includes('company') || userMessage.includes("'s") || userMessage.includes('view')) {
              queryType = 'details';
            } else if (userMessage.includes('name') || userMessage.includes('list') || userMessage.includes('show')) {
              queryType = 'list';
+           }
+           
+           // If we have a specific contact name in entities, default to details unless it's explicitly a count
+           if (intent.entities?.contactName && queryType !== 'count') {
+             queryType = 'details';
            }
         
         logger.info('Data query analysis', {
