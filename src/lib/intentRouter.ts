@@ -156,14 +156,14 @@ class DataIntentHandler implements IntentHandler {
           dataType = 'activities';
         }
         
-        // Detect query type
-        if (userMessage.includes('how many') || userMessage.includes('count')) {
-          queryType = 'count';
-        } else if (userMessage.includes('name') || userMessage.includes('list') || userMessage.includes('show')) {
-          queryType = 'list';
-        } else if (userMessage.includes('email') || userMessage.includes('phone') || userMessage.includes('company')) {
-          queryType = 'details';
-        }
+                   // Detect query type
+           if (userMessage.includes('how many') || userMessage.includes('count')) {
+             queryType = 'count';
+           } else if (userMessage.includes('details') || userMessage.includes('email') || userMessage.includes('phone') || userMessage.includes('company') || userMessage.includes("'s")) {
+             queryType = 'details';
+           } else if (userMessage.includes('name') || userMessage.includes('list') || userMessage.includes('show')) {
+             queryType = 'list';
+           }
         
         logger.info('Data query analysis', {
           dataType,
@@ -236,27 +236,65 @@ class DataIntentHandler implements IntentHandler {
             }
             break;
             
-          case 'details':
-            if (dataType === 'contacts') {
-              const details = data.slice(0, 5).map(contact => {
-                const name = contact.firstName && contact.lastName ? 
-                  `${contact.firstName} ${contact.lastName}` : 
-                  contact.firstName || contact.lastName || 'Unknown';
-                const email = contact.email || 'No email';
-                const phone = contact.phone || 'No phone';
-                const company = contact.company || 'No company';
-                return `${name} (${email}, ${phone}, ${company})`;
-              });
-              content = `Here are the details for your ${dataType}:\n${details.join('\n')}`;
-            } else {
-              const details = data.slice(0, 5).map(item => {
-                const name = item.name || item.title || item.subject || 'Unknown';
-                const description = item.description || 'No description';
-                return `${name}: ${description}`;
-              });
-              content = `Here are the details for your ${dataType}:\n${details.join('\n')}`;
-            }
-            break;
+                       case 'details':
+               if (dataType === 'contacts') {
+                 // Check if we have a specific contact name in the entities
+                 const contactName = intent.entities?.contactName;
+                 
+                 if (contactName) {
+                   // Filter for the specific contact
+                   const targetContact = data.find(contact => {
+                     const fullName = contact.firstName && contact.lastName ? 
+                       `${contact.firstName} ${contact.lastName}`.toLowerCase() : 
+                       (contact.firstName || contact.lastName || '').toLowerCase();
+                     return fullName.includes(contactName.toLowerCase());
+                   });
+                   
+                   if (targetContact) {
+                     const name = targetContact.firstName && targetContact.lastName ? 
+                       `${targetContact.firstName} ${targetContact.lastName}` : 
+                       targetContact.firstName || targetContact.lastName || 'Unknown';
+                     const email = targetContact.email || 'No email';
+                     const phone = targetContact.phone || 'No phone';
+                     const company = targetContact.company || 'No company';
+                     const leadStatus = targetContact.leadStatus || 'No status';
+                     
+                     content = `Here are the details for ${name}:\n\n` +
+                       `📧 Email: ${email}\n` +
+                       `📞 Phone: ${phone}\n` +
+                       `🏢 Company: ${company}\n` +
+                       `📊 Lead Status: ${leadStatus}`;
+                   } else {
+                     content = `I couldn't find a contact named "${contactName}". Here are all your contacts:\n` +
+                       data.map(contact => {
+                         const name = contact.firstName && contact.lastName ? 
+                           `${contact.firstName} ${contact.lastName}` : 
+                           contact.firstName || contact.lastName || 'Unknown';
+                         return `• ${name}`;
+                       }).join('\n');
+                   }
+                 } else {
+                   // Show details for first 5 contacts
+                   const details = data.slice(0, 5).map(contact => {
+                     const name = contact.firstName && contact.lastName ? 
+                       `${contact.firstName} ${contact.lastName}` : 
+                       contact.firstName || contact.lastName || 'Unknown';
+                     const email = contact.email || 'No email';
+                     const phone = contact.phone || 'No phone';
+                     const company = contact.company || 'No company';
+                     return `${name} (${email}, ${phone}, ${company})`;
+                   });
+                   content = `Here are the details for your ${dataType}:\n${details.join('\n')}`;
+                 }
+               } else {
+                 const details = data.slice(0, 5).map(item => {
+                   const name = item.name || item.title || item.subject || 'Unknown';
+                   const description = item.description || 'No description';
+                   return `${name}: ${description}`;
+                 });
+                 content = `Here are the details for your ${dataType}:\n${details.join('\n')}`;
+               }
+               break;
             
           default:
             content = `You have ${data.length} ${dataType} in your database.`;
