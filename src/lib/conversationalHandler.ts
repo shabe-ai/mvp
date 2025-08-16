@@ -264,7 +264,33 @@ export class ConversationalHandler {
               clarificationQuestion: structured.clarificationQuestion
             }
           };
-          return await intentRouter.routeIntent(simplifiedIntent, { ...context, conversationManager });
+          const response = await intentRouter.routeIntent(simplifiedIntent, { ...context, conversationManager });
+          
+          logger.info('Count query response received from intent router', {
+            responseType: response.type,
+            responseContent: response.content,
+            responseMessage: response.message,
+            hasContent: !!response.content,
+            hasMessage: !!response.message,
+            userId: context.userId
+          });
+          
+          // Process the response through conversational logic
+          return {
+            ...response,
+            message: response.content || response.message || 'I found the information you requested.',
+            suggestions: [
+              "Show me my contacts",
+              "Create a chart of my data",
+              "What are my recent activities?",
+              "Help me with something else"
+            ],
+            conversationContext: {
+              phase: 'exploration',
+              action: 'view_data',
+              referringTo: 'new_request'
+            }
+          };
         } else {
           console.log('🔍 Structured analysis failed or low confidence for count query, forcing structured routing anyway');
           // Force structured routing even if confidence is low for count queries
@@ -286,7 +312,33 @@ export class ConversationalHandler {
                 clarificationQuestion: structured.clarificationQuestion
               }
             };
-            return await intentRouter.routeIntent(simplifiedIntent, { ...context, conversationManager });
+            const response = await intentRouter.routeIntent(simplifiedIntent, { ...context, conversationManager });
+            
+            logger.info('Count query response received from intent router (lower confidence)', {
+              responseType: response.type,
+              responseContent: response.content,
+              responseMessage: response.message,
+              hasContent: !!response.content,
+              hasMessage: !!response.message,
+              userId: context.userId
+            });
+            
+            // Process the response through conversational logic
+            return {
+              ...response,
+              message: response.content || response.message || 'I found the information you requested.',
+              suggestions: [
+                "Show me my contacts",
+                "Create a chart of my data",
+                "What are my recent activities?",
+                "Help me with something else"
+              ],
+              conversationContext: {
+                phase: 'exploration',
+                action: 'view_data',
+                referringTo: 'new_request'
+              }
+            };
           } else {
             // If structured analysis completely failed, create a basic count intent
             console.log('🔍 Creating basic count intent for query:', message);
@@ -305,7 +357,33 @@ export class ConversationalHandler {
               }
             };
             // Route directly to intent router for count queries to avoid timeout
-            return await intentRouter.routeIntent(simplifiedIntent, { ...context, conversationManager });
+            const response = await intentRouter.routeIntent(simplifiedIntent, { ...context, conversationManager });
+            
+            logger.info('Count query response received from intent router (basic intent)', {
+              responseType: response.type,
+              responseContent: response.content,
+              responseMessage: response.message,
+              hasContent: !!response.content,
+              hasMessage: !!response.message,
+              userId: context.userId
+            });
+            
+            // Process the response through conversational logic
+            return {
+              ...response,
+              message: response.content || response.message || 'I found the information you requested.',
+              suggestions: [
+                "Show me my contacts",
+                "Create a chart of my data",
+                "What are my recent activities?",
+                "Help me with something else"
+              ],
+              conversationContext: {
+                phase: 'exploration',
+                action: 'view_data',
+                referringTo: 'new_request'
+              }
+            };
           }
         }
       }
