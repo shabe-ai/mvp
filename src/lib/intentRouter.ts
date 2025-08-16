@@ -262,28 +262,28 @@ class DataIntentHandler implements IntentHandler {
             content = `You have ${data.length} ${dataType} in your database.`;
         }
 
-        // Only include data field for list and details queries, not for simple counts
-        const response: any = {
-          type: 'text',
-          content
-        };
-        
-        logger.info('Final response object', {
-          type: response.type,
-          content: response.content,
-          hasData: queryType === 'list' || queryType === 'details',
-          userId: context.userId
-        });
-        
-        // Add data field only for list and details queries where it's useful
-        if (queryType === 'list' || queryType === 'details') {
-          response.data = {
-            dataType,
-            queryType,
-            count: data.length,
-            items: data.slice(0, 10) // Show first 10 items
-          };
-        }
+                   // Only include data field for details queries, not for simple counts or lists
+           const response: any = {
+             type: 'text',
+             content
+           };
+           
+           logger.info('Final response object', {
+             type: response.type,
+             content: response.content,
+             hasData: queryType === 'details',
+             userId: context.userId
+           });
+           
+           // Add data field only for details queries where it's useful
+           if (queryType === 'details') {
+             response.data = {
+               dataType,
+               queryType,
+               count: data.length,
+               items: data.slice(0, 10) // Show first 10 items
+             };
+           }
         
         return response;
         
