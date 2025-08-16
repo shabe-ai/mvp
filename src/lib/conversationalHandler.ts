@@ -623,6 +623,13 @@ Analyze this user message and extract structured information for CRM actions.
         userId: context.userId
       });
 
+      logger.info('About to call intent router', {
+        structuredIntentAction: structuredIntent.action,
+        structuredIntentConfidence: structuredIntent.confidence,
+        contextKeys: Object.keys(context),
+        userId: context.userId
+      });
+
       // Use existing intent router with timeout
       const response = await this.withTimeout(
         intentRouter.routeIntent(structuredIntent, { ...context, conversationManager }),
@@ -632,6 +639,8 @@ Analyze this user message and extract structured information for CRM actions.
       logger.info('Intent router call completed', {
         responseReceived: !!response,
         responseType: response?.type,
+        responseContent: response?.content,
+        responseMessage: response?.message,
         userId: context.userId
       });
 
