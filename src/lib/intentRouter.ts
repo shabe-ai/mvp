@@ -1037,7 +1037,49 @@ Who would you like to send an email to?`,
       });
 
       if (matchingContact) {
-        // Contact exists, draft email
+        // Check if the user provided enough context about what they want to say
+        const userMessage = intent.originalMessage.toLowerCase();
+        const hasSpecificContent = contentType || 
+          userMessage.includes('thank') || 
+          userMessage.includes('follow') || 
+          userMessage.includes('meeting') || 
+          userMessage.includes('proposal') || 
+          userMessage.includes('invoice') || 
+          userMessage.includes('contract') ||
+          userMessage.includes('about') ||
+          userMessage.includes('regarding') ||
+          userMessage.includes('concerning');
+
+        if (!hasSpecificContent) {
+          // User provided vague request, ask for more information
+          return {
+            type: 'text',
+            content: `I found ${matchingContact.firstName} ${matchingContact.lastName} in your contacts. 
+
+To help me draft a better email, could you tell me what you'd like to say to them? For example:
+
+• "Send a thank you email to vigeash gobal"
+• "Follow up with vigeash gobal about the meeting"
+• "Send vigeash gobal an email about the proposal"
+• "Email vigeash gobal regarding the invoice"
+
+What would you like to communicate?`,
+            suggestions: [
+              `Send a thank you email to ${matchingContact.firstName}`,
+              `Follow up with ${matchingContact.firstName} about the meeting`,
+              `Send ${matchingContact.firstName} an email about the proposal`,
+              `Email ${matchingContact.firstName} regarding the invoice`
+            ],
+            conversationContext: {
+              phase: 'data_collection',
+              action: 'send_email',
+              referringTo: 'new_request',
+              pendingEmailRecipient: matchingContact.firstName + ' ' + matchingContact.lastName
+            }
+          };
+        }
+
+        // Contact exists and user provided context, draft email
         const emailContent = this.generateEmailContent(matchingContact, contentType);
         
         const emailResponse = {
@@ -1110,7 +1152,10 @@ For example:
     const lastName = contact.lastName || '';
     const fullName = `${firstName} ${lastName}`.trim();
 
-    if (contentType?.toLowerCase().includes('thank')) {
+    // Check for specific content types in the user's message
+    const userMessage = contentType?.toLowerCase() || '';
+    
+    if (userMessage.includes('thank')) {
       return {
         subject: 'Thank You',
         content: `Dear ${fullName},
@@ -1122,7 +1167,7 @@ I look forward to working together and will follow up with next steps soon.
 Best regards,
 [Your Name]`
       };
-    } else if (contentType?.toLowerCase().includes('follow')) {
+    } else if (userMessage.includes('follow')) {
       return {
         subject: 'Follow Up',
         content: `Dear ${fullName},
@@ -1130,6 +1175,62 @@ Best regards,
 I hope this email finds you well. I wanted to follow up on our recent conversation and see if you have any questions or need additional information.
 
 Please don't hesitate to reach out if there's anything I can help with.
+
+Best regards,
+[Your Name]`
+      };
+    } else if (userMessage.includes('meeting')) {
+      return {
+        subject: 'Meeting Follow-up',
+        content: `Dear ${fullName},
+
+Thank you for the productive meeting today. I wanted to follow up on the key points we discussed and confirm our next steps.
+
+[Add specific meeting details and action items here]
+
+Please let me know if you have any questions or if there's anything else you'd like to discuss.
+
+Best regards,
+[Your Name]`
+      };
+    } else if (userMessage.includes('proposal')) {
+      return {
+        subject: 'Proposal Discussion',
+        content: `Dear ${fullName},
+
+I hope this email finds you well. I wanted to discuss the proposal we've been working on and get your thoughts on the next steps.
+
+[Add specific proposal details here]
+
+I look forward to hearing your feedback and moving forward with this opportunity.
+
+Best regards,
+[Your Name]`
+      };
+    } else if (userMessage.includes('invoice')) {
+      return {
+        subject: 'Invoice Inquiry',
+        content: `Dear ${fullName},
+
+I hope you're doing well. I wanted to follow up regarding the recent invoice and ensure everything is on track.
+
+[Add specific invoice details here]
+
+Please let me know if you need any additional information or have any questions.
+
+Best regards,
+[Your Name]`
+      };
+    } else if (userMessage.includes('contract')) {
+      return {
+        subject: 'Contract Discussion',
+        content: `Dear ${fullName},
+
+I hope this email finds you well. I wanted to discuss the contract terms and ensure we're aligned on all the key points.
+
+[Add specific contract details here]
+
+I look forward to finalizing this agreement and moving forward with our partnership.
 
 Best regards,
 [Your Name]`
