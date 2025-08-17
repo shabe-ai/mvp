@@ -266,6 +266,9 @@ export default function Chat({ onAction }: ChatProps = {}) {
         throw new Error(data.error);
       }
 
+      // Debug: Log the entire response data
+      console.log('Full response data:', JSON.stringify(data, null, 2));
+
       // Handle email draft response
       if (data.type === 'email_draft' && data.emailDraft) {
         console.log('Setting email draft:', {
