@@ -19,6 +19,12 @@ export interface ConversationalUnderstanding {
 
 export interface ConversationalResponse {
   message: string;
+  type?: string;
+  emailDraft?: {
+    to: string;
+    subject: string;
+    content: string;
+  };
   action?: string;
   data?: any;
   chartSpec?: any;
