@@ -944,6 +944,12 @@ Which deal would you like to delete?`,
 
 // Email Intent Handler
 class EmailIntentHandler implements IntentHandler {
+  private convex: ConvexHttpClient;
+
+  constructor() {
+    this.convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  }
+
   canHandle(intent: SimplifiedIntent): boolean {
     return intent.action === 'send_email';
   }
@@ -1132,8 +1138,6 @@ Best regards,
       };
     }
   }
-
-  private convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 }
 
 // Analysis Intent Handler
