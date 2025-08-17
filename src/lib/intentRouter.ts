@@ -368,11 +368,12 @@ class CrudIntentHandler implements IntentHandler {
       userId: context.userId
     });
 
-    // Handle contact creation specifically
-    if (intent.action === 'create_contact') {
-      return {
-        type: 'text',
-        content: `I'd be happy to help you create a new contact! 
+    // Handle all CRUD operations comprehensively
+    switch (intent.action) {
+      case 'create_contact':
+        return {
+          type: 'text',
+          content: `I'd be happy to help you create a new contact! 
 
 To create a contact, I'll need some information from you. Please provide:
 
@@ -390,17 +391,257 @@ You can provide this information in any format, for example:
 "Create a contact for John Smith, john.smith@example.com, phone 555-0123, company TechCorp"
 
 What details would you like to include for the new contact?`,
-        suggestions: [
-          "Create contact: John Smith, john@example.com",
-          "Add contact: Sarah Wilson, sarah@company.com, phone 555-0123",
-          "New contact: Mike Johnson, mike@tech.com, company TechStart"
-        ],
-        conversationContext: {
-          phase: 'data_collection',
-          action: 'create_contact',
-          referringTo: 'new_request'
-        }
-      };
+          suggestions: [
+            "Create contact: John Smith, john@example.com",
+            "Add contact: Sarah Wilson, sarah@company.com, phone 555-0123",
+            "New contact: Mike Johnson, mike@tech.com, company TechStart"
+          ],
+          conversationContext: {
+            phase: 'data_collection',
+            action: 'create_contact',
+            referringTo: 'new_request'
+          }
+        };
+
+      case 'create_account':
+        return {
+          type: 'text',
+          content: `I'd be happy to help you create a new account! 
+
+To create an account, I'll need some information from you. Please provide:
+
+**Required:**
+• Company Name
+
+**Optional:**
+• Industry
+• Website
+• Phone Number
+• Annual Revenue
+• Employee Count
+
+You can provide this information in any format, for example:
+"Create account for TechCorp, industry technology, website techcorp.com, revenue 5M"
+
+What details would you like to include for the new account?`,
+          suggestions: [
+            "Create account: TechCorp, technology industry",
+            "Add account: Global Solutions, website globalsolutions.com",
+            "New account: Startup Inc, revenue 2M, 50 employees"
+          ],
+          conversationContext: {
+            phase: 'data_collection',
+            action: 'create_account',
+            referringTo: 'new_request'
+          }
+        };
+
+      case 'create_deal':
+        return {
+          type: 'text',
+          content: `I'd be happy to help you create a new deal! 
+
+To create a deal, I'll need some information from you. Please provide:
+
+**Required:**
+• Deal Name
+• Stage (prospecting, qualification, proposal, negotiation, closed_won, closed_lost)
+
+**Optional:**
+• Amount
+• Contact/Account (if related)
+• Close Date
+• Probability
+• Description
+
+You can provide this information in any format, for example:
+"Create deal for Software License, stage proposal, amount 50000, close date next month"
+
+What details would you like to include for the new deal?`,
+          suggestions: [
+            "Create deal: Software License, proposal stage, 50K",
+            "Add deal: Consulting Project, qualification, 25K",
+            "New deal: Enterprise Contract, negotiation, 100K"
+          ],
+          conversationContext: {
+            phase: 'data_collection',
+            action: 'create_deal',
+            referringTo: 'new_request'
+          }
+        };
+
+      case 'update_contact':
+        return {
+          type: 'text',
+          content: `I'd be happy to help you update a contact! 
+
+Please provide:
+• Contact name (who to update)
+• What field to update (email, phone, company, lead status, etc.)
+• New value
+
+For example:
+"Update John Smith's email to john.new@company.com"
+"Change Sarah Wilson's phone to 555-9999"
+"Set Mike Johnson's lead status to qualified"
+
+Which contact would you like to update and what changes should I make?`,
+          suggestions: [
+            "Update John Smith's email to john.new@company.com",
+            "Change Sarah Wilson's phone to 555-9999",
+            "Set Mike Johnson's lead status to qualified"
+          ],
+          conversationContext: {
+            phase: 'data_collection',
+            action: 'update_contact',
+            referringTo: 'new_request'
+          }
+        };
+
+      case 'update_account':
+        return {
+          type: 'text',
+          content: `I'd be happy to help you update an account! 
+
+Please provide:
+• Account name (which account to update)
+• What field to update (industry, website, revenue, etc.)
+• New value
+
+For example:
+"Update TechCorp's industry to software"
+"Change Global Solutions revenue to 10M"
+"Set Startup Inc website to startupinc.com"
+
+Which account would you like to update and what changes should I make?`,
+          suggestions: [
+            "Update TechCorp's industry to software",
+            "Change Global Solutions revenue to 10M",
+            "Set Startup Inc website to startupinc.com"
+          ],
+          conversationContext: {
+            phase: 'data_collection',
+            action: 'update_account',
+            referringTo: 'new_request'
+          }
+        };
+
+      case 'update_deal':
+        return {
+          type: 'text',
+          content: `I'd be happy to help you update a deal! 
+
+Please provide:
+• Deal name (which deal to update)
+• What field to update (stage, amount, close date, etc.)
+• New value
+
+For example:
+"Update Software License deal stage to closed_won"
+"Change Consulting Project amount to 30K"
+"Set Enterprise Contract close date to December 15"
+
+Which deal would you like to update and what changes should I make?`,
+          suggestions: [
+            "Update Software License deal stage to closed_won",
+            "Change Consulting Project amount to 30K",
+            "Set Enterprise Contract close date to December 15"
+          ],
+          conversationContext: {
+            phase: 'data_collection',
+            action: 'update_deal',
+            referringTo: 'new_request'
+          }
+        };
+
+      case 'delete_contact':
+        return {
+          type: 'text',
+          content: `I'd be happy to help you delete a contact! 
+
+Please provide the name of the contact you want to delete.
+
+For example:
+"Delete John Smith"
+"Remove Sarah Wilson from contacts"
+"Delete contact Mike Johnson"
+
+⚠️ **Warning**: This action cannot be undone. The contact and all associated data will be permanently removed.
+
+Which contact would you like to delete?`,
+          suggestions: [
+            "Delete John Smith",
+            "Remove Sarah Wilson from contacts",
+            "Delete contact Mike Johnson"
+          ],
+          conversationContext: {
+            phase: 'confirmation',
+            action: 'delete_contact',
+            referringTo: 'new_request'
+          }
+        };
+
+      case 'delete_account':
+        return {
+          type: 'text',
+          content: `I'd be happy to help you delete an account! 
+
+Please provide the name of the account you want to delete.
+
+For example:
+"Delete TechCorp"
+"Remove Global Solutions account"
+"Delete account Startup Inc"
+
+⚠️ **Warning**: This action cannot be undone. The account and all associated data will be permanently removed.
+
+Which account would you like to delete?`,
+          suggestions: [
+            "Delete TechCorp",
+            "Remove Global Solutions account",
+            "Delete account Startup Inc"
+          ],
+          conversationContext: {
+            phase: 'confirmation',
+            action: 'delete_account',
+            referringTo: 'new_request'
+          }
+        };
+
+      case 'delete_deal':
+        return {
+          type: 'text',
+          content: `I'd be happy to help you delete a deal! 
+
+Please provide the name of the deal you want to delete.
+
+For example:
+"Delete Software License deal"
+"Remove Consulting Project"
+"Delete deal Enterprise Contract"
+
+⚠️ **Warning**: This action cannot be undone. The deal and all associated data will be permanently removed.
+
+Which deal would you like to delete?`,
+          suggestions: [
+            "Delete Software License deal",
+            "Remove Consulting Project",
+            "Delete deal Enterprise Contract"
+          ],
+          conversationContext: {
+            phase: 'confirmation',
+            action: 'delete_deal',
+            referringTo: 'new_request'
+          }
+        };
+
+      default:
+        // For any other CRUD operations, use conversational handler
+        return await conversationalHandler.handleConversation(
+          intent.context.userGoal || 'CRUD operation',
+          context.conversationManager,
+          context
+        );
     }
 
     // For other CRUD operations, use conversational handler
