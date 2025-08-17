@@ -743,6 +743,8 @@ Analyze this user message and extract structured information for CRM actions.
       
       const finalResponse = {
         ...response,
+        type: response.type, // Preserve the response type
+        emailDraft: response.emailDraft, // Preserve email draft data
         message: this.enhanceResponseMessage(responseMessage, understanding),
         suggestions: adaptiveResponse.suggestions || understanding.suggestedActions || response.suggestions,
         ragInsights: ragEnhancedResponse.ragInsights,
