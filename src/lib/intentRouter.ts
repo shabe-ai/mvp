@@ -368,7 +368,42 @@ class CrudIntentHandler implements IntentHandler {
       userId: context.userId
     });
 
-    // Use conversational handler for CRUD operations
+    // Handle contact creation specifically
+    if (intent.action === 'create_contact') {
+      return {
+        type: 'text',
+        content: `I'd be happy to help you create a new contact! 
+
+To create a contact, I'll need some information from you. Please provide:
+
+**Required:**
+• First Name
+• Last Name  
+• Email
+
+**Optional:**
+• Phone Number
+• Company
+• Lead Status
+
+You can provide this information in any format, for example:
+"Create a contact for John Smith, john.smith@example.com, phone 555-0123, company TechCorp"
+
+What details would you like to include for the new contact?`,
+        suggestions: [
+          "Create contact: John Smith, john@example.com",
+          "Add contact: Sarah Wilson, sarah@company.com, phone 555-0123",
+          "New contact: Mike Johnson, mike@tech.com, company TechStart"
+        ],
+        conversationContext: {
+          phase: 'data_collection',
+          action: 'create_contact',
+          referringTo: 'new_request'
+        }
+      };
+    }
+
+    // For other CRUD operations, use conversational handler
     return await conversationalHandler.handleConversation(
       intent.context.userGoal || 'CRUD operation',
       context.conversationManager,
