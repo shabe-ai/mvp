@@ -728,6 +728,9 @@ Analyze this user message and extract structured information for CRM actions.
         responseMessage: response.message,
         hasContent: !!response.content,
         hasMessage: !!response.message,
+        hasEmailDraft: !!response.emailDraft,
+        emailDraftTo: response.emailDraft?.to,
+        emailDraftSubject: response.emailDraft?.subject,
         userId: context.userId
       });
 
@@ -755,6 +758,10 @@ Analyze this user message and extract structured information for CRM actions.
       logger.info('Final conversational response', {
         finalMessage: finalResponse.message,
         hasMessage: !!finalResponse.message,
+        finalType: finalResponse.type,
+        hasEmailDraft: !!finalResponse.emailDraft,
+        emailDraftTo: finalResponse.emailDraft?.to,
+        emailDraftSubject: finalResponse.emailDraft?.subject,
         userId: context.userId
       });
       

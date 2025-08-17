@@ -1040,7 +1040,7 @@ Who would you like to send an email to?`,
         // Contact exists, draft email
         const emailContent = this.generateEmailContent(matchingContact, contentType);
         
-        return {
+        const emailResponse = {
           type: 'email_draft',
           content: `I've drafted an email for you to ${matchingContact.firstName} ${matchingContact.lastName}.`,
           emailDraft: {
@@ -1054,6 +1054,16 @@ Who would you like to send an email to?`,
             referringTo: 'new_request'
           }
         };
+        
+        logger.info('Email draft response created', {
+          type: emailResponse.type,
+          hasEmailDraft: !!emailResponse.emailDraft,
+          emailDraftTo: emailResponse.emailDraft?.to,
+          emailDraftSubject: emailResponse.emailDraft?.subject,
+          userId: context.userId
+        });
+        
+        return emailResponse;
       } else {
         // Contact doesn't exist
         return {
