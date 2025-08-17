@@ -640,9 +640,128 @@ What details would you like to include for the new deal?`,
         };
 
       case 'update_contact':
-        return {
-          type: 'text',
-          content: `I'd be happy to help you update a contact! 
+        // Check if we have update details in the intent entities
+        if (intent.entities?.contactName && intent.entities?.field && intent.entities?.value) {
+          // We have update details, try to update the contact
+          try {
+            logger.info('Attempting to update contact with provided details', {
+              entities: intent.entities,
+              userId: context.userId
+            });
+
+            const contactName = intent.entities.contactName;
+            const field = intent.entities.field;
+            const value = intent.entities.value;
+
+            // Get team ID
+            const teams = await this.convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+            const teamId = teams.length > 0 ? teams[0]._id : 'default';
+
+            // Find the contact by name
+            const contacts = await this.convex.query(api.crm.getContactsByTeam, { teamId });
+            const targetContact = contacts.find(contact => {
+              const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
+              return fullName.includes(contactName.toLowerCase());
+            });
+
+            if (!targetContact) {
+              return {
+                type: 'text',
+                content: `❌ I couldn't find a contact named "${contactName}". 
+
+Available contacts:
+${contacts.slice(0, 5).map(contact => {
+  const name = contact.firstName && contact.lastName ? 
+    `${contact.firstName} ${contact.lastName}` : 
+    contact.firstName || contact.lastName || 'Unknown';
+  return `• ${name}`;
+}).join('\n')}
+
+Please check the spelling or try a different contact name.`,
+                conversationContext: {
+                  phase: 'data_collection',
+                  action: 'update_contact',
+                  referringTo: 'new_request'
+                }
+              };
+            }
+
+            // Validate field name
+            const validFields = ['firstName', 'lastName', 'email', 'phone', 'company', 'title', 'leadStatus'];
+            if (!validFields.includes(field)) {
+              return {
+                type: 'text',
+                content: `❌ Invalid field "${field}". 
+
+Valid fields to update:
+• firstName, lastName, email, phone, company, title, leadStatus
+
+Please specify a valid field to update.`,
+                conversationContext: {
+                  phase: 'data_collection',
+                  action: 'update_contact',
+                  referringTo: 'new_request'
+                }
+              };
+            }
+
+            // Update the contact
+            await this.convex.mutation(api.crm.updateContact, {
+              contactId: targetContact._id,
+              updates: { [field]: value }
+            });
+
+            logger.info('Contact updated successfully', {
+              contactId: targetContact._id,
+              field,
+              value,
+              userId: context.userId
+            });
+
+            const updatedName = targetContact.firstName && targetContact.lastName ? 
+              `${targetContact.firstName} ${targetContact.lastName}` : 
+              targetContact.firstName || targetContact.lastName || 'Unknown';
+
+            return {
+              type: 'text',
+              content: `✅ Contact updated successfully!
+
+**Updated Contact:**
+• Name: ${updatedName}
+• Field: ${field}
+• New Value: ${value}
+
+The changes have been saved to your database.`,
+              conversationContext: {
+                phase: 'exploration',
+                action: 'update_contact',
+                referringTo: 'new_request'
+              }
+            };
+
+          } catch (error) {
+            logger.error('Failed to update contact', error instanceof Error ? error : undefined, {
+              entities: intent.entities,
+              userId: context.userId
+            });
+
+            return {
+              type: 'text',
+              content: `❌ Sorry, I encountered an error while updating the contact. Please try again.
+
+Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              conversationContext: {
+                phase: 'data_collection',
+                action: 'update_contact',
+                referringTo: 'new_request'
+              }
+            };
+          }
+        } else {
+          // No update details provided, show data collection prompt
+          return {
+            type: 'text',
+            content: `I'd be happy to help you update a contact! 
 
 Please provide:
 • Contact name (who to update)
@@ -655,17 +774,18 @@ For example:
 "Set Mike Johnson's lead status to qualified"
 
 Which contact would you like to update and what changes should I make?`,
-          suggestions: [
-            "Update John Smith's email to john.new@company.com",
-            "Change Sarah Wilson's phone to 555-9999",
-            "Set Mike Johnson's lead status to qualified"
-          ],
-          conversationContext: {
-            phase: 'data_collection',
-            action: 'update_contact',
-            referringTo: 'new_request'
-          }
-        };
+            suggestions: [
+              "Update John Smith's email to john.new@company.com",
+              "Change Sarah Wilson's phone to 555-9999",
+              "Set Mike Johnson's lead status to qualified"
+            ],
+            conversationContext: {
+              phase: 'data_collection',
+              action: 'update_contact',
+              referringTo: 'new_request'
+            }
+          };
+        }
 
       case 'update_account':
         return {
