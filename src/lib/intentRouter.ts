@@ -989,17 +989,45 @@ Who would you like to send an email to?`,
       const teamId = teams.length > 0 ? teams[0]._id : 'default';
       const contacts = await this.convex.query(api.crm.getContactsByTeam, { teamId });
 
-      // Find matching contact
+      logger.info('Email intent contact search', {
+        recipient,
+        totalContacts: contacts.length,
+        contactNames: contacts.map(c => `${c.firstName} ${c.lastName}`),
+        userId: context.userId
+      });
+
+      // Find matching contact with more precise matching
       const matchingContact = contacts.find(contact => {
         const contactName = contact.firstName && contact.lastName 
           ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
           : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
         const searchName = recipient.toLowerCase();
         
-        return contactName.includes(searchName) || 
-               searchName.includes(contactName) ||
-               contactName.split(' ').some((part: string) => searchName.includes(part)) ||
-               searchName.split(' ').some((part: string) => contactName.includes(part));
+        // Exact match first
+        if (contactName === searchName) {
+          return true;
+        }
+        
+        // Check if search name contains the full contact name
+        if (searchName.includes(contactName) && contactName.length > 2) {
+          return true;
+        }
+        
+        // Check if contact name contains the search name
+        if (contactName.includes(searchName) && searchName.length > 2) {
+          return true;
+        }
+        
+        // Check for partial matches on first name or last name
+        const searchParts = searchName.split(' ').filter((part: string) => part.length > 1);
+        const contactParts = contactName.split(' ').filter((part: string) => part.length > 1);
+        
+        // At least 2 parts should match
+        const matchingParts = searchParts.filter((searchPart: string) => 
+          contactParts.some((contactPart: string) => contactPart.includes(searchPart) || searchPart.includes(contactPart))
+        );
+        
+        return matchingParts.length >= Math.min(2, searchParts.length);
       });
 
       if (matchingContact) {
