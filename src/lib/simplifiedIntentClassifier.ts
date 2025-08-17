@@ -153,6 +153,12 @@ Examples:
 - "create a bar chart" → action: "create_chart", entities: {"chartType": "bar"}
 - "send email to john" → action: "send_email", entities: {"recipient": "john"}
 
+Data Collection Context Examples:
+- If user says "create a new contact" → action: "create_contact"
+- If user then provides "John Smith, john@example.com, phone 555-0123" → action: "create_contact" (continuing data collection)
+- If user says "update sarah's email" → action: "update_contact", entities: {"contactName": "sarah", "field": "email"}
+- If user then provides "sarah.new@company.com" → action: "update_contact" (continuing data collection)
+
 Extract relevant entities like:
 - chartType: line, bar, pie, area, scatter
 - dataType: contacts, deals, accounts, activities
@@ -192,13 +198,27 @@ If the user's intent is unclear or ambiguous, set needsClarification to true and
       return 'New conversation';
     }
 
+    // Check if we're in a data collection phase for CRUD operations
+    const lastAssistantMessage = history.slice().reverse().find((msg: any) => msg.role === 'assistant');
+    const isInDataCollection = lastAssistantMessage?.conversationContext?.phase === 'data_collection';
+    const currentAction = lastAssistantMessage?.conversationContext?.action;
+
     const contextParts = recentMessages.map((msg: any) => {
       const role = msg.role === 'user' ? 'User' : 'Assistant';
       const action = msg.conversationContext?.action || 'general';
       return `${role}: ${action}`;
     });
 
-    return `Recent context: ${contextParts.join(', ')}`;
+    let contextString = `Recent context: ${contextParts.join(', ')}`;
+    
+    // Add specific context for data collection phases
+    if (isInDataCollection && currentAction) {
+      contextString += `\n\nIMPORTANT: The user is currently in a data collection phase for ${currentAction}. 
+      If the user provides contact details (name, email, phone, company, etc.), this should be treated as 
+      continuing the ${currentAction} flow, NOT as a new update_contact action.`;
+    }
+
+    return contextString;
   }
 
   private normalizeIntent(parsedIntent: any, originalMessage: string): SimplifiedIntent {

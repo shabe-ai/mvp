@@ -350,6 +350,12 @@ class DataIntentHandler implements IntentHandler {
 
 // CRUD Intent Handler
 class CrudIntentHandler implements IntentHandler {
+  private convex: ConvexHttpClient;
+
+  constructor() {
+    this.convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  }
+
   canHandle(intent: SimplifiedIntent): boolean {
     return intent.action === 'create_contact' || 
            intent.action === 'update_contact' || 
@@ -362,6 +368,72 @@ class CrudIntentHandler implements IntentHandler {
            intent.action === 'delete_deal';
   }
 
+  private parseContactData(entities: any, originalMessage: string): {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    company?: string;
+    leadStatus?: string;
+  } {
+    // Try to extract from entities first
+    let firstName = entities.firstName || '';
+    let lastName = entities.lastName || '';
+    let email = entities.email || '';
+    let phone = entities.phone || '';
+    let company = entities.company || '';
+    let leadStatus = entities.leadStatus || '';
+
+    // If we have a contactName, try to split it into first and last name
+    if (entities.contactName && !firstName && !lastName) {
+      const nameParts = entities.contactName.split(' ');
+      firstName = nameParts[0] || '';
+      lastName = nameParts.slice(1).join(' ') || '';
+    }
+
+    // If we still don't have names, try to extract from the original message
+    if (!firstName && !lastName) {
+      const nameMatch = originalMessage.match(/([A-Za-z]+)\s+([A-Za-z]+)/);
+      if (nameMatch) {
+        firstName = nameMatch[1];
+        lastName = nameMatch[2];
+      }
+    }
+
+    // Extract email if not already found
+    if (!email) {
+      const emailMatch = originalMessage.match(/([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/);
+      if (emailMatch) {
+        email = emailMatch[1];
+      }
+    }
+
+    // Extract phone if not already found
+    if (!phone) {
+      const phoneMatch = originalMessage.match(/(?:phone|tel|mobile|cell)[:\s-]*([0-9\-\(\)\s]+)/i);
+      if (phoneMatch) {
+        phone = phoneMatch[1].trim();
+      }
+    }
+
+    // Extract company if not already found
+    if (!company) {
+      const companyMatch = originalMessage.match(/(?:company|corp|inc|llc)[:\s-]*([A-Za-z0-9\s]+)/i);
+      if (companyMatch) {
+        company = companyMatch[1].trim();
+      }
+    }
+
+    return {
+      firstName,
+      lastName,
+      email,
+      phone: phone || undefined,
+      company: company || undefined,
+      leadStatus: leadStatus || undefined
+    };
+  }
+
   async handle(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
     logger.info('Handling CRUD intent', {
       action: intent.action,
@@ -371,9 +443,105 @@ class CrudIntentHandler implements IntentHandler {
     // Handle all CRUD operations comprehensively
     switch (intent.action) {
       case 'create_contact':
-        return {
-          type: 'text',
-          content: `I'd be happy to help you create a new contact! 
+        // Check if we have contact details in the intent entities
+        if (intent.entities?.firstName || intent.entities?.email || intent.entities?.contactName) {
+          // We have contact details, try to create the contact
+          try {
+            logger.info('Attempting to create contact with provided details', {
+              entities: intent.entities,
+              userId: context.userId
+            });
+
+            // Parse contact details from entities
+            const contactData = this.parseContactData(intent.entities, intent.originalMessage);
+            
+            if (!contactData.firstName || !contactData.lastName || !contactData.email) {
+              return {
+                type: 'text',
+                content: `I need more information to create the contact. Please provide:
+
+**Required:**
+• First Name
+• Last Name  
+• Email
+
+You provided: ${JSON.stringify(contactData, null, 2)}
+
+Please provide the missing required fields.`,
+                conversationContext: {
+                  phase: 'data_collection',
+                  action: 'create_contact',
+                  referringTo: 'new_request'
+                }
+              };
+            }
+
+            // Get team ID
+            const teams = await this.convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+            const teamId = teams.length > 0 ? teams[0]._id : 'default';
+
+            // Create the contact
+            const contactId = await this.convex.mutation(api.crm.createContact, {
+              teamId,
+              createdBy: context.userId,
+              firstName: contactData.firstName,
+              lastName: contactData.lastName,
+              email: contactData.email,
+              phone: contactData.phone,
+              company: contactData.company,
+              leadStatus: (contactData.leadStatus as 'new' | 'contacted' | 'qualified' | 'unqualified') || 'new',
+              contactType: 'contact',
+              source: 'chat_creation'
+            });
+
+            logger.info('Contact created successfully', {
+              contactId,
+              contactData,
+              userId: context.userId
+            });
+
+            return {
+              type: 'text',
+              content: `✅ Contact created successfully!
+
+**Contact Details:**
+• Name: ${contactData.firstName} ${contactData.lastName}
+• Email: ${contactData.email}
+${contactData.phone ? `• Phone: ${contactData.phone}` : ''}
+${contactData.company ? `• Company: ${contactData.company}` : ''}
+• Lead Status: ${contactData.leadStatus || 'new'}
+
+The contact has been added to your database.`,
+              conversationContext: {
+                phase: 'exploration',
+                action: 'create_contact',
+                referringTo: 'new_request'
+              }
+            };
+
+          } catch (error) {
+            logger.error('Failed to create contact', error instanceof Error ? error : undefined, {
+              entities: intent.entities,
+              userId: context.userId
+            });
+
+            return {
+              type: 'text',
+              content: `❌ Sorry, I encountered an error while creating the contact. Please try again or provide the information in a different format.
+
+Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              conversationContext: {
+                phase: 'data_collection',
+                action: 'create_contact',
+                referringTo: 'new_request'
+              }
+            };
+          }
+        } else {
+          // No contact details provided, show data collection prompt
+          return {
+            type: 'text',
+            content: `I'd be happy to help you create a new contact! 
 
 To create a contact, I'll need some information from you. Please provide:
 
@@ -391,17 +559,18 @@ You can provide this information in any format, for example:
 "Create a contact for John Smith, john.smith@example.com, phone 555-0123, company TechCorp"
 
 What details would you like to include for the new contact?`,
-          suggestions: [
-            "Create contact: John Smith, john@example.com",
-            "Add contact: Sarah Wilson, sarah@company.com, phone 555-0123",
-            "New contact: Mike Johnson, mike@tech.com, company TechStart"
-          ],
-          conversationContext: {
-            phase: 'data_collection',
-            action: 'create_contact',
-            referringTo: 'new_request'
-          }
-        };
+            suggestions: [
+              "Create contact: John Smith, john@example.com",
+              "Add contact: Sarah Wilson, sarah@company.com, phone 555-0123",
+              "New contact: Mike Johnson, mike@tech.com, company TechStart"
+            ],
+            conversationContext: {
+              phase: 'data_collection',
+              action: 'create_contact',
+              referringTo: 'new_request'
+            }
+          };
+        }
 
       case 'create_account':
         return {
