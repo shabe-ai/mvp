@@ -694,7 +694,6 @@ export default function Chat({ onAction }: ChatProps = {}) {
       </div>
 
       {/* Email Draft Modal */}
-      {console.log('Email draft state:', emailDraft)}
       {emailDraft && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
