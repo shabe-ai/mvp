@@ -268,6 +268,14 @@ export default function Chat({ onAction }: ChatProps = {}) {
 
       // Handle email draft response
       if (data.type === 'email_draft' && data.emailDraft) {
+        console.log('Setting email draft:', {
+          type: data.type,
+          emailDraft: data.emailDraft,
+          to: data.emailDraft.to,
+          subject: data.emailDraft.subject,
+          content: data.emailDraft.content
+        });
+        
         setEmailDraft({
           to: data.emailDraft.to,
           subject: data.emailDraft.subject,
@@ -279,6 +287,12 @@ export default function Chat({ onAction }: ChatProps = {}) {
             timestamp: new Date(),
           },
           activityData: {}
+        });
+      } else {
+        console.log('No email draft data:', {
+          type: data.type,
+          hasEmailDraft: !!data.emailDraft,
+          emailDraft: data.emailDraft
         });
       }
 
@@ -680,6 +694,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
       </div>
 
       {/* Email Draft Modal */}
+      {console.log('Email draft state:', emailDraft)}
       {emailDraft && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
