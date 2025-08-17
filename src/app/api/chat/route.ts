@@ -320,6 +320,8 @@ export async function POST(request: NextRequest) {
         // Return structured response
         return NextResponse.json({
           message: response.message,
+          type: response.type,
+          emailDraft: response.emailDraft,
           chartSpec: response.chartSpec,
           enhancedChart: response.enhancedChart,
           data: response.data,
