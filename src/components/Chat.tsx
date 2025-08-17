@@ -266,10 +266,26 @@ export default function Chat({ onAction }: ChatProps = {}) {
         throw new Error(data.error);
       }
 
+      // Handle email draft response
+      if (data.type === 'email_draft' && data.emailDraft) {
+        setEmailDraft({
+          to: data.emailDraft.to,
+          subject: data.emailDraft.subject,
+          content: data.emailDraft.content,
+          aiMessage: {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: data.content || data.message,
+            timestamp: new Date(),
+          },
+          activityData: {}
+        });
+      }
+
       const assistantMessage: Message = {
               id: (Date.now() + 1).toString(),
               role: "assistant",
-              content: data.message,
+              content: data.content || data.message,
               timestamp: new Date(),
               action: data.action,
               data: data.data,
