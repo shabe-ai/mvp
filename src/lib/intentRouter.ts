@@ -954,13 +954,158 @@ class EmailIntentHandler implements IntentHandler {
       userId: context.userId
     });
 
-    // Use conversational handler for email operations
-    return await conversationalHandler.handleConversation(
-      intent.context.userGoal || 'Email operation',
-      context.conversationManager,
-      context
-    );
+    try {
+      const recipient = intent.entities?.recipient;
+      const contentType = intent.entities?.content_type;
+
+      if (!recipient) {
+        return {
+          type: 'text',
+          content: `I'd be happy to help you send an email! 
+
+Please provide the recipient's name or email address.
+
+For example:
+"Send an email to john@example.com"
+"Email Sarah Johnson about the meeting"
+"Send a thank you email to Mike Chen"
+
+Who would you like to send an email to?`,
+          suggestions: [
+            "Send email to john@example.com",
+            "Email Sarah Johnson",
+            "Send thank you to Mike Chen"
+          ],
+          conversationContext: {
+            phase: 'data_collection',
+            action: 'send_email',
+            referringTo: 'new_request'
+          }
+        };
+      }
+
+      // Get team ID and find the contact
+      const teams = await this.convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      const contacts = await this.convex.query(api.crm.getContactsByTeam, { teamId });
+
+      // Find matching contact
+      const matchingContact = contacts.find(contact => {
+        const contactName = contact.firstName && contact.lastName 
+          ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
+          : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
+        const searchName = recipient.toLowerCase();
+        
+        return contactName.includes(searchName) || 
+               searchName.includes(contactName) ||
+               contactName.split(' ').some((part: string) => searchName.includes(part)) ||
+               searchName.split(' ').some((part: string) => contactName.includes(part));
+      });
+
+      if (matchingContact) {
+        // Contact exists, draft email
+        const emailContent = this.generateEmailContent(matchingContact, contentType);
+        
+        return {
+          type: 'email_draft',
+          content: `I've drafted an email for you to ${matchingContact.firstName} ${matchingContact.lastName}.`,
+          emailDraft: {
+            to: matchingContact.email,
+            subject: emailContent.subject,
+            content: emailContent.content
+          },
+          conversationContext: {
+            phase: 'confirmation',
+            action: 'send_email',
+            referringTo: 'new_request'
+          }
+        };
+      } else {
+        // Contact doesn't exist
+        return {
+          type: 'text',
+          content: `I couldn't find a contact named "${recipient}" in your database. 
+
+Would you like me to help you create a new contact for this person? Please provide their email address so I can add them to your contacts and then send the email.
+
+For example:
+"Create contact: ${recipient}, ${recipient.toLowerCase().replace(' ', '.')}@example.com"`,
+          suggestions: [
+            `Create contact: ${recipient}, ${recipient.toLowerCase().replace(' ', '.')}@example.com`,
+            "Show me my contacts",
+            "Send email to existing contact"
+          ],
+          conversationContext: {
+            phase: 'data_collection',
+            action: 'create_contact',
+            referringTo: 'new_request'
+          }
+        };
+      }
+
+    } catch (error) {
+      logger.error('Error handling email intent', error instanceof Error ? error : undefined, {
+        intent,
+        userId: context.userId
+      });
+
+      return {
+        type: 'text',
+        content: `I encountered an issue while processing your email request. Please try again or provide more specific details about who you'd like to email.`,
+        conversationContext: {
+          phase: 'error',
+          action: 'send_email',
+          referringTo: 'new_request'
+        }
+      };
+    }
   }
+
+  private generateEmailContent(contact: any, contentType?: string): { subject: string; content: string } {
+    const firstName = contact.firstName || 'there';
+    const lastName = contact.lastName || '';
+    const fullName = `${firstName} ${lastName}`.trim();
+
+    if (contentType?.toLowerCase().includes('thank')) {
+      return {
+        subject: 'Thank You',
+        content: `Dear ${fullName},
+
+Thank you for taking the time to meet with me yesterday. I really appreciate the opportunity to discuss our collaboration.
+
+I look forward to working together and will follow up with next steps soon.
+
+Best regards,
+[Your Name]`
+      };
+    } else if (contentType?.toLowerCase().includes('follow')) {
+      return {
+        subject: 'Follow Up',
+        content: `Dear ${fullName},
+
+I hope this email finds you well. I wanted to follow up on our recent conversation and see if you have any questions or need additional information.
+
+Please don't hesitate to reach out if there's anything I can help with.
+
+Best regards,
+[Your Name]`
+      };
+    } else {
+      return {
+        subject: 'Hello',
+        content: `Dear ${fullName},
+
+I hope this message finds you well.
+
+[Your message here]
+
+Best regards,
+[Your Name]`
+      };
+    }
+  }
+
+  private convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 }
 
 // Analysis Intent Handler

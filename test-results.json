@@ -1,0 +1,171 @@
+{
+  "timestamp": "2025-08-17T17:01:37.036Z",
+  "config": {
+    "baseUrl": "https://app.shabe.ai",
+    "endpoint": "/api/chat",
+    "testDelay": 2000,
+    "maxRetries": 3,
+    "timeout": 10000
+  },
+  "summary": {
+    "total": 17,
+    "passed": 0,
+    "partial": 0,
+    "failed": 17
+  },
+  "details": [
+    {
+      "name": "Contact Creation - Basic Prompt",
+      "category": "Contact CRUD Operations",
+      "message": "create a new contact",
+      "description": "Should show data collection prompt",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T16:57:43.686Z"
+    },
+    {
+      "name": "Contact Creation - With Data",
+      "category": "Contact CRUD Operations",
+      "message": "create a contact: first name Aisha, last name Khan, email aisha@northshield.io, title Head of IT, company NorthShield",
+      "description": "Should create contact successfully",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T16:57:59.230Z"
+    },
+    {
+      "name": "Contact Update - With Data",
+      "category": "Contact CRUD Operations",
+      "message": "update mocha gobal's title to CEO",
+      "description": "Should update contact successfully",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T16:58:13.844Z"
+    },
+    {
+      "name": "Contact Update - Basic Prompt",
+      "category": "Contact CRUD Operations",
+      "message": "update a contact",
+      "description": "Should show update data collection prompt",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T16:58:28.334Z"
+    },
+    {
+      "name": "Contact Count Query",
+      "category": "Data Queries (Database Expert)",
+      "message": "how many contacts do I have",
+      "description": "Should return contact count",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T16:58:42.900Z"
+    },
+    {
+      "name": "Contact List Query",
+      "category": "Data Queries (Database Expert)",
+      "message": "list all contacts",
+      "description": "Should return list of contacts",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T16:58:57.433Z"
+    },
+    {
+      "name": "Contact Details Query",
+      "category": "Data Queries (Database Expert)",
+      "message": "show me sarah johnson's details",
+      "description": "Should return specific contact details",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T16:59:11.958Z"
+    },
+    {
+      "name": "Account Count Query",
+      "category": "Data Queries (Database Expert)",
+      "message": "how many accounts do I have",
+      "description": "Should return account count",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T16:59:26.575Z"
+    },
+    {
+      "name": "Deal Count Query",
+      "category": "Data Queries (Database Expert)",
+      "message": "how many deals do I have",
+      "description": "Should return deal count",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T16:59:41.030Z"
+    },
+    {
+      "name": "Intent - Create Contact",
+      "category": "Intent Classification",
+      "message": "create a new contacts",
+      "description": "Should classify as create_contact",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T16:59:55.490Z"
+    },
+    {
+      "name": "Intent - Update Contact",
+      "category": "Intent Classification",
+      "message": "update contact details",
+      "description": "Should classify as update_contact",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T17:00:09.977Z"
+    },
+    {
+      "name": "Intent - View Data",
+      "category": "Intent Classification",
+      "message": "how many contacts",
+      "description": "Should classify as view_data",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T17:00:24.465Z"
+    },
+    {
+      "name": "Entity - Contact Name",
+      "category": "Entity Extraction",
+      "message": "update mocha gobal's title to CEO",
+      "description": "Should extract contact name and field",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T17:00:39.047Z"
+    },
+    {
+      "name": "Entity - Email",
+      "category": "Entity Extraction",
+      "message": "create contact: John Smith, john@example.com",
+      "description": "Should extract name and email",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T17:00:53.508Z"
+    },
+    {
+      "name": "Edge Case - Invalid Contact",
+      "category": "Edge Cases",
+      "message": "update nonexistent contact's email",
+      "description": "Should handle missing contact gracefully",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T17:01:08.014Z"
+    },
+    {
+      "name": "Edge Case - Partial Data",
+      "category": "Edge Cases",
+      "message": "create contact: John Smith",
+      "description": "Should ask for missing required information",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T17:01:22.580Z"
+    },
+    {
+      "name": "Edge Case - Empty Query",
+      "category": "Edge Cases",
+      "message": "test",
+      "description": "Should handle unclear input",
+      "error": "HTTP 401: {\"error\":\"Unauthorized\"}",
+      "outcome": "FAILED",
+      "timestamp": "2025-08-17T17:01:37.033Z"
+    }
+  ]
+}
