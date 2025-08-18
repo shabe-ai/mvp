@@ -263,12 +263,14 @@ class DataIntentHandler implements IntentHandler {
                      const phone = targetContact.phone || 'No phone';
                      const company = targetContact.company || 'No company';
                      const leadStatus = targetContact.leadStatus || 'No status';
+                     const notes = targetContact.notes || 'No notes';
                      
                      content = `Here are the details for ${name}:\n\n` +
                        `📧 Email: ${email}\n` +
                        `📞 Phone: ${phone}\n` +
                        `🏢 Company: ${company}\n` +
-                       `📊 Lead Status: ${leadStatus}`;
+                       `📊 Lead Status: ${leadStatus}\n` +
+                       `📝 Notes: ${notes}`;
                    } else {
                      content = `I couldn't find a contact named "${contactName}". Here are all your contacts:\n` +
                        data.map(contact => {
