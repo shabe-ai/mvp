@@ -159,6 +159,12 @@ Data Collection Context Examples:
 - If user says "update sarah's email" → action: "update_contact", entities: {"contactName": "sarah", "field": "email"}
 - If user then provides "sarah.new@company.com" → action: "update_contact" (continuing data collection)
 
+Email Continuation Examples:
+- If user says "send email to john" → action: "send_email", entities: {"recipient": "john"}
+- If assistant asks "What would you like to say?" and user responds "thanking him for meeting yesterday" → action: "send_email", entities: {"content_type": "thank_you", "context": "meeting"}
+- If assistant asks "What would you like to communicate?" and user responds "regarding the invoice" → action: "send_email", entities: {"content_type": "invoice"}
+- If assistant asks for email content and user responds "follow up about the proposal" → action: "send_email", entities: {"content_type": "follow_up", "context": "proposal"}
+
 Extract relevant entities like:
 - chartType: line, bar, pie, area, scatter
 - dataType: contacts, deals, accounts, activities
@@ -216,6 +222,14 @@ If the user's intent is unclear or ambiguous, set needsClarification to true and
       contextString += `\n\nIMPORTANT: The user is currently in a data collection phase for ${currentAction}. 
       If the user provides contact details (name, email, phone, company, etc.), this should be treated as 
       continuing the ${currentAction} flow, NOT as a new update_contact action.`;
+    }
+
+    // Add specific context for email continuation
+    if (currentAction === 'send_email' && lastAssistantMessage?.conversationContext?.pendingEmailRecipient) {
+      const recipient = lastAssistantMessage.conversationContext.pendingEmailRecipient;
+      contextString += `\n\nIMPORTANT: The user is currently in an email composition phase for ${recipient}. 
+      If the user provides email content (thank you, follow up, meeting, proposal, invoice, etc.), 
+      this should be treated as continuing the send_email flow for ${recipient}, NOT as a new general_conversation.`;
     }
 
     return contextString;
