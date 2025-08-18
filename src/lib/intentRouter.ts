@@ -687,14 +687,14 @@ Please check the spelling or try a different contact name.`,
             }
 
             // Validate field name
-            const validFields = ['firstName', 'lastName', 'email', 'phone', 'company', 'title', 'leadStatus'];
+            const validFields = ['firstName', 'lastName', 'email', 'phone', 'company', 'title', 'leadStatus', 'notes'];
             if (!validFields.includes(field)) {
               return {
                 type: 'text',
                 content: `❌ Invalid field "${field}". 
 
 Valid fields to update:
-• firstName, lastName, email, phone, company, title, leadStatus
+• firstName, lastName, email, phone, company, title, leadStatus, notes
 
 Please specify a valid field to update.`,
                 conversationContext: {
