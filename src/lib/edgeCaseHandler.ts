@@ -164,13 +164,17 @@ export class EdgeCaseHandler {
       priority: 'high'
     });
 
-    // Ambiguous contact names
+    // Ambiguous contact names (only for view/list operations, not CRUD)
     this.edgeCases.push({
       type: 'data',
       pattern: (input: any) => {
         if (typeof input !== 'string') return false;
         const contactPattern = /\b(john|jane|mike|sarah|david|emma|james|lisa|michael|jennifer)\b/i;
-        return contactPattern.test(input) && input.toLowerCase().includes('contact');
+        const hasContact = input.toLowerCase().includes('contact');
+        const isCrudOperation = /\b(create|update|delete|add|remove|edit|modify)\b/i.test(input);
+        
+        // Only trigger for view/list operations, not CRUD operations
+        return contactPattern.test(input) && hasContact && !isCrudOperation;
       },
       handler: async (input: any, context: EdgeCaseContext) => ({
         message: "I found a common name that might match multiple contacts. Let me show you all the possibilities.",
