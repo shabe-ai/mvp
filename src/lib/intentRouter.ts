@@ -963,8 +963,15 @@ class EmailIntentHandler implements IntentHandler {
     try {
       const recipient = intent.entities?.recipient;
       const contentType = intent.entities?.content_type;
+      
+      // Check conversation context for pending recipient from previous interaction
+      const conversationContext = context.conversationManager?.getState()?.currentContext;
+      const pendingRecipient = conversationContext?.pendingEmailRecipient;
 
-      if (!recipient) {
+      // Use recipient from current message or fall back to pending recipient from context
+      const finalRecipient = recipient || pendingRecipient;
+
+      if (!finalRecipient) {
         return {
           type: 'text',
           content: `I'd be happy to help you send an email! 
@@ -996,7 +1003,7 @@ Who would you like to send an email to?`,
       const contacts = await this.convex.query(api.crm.getContactsByTeam, { teamId });
 
       logger.info('Email intent contact search', {
-        recipient,
+        recipient: finalRecipient,
         totalContacts: contacts.length,
         contactNames: contacts.map(c => `${c.firstName} ${c.lastName}`),
         userId: context.userId
@@ -1007,7 +1014,7 @@ Who would you like to send an email to?`,
         const contactName = contact.firstName && contact.lastName 
           ? `${contact.firstName} ${contact.lastName}`.toLowerCase()
           : contact.firstName?.toLowerCase() || contact.lastName?.toLowerCase() || '';
-        const searchName = recipient.toLowerCase();
+        const searchName = finalRecipient.toLowerCase();
         
         // Exact match first
         if (contactName === searchName) {
@@ -1110,14 +1117,14 @@ What would you like to communicate?`,
         // Contact doesn't exist
         return {
           type: 'text',
-          content: `I couldn't find a contact named "${recipient}" in your database. 
+          content: `I couldn't find a contact named "${finalRecipient}" in your database. 
 
 Would you like me to help you create a new contact for this person? Please provide their email address so I can add them to your contacts and then send the email.
 
 For example:
-"Create contact: ${recipient}, ${recipient.toLowerCase().replace(' ', '.')}@example.com"`,
+"Create contact: ${finalRecipient}, ${finalRecipient.toLowerCase().replace(' ', '.')}@example.com"`,
           suggestions: [
-            `Create contact: ${recipient}, ${recipient.toLowerCase().replace(' ', '.')}@example.com`,
+            `Create contact: ${finalRecipient}, ${finalRecipient.toLowerCase().replace(' ', '.')}@example.com`,
             "Show me my contacts",
             "Send email to existing contact"
           ],
