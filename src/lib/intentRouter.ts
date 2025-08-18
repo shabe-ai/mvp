@@ -853,6 +853,102 @@ Which deal would you like to update and what changes should I make?`,
         };
 
       case 'delete_contact':
+        // Check if we have the contact name in the intent entities
+        if (intent.entities?.contactName) {
+          // We have the contact name, try to delete the contact
+          try {
+            logger.info('Attempting to delete contact with provided details', {
+              entities: intent.entities,
+              userId: context.userId
+            });
+
+            const contactName = intent.entities.contactName;
+
+            // Get team ID
+            const teams = await this.convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+            const teamId = teams.length > 0 ? teams[0]._id : 'default';
+
+            // Find the contact by name
+            const contacts = await this.convex.query(api.crm.getContactsByTeam, { teamId });
+            const targetContact = contacts.find(contact => {
+              const fullName = `${contact.firstName} ${contact.lastName}`.toLowerCase();
+              return fullName.includes(contactName.toLowerCase());
+            });
+
+            if (!targetContact) {
+              return {
+                type: 'text',
+                content: `❌ I couldn't find a contact named "${contactName}". 
+
+Available contacts:
+${contacts.slice(0, 5).map(contact => {
+  const name = contact.firstName && contact.lastName ? 
+    `${contact.firstName} ${contact.lastName}` : 
+    contact.firstName || contact.lastName || 'Unknown';
+  return `• ${name}`;
+}).join('\n')}
+
+Please check the spelling or try a different contact name.`,
+                conversationContext: {
+                  phase: 'data_collection',
+                  action: 'delete_contact',
+                  referringTo: 'new_request'
+                }
+              };
+            }
+
+            // Delete the contact
+            await this.convex.mutation(api.crm.deleteContact, {
+              contactId: targetContact._id
+            });
+
+            logger.info('Contact deleted successfully', {
+              contactId: targetContact._id,
+              contactName: `${targetContact.firstName} ${targetContact.lastName}`,
+              userId: context.userId
+            });
+
+            const deletedName = targetContact.firstName && targetContact.lastName ? 
+              `${targetContact.firstName} ${targetContact.lastName}` : 
+              targetContact.firstName || targetContact.lastName || 'Unknown';
+
+            return {
+              type: 'text',
+              content: `✅ Contact deleted successfully!
+
+**Deleted Contact:**
+• Name: ${deletedName}
+• Email: ${targetContact.email || 'No email'}
+
+The contact has been permanently removed from your database.`,
+              conversationContext: {
+                phase: 'exploration',
+                action: 'delete_contact',
+                referringTo: 'new_request'
+              }
+            };
+
+          } catch (error) {
+            logger.error('Failed to delete contact', error instanceof Error ? error : undefined, {
+              entities: intent.entities,
+              userId: context.userId
+            });
+
+            return {
+              type: 'text',
+              content: `❌ Sorry, I encountered an error while deleting the contact. Please try again.
+
+Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+              conversationContext: {
+                phase: 'data_collection',
+                action: 'delete_contact',
+                referringTo: 'new_request'
+              }
+            };
+          }
+        }
+
+        // No contact name provided, show data collection prompt
         return {
           type: 'text',
           content: `I'd be happy to help you delete a contact! 
