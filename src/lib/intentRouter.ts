@@ -686,9 +686,16 @@ Please check the spelling or try a different contact name.`,
               };
             }
 
-            // Validate field name
+            // Validate field name and handle field name variations
             const validFields = ['firstName', 'lastName', 'email', 'phone', 'company', 'title', 'leadStatus', 'notes'];
-            if (!validFields.includes(field)) {
+            
+            // Handle field name variations (e.g., "note" -> "notes")
+            let normalizedField = field;
+            if (field === 'note') {
+              normalizedField = 'notes';
+            }
+            
+            if (!validFields.includes(normalizedField)) {
               return {
                 type: 'text',
                 content: `❌ Invalid field "${field}". 
@@ -708,7 +715,7 @@ Please specify a valid field to update.`,
             // Update the contact
             await this.convex.mutation(api.crm.updateContact, {
               contactId: targetContact._id,
-              updates: { [field]: value }
+              updates: { [normalizedField]: value }
             });
 
             logger.info('Contact updated successfully', {
@@ -728,7 +735,7 @@ Please specify a valid field to update.`,
 
 **Updated Contact:**
 • Name: ${updatedName}
-• Field: ${field}
+• Field: ${normalizedField}
 • New Value: ${value}
 
 The changes have been saved to your database.`,
