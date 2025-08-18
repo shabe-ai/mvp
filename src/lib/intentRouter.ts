@@ -1072,9 +1072,56 @@ class EmailIntentHandler implements IntentHandler {
       // Check conversation context for pending recipient from previous interaction
       const conversationContext = context.conversationManager?.getState()?.currentContext;
       const pendingRecipient = conversationContext?.pendingEmailRecipient;
+      const pendingEmailAction = conversationContext?.action;
 
       // Use recipient from current message or fall back to pending recipient from context
-      const finalRecipient = recipient || pendingRecipient;
+      let finalRecipient = recipient || pendingRecipient;
+
+      // If no recipient but we have a pending email action, check if this is a continuation
+      if (!finalRecipient && pendingEmailAction === 'send_email' && pendingRecipient) {
+        // This might be a continuation message with content type
+        const userMessage = intent.originalMessage.toLowerCase();
+        const hasContentType = userMessage.includes('thank') || 
+          userMessage.includes('follow') || 
+          userMessage.includes('meeting') || 
+          userMessage.includes('proposal') || 
+          userMessage.includes('invoice') || 
+          userMessage.includes('contract') ||
+          userMessage.includes('about') ||
+          userMessage.includes('regarding') ||
+          userMessage.includes('concerning');
+
+        if (hasContentType) {
+          // This is a continuation with content type, use the pending recipient
+          finalRecipient = pendingRecipient;
+          // Continue with email drafting logic below
+        } else {
+          // Still no clear recipient or content
+          return {
+            type: 'text',
+            content: `I'd be happy to help you send an email! 
+
+Please provide the recipient's name or email address.
+
+For example:
+"Send an email to john@example.com"
+"Email Sarah Johnson about the meeting"
+"Send a thank you email to Mike Chen"
+
+Who would you like to send an email to?`,
+            suggestions: [
+              "Send email to john@example.com",
+              "Email Sarah Johnson",
+              "Send thank you to Mike Chen"
+            ],
+            conversationContext: {
+              phase: 'data_collection',
+              action: 'send_email',
+              referringTo: 'new_request'
+            }
+          };
+        }
+      }
 
       if (!finalRecipient) {
         return {
