@@ -754,6 +754,7 @@ Analyze this user message and extract structured information for CRM actions.
         ...response,
         type: response.type, // Preserve the response type
         emailDraft: response.emailDraft, // Preserve email draft data
+        conversationContext: response.conversationContext, // Preserve conversation context from response
         message: this.enhanceResponseMessage(responseMessage, understanding),
         suggestions: adaptiveResponse.suggestions || understanding.suggestedActions || response.suggestions,
         ragInsights: ragEnhancedResponse.ragInsights,
