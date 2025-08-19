@@ -31,6 +31,8 @@ export interface ConversationState {
     userGoals?: string[];
     conversationPhase: ConversationPhase;
     currentTopic?: string;
+    pendingEmailRecipient?: string;
+    action?: string;
   };
   memory: {
     recentTopics: string[];
