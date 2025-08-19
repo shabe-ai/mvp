@@ -122,7 +122,9 @@ export class ConversationManager {
         storedContext: this.state.currentContext,
         contextKeys: Object.keys(this.state.currentContext),
         hasPendingRecipient: !!this.state.currentContext.pendingEmailRecipient,
-        hasAction: !!this.state.currentContext.action
+        hasAction: !!this.state.currentContext.action,
+        pendingEmailRecipient: this.state.currentContext.pendingEmailRecipient,
+        action: this.state.currentContext.action
       });
     }
   }
@@ -138,6 +140,14 @@ export class ConversationManager {
 
   // Get current state
   getState(): ConversationState {
+    console.log('🔍 Getting conversation state:', {
+      currentContext: this.state.currentContext,
+      contextKeys: Object.keys(this.state.currentContext),
+      hasPendingRecipient: !!this.state.currentContext.pendingEmailRecipient,
+      hasAction: !!this.state.currentContext.action,
+      pendingEmailRecipient: this.state.currentContext.pendingEmailRecipient,
+      action: this.state.currentContext.action
+    });
     return { ...this.state };
   }
 
@@ -403,16 +413,22 @@ export class ConversationManager {
   }
 }
 
-// Singleton instance for the current session
-let conversationManager: ConversationManager | null = null;
+// User-specific conversation manager instances
+const conversationManagers = new Map<string, ConversationManager>();
 
 export function getConversationManager(userId: string, sessionId: string): ConversationManager {
-  if (!conversationManager) {
-    conversationManager = new ConversationManager(userId, sessionId);
+  const key = `${userId}-${sessionId}`;
+  if (!conversationManagers.has(key)) {
+    conversationManagers.set(key, new ConversationManager(userId, sessionId));
   }
-  return conversationManager;
+  return conversationManagers.get(key)!;
 }
 
-export function resetConversationManager(): void {
-  conversationManager = null;
+export function resetConversationManager(userId?: string, sessionId?: string): void {
+  if (userId && sessionId) {
+    const key = `${userId}-${sessionId}`;
+    conversationManagers.delete(key);
+  } else {
+    conversationManagers.clear();
+  }
 } 

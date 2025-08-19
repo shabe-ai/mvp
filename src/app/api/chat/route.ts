@@ -278,8 +278,8 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get conversation manager for the user
-    const conversationManager = await getConversationManager(actualUserId, 'session-id');
+    // Get conversation manager for the user (use userId as sessionId to make it user-specific)
+    const conversationManager = await getConversationManager(actualUserId, actualUserId);
     
     if (conversationManager) {
       logger.info('Using conversational processing', { 
