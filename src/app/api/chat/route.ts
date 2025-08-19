@@ -308,6 +308,11 @@ export async function POST(request: NextRequest) {
         // Update conversation state with response
         conversationManager.updateContext(messageContent, response.conversationContext?.action);
         
+        // Update full conversation context (including pending recipients, etc.)
+        if (response.conversationContext) {
+          conversationManager.updateFullContext(response.conversationContext);
+        }
+        
         // Add assistant response to history
         const assistantMessage = {
           role: 'assistant' as const,

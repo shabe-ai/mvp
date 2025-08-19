@@ -108,6 +108,17 @@ export class ConversationManager {
     this.generateSuggestions();
   }
 
+  // Update full conversation context (including pending recipients, etc.)
+  updateFullContext(conversationContext: any): void {
+    if (conversationContext) {
+      // Store the full conversation context in the current context
+      this.state.currentContext = {
+        ...this.state.currentContext,
+        ...conversationContext
+      };
+    }
+  }
+
   // Set active chart context
   setActiveChart(chartContext: ChartContext): void {
     this.state.currentContext.activeChart = chartContext;
