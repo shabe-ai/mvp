@@ -1074,6 +1074,16 @@ class EmailIntentHandler implements IntentHandler {
       const pendingRecipient = conversationContext?.pendingEmailRecipient;
       const pendingEmailAction = conversationContext?.action;
 
+      logger.info('Email intent conversation context check', {
+        hasConversationManager: !!context.conversationManager,
+        hasState: !!context.conversationManager?.getState(),
+        hasCurrentContext: !!conversationContext,
+        pendingRecipient,
+        pendingEmailAction,
+        conversationContextKeys: conversationContext ? Object.keys(conversationContext) : [],
+        userId: context.userId
+      });
+
       // Use recipient from current message or fall back to pending recipient from context
       let finalRecipient = recipient || pendingRecipient;
 
@@ -1094,6 +1104,14 @@ class EmailIntentHandler implements IntentHandler {
         if (hasContentType) {
           // This is a continuation with content type, use the pending recipient
           finalRecipient = pendingRecipient;
+          logger.info('Email continuation detected', {
+            originalMessage: intent.originalMessage,
+            pendingRecipient,
+            finalRecipient,
+            contentType: intent.entities?.content_type,
+            context: intent.entities?.context,
+            userId: context.userId
+          });
           // Continue with email drafting logic below
         } else {
           // Still no clear recipient or content
