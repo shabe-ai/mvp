@@ -81,6 +81,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
     name: string;
     content: string;
   }>>([]);
+  const [conversationContext, setConversationContext] = useState<any>(null);
 
   // Auto-create team for new users
   const checkAndCreateDefaultTeam = useCallback(async () => {
@@ -253,6 +254,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
           sessionFiles: sessionFiles,
           companyData: parsedCompanyData,
           userData: userData, // Pass real user data directly
+          conversationContext: conversationContext, // Pass conversation context
         }),
       });
 
@@ -330,6 +332,12 @@ export default function Chat({ onAction }: ChatProps = {}) {
         };
 
         setMessages(prev => [...prev, assistantMessage]);
+
+      // Store conversation context for next request
+      if (data.conversationContext) {
+        console.log('Storing conversation context from response:', data.conversationContext);
+        setConversationContext(data.conversationContext);
+      }
 
       // Notify parent of any actions that occurred
       if (data.action && onAction) {

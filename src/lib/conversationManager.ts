@@ -420,10 +420,30 @@ const conversationManagers = new Map<string, ConversationManager>();
 
 export function getConversationManager(userId: string, sessionId: string): ConversationManager {
   const key = `${userId}-${sessionId}`;
+  console.log('🔍 Getting conversation manager:', {
+    key,
+    hasExistingManager: conversationManagers.has(key),
+    totalManagers: conversationManagers.size,
+    managerKeys: Array.from(conversationManagers.keys())
+  });
+  
   if (!conversationManagers.has(key)) {
+    console.log('🔍 Creating new conversation manager for key:', key);
     conversationManagers.set(key, new ConversationManager(userId, sessionId));
+  } else {
+    console.log('🔍 Using existing conversation manager for key:', key);
   }
-  return conversationManagers.get(key)!;
+  
+  const manager = conversationManagers.get(key)!;
+  console.log('🔍 Conversation manager state:', {
+    key,
+    currentContext: manager.getState().currentContext,
+    contextKeys: Object.keys(manager.getState().currentContext),
+    hasPendingRecipient: !!manager.getState().currentContext.pendingEmailRecipient,
+    pendingEmailRecipient: manager.getState().currentContext.pendingEmailRecipient
+  });
+  
+  return manager;
 }
 
 export function resetConversationManager(userId?: string, sessionId?: string): void {

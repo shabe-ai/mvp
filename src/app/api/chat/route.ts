@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     actualUserId = userId;
     const body = await request.json();
-    const { message, messages = [], context: requestContext = {} } = body;
+    const { message, messages = [], context: requestContext = {}, conversationContext: requestConversationContext = {} } = body;
 
     // Handle both message formats (single message or messages array)
     let messageContent = message;
@@ -280,6 +280,16 @@ export async function POST(request: NextRequest) {
 
     // Get conversation manager for the user (use userId as sessionId to make it user-specific)
     const conversationManager = await getConversationManager(actualUserId, actualUserId);
+    
+    // Restore conversation context from request if available
+    if (requestConversationContext && Object.keys(requestConversationContext).length > 0) {
+      logger.info('Restoring conversation context from request', {
+        conversationContext: requestConversationContext,
+        contextKeys: Object.keys(requestConversationContext),
+        userId: actualUserId
+      });
+      conversationManager.updateFullContext(requestConversationContext);
+    }
     
     if (conversationManager) {
       logger.info('Using conversational processing', { 
