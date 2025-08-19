@@ -204,6 +204,30 @@ class DataIntentHandler implements IntentHandler {
           userId: context.userId
         });
 
+        // Apply filters based on entities
+        if (intent.entities?.company) {
+          const companyFilter = intent.entities.company.toLowerCase();
+          const originalCount = data.length;
+          
+          data = data.filter(item => {
+            if (dataType === 'contacts') {
+              return item.company && item.company.toLowerCase().includes(companyFilter);
+            } else if (dataType === 'accounts') {
+              return item.name && item.name.toLowerCase().includes(companyFilter);
+            } else if (dataType === 'deals') {
+              return item.accountName && item.accountName.toLowerCase().includes(companyFilter);
+            }
+            return true;
+          });
+          
+          logger.info('Applied company filter', {
+            company: intent.entities.company,
+            originalCount,
+            filteredCount: data.length,
+            userId: context.userId
+          });
+        }
+
         // Generate intelligent response based on query type
         logger.info('Generating response content', {
           queryType,
@@ -214,7 +238,11 @@ class DataIntentHandler implements IntentHandler {
         
         switch (queryType) {
           case 'count':
-            content = `You have ${data.length} ${dataType} in your database.`;
+            if (intent.entities?.company) {
+              content = `You have ${data.length} ${dataType} at ${intent.entities.company} in your database.`;
+            } else {
+              content = `You have ${data.length} ${dataType} in your database.`;
+            }
             logger.info('Generated count response', { content, userId: context.userId });
             break;
             
@@ -226,10 +254,18 @@ class DataIntentHandler implements IntentHandler {
                 return firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || 'Unknown';
               });
               
-              if (names.length <= 10) {
-                content = `Here are your ${dataType}:\n${names.join(', ')}`;
+              if (intent.entities?.company) {
+                if (names.length <= 10) {
+                  content = `Here are your ${dataType} at ${intent.entities.company}:\n${names.join(', ')}`;
+                } else {
+                  content = `You have ${data.length} ${dataType} at ${intent.entities.company}. Here are the first 10:\n${names.slice(0, 10).join(', ')}...`;
+                }
               } else {
-                content = `You have ${data.length} ${dataType}. Here are the first 10:\n${names.slice(0, 10).join(', ')}...`;
+                if (names.length <= 10) {
+                  content = `Here are your ${dataType}:\n${names.join(', ')}`;
+                } else {
+                  content = `You have ${data.length} ${dataType}. Here are the first 10:\n${names.slice(0, 10).join(', ')}...`;
+                }
               }
             } else {
               const items = data.map(item => item.name || item.title || item.subject || 'Unknown');
