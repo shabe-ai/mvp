@@ -310,6 +310,11 @@ export async function POST(request: NextRequest) {
         
         // Update full conversation context (including pending recipients, etc.)
         if (response.conversationContext) {
+          logger.info('Storing conversation context', {
+            conversationContext: response.conversationContext,
+            contextKeys: Object.keys(response.conversationContext),
+            userId: actualUserId
+          });
           conversationManager.updateFullContext(response.conversationContext);
         }
         

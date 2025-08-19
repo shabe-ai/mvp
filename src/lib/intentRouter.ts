@@ -1081,6 +1081,7 @@ class EmailIntentHandler implements IntentHandler {
         pendingRecipient,
         pendingEmailAction,
         conversationContextKeys: conversationContext ? Object.keys(conversationContext) : [],
+        fullCurrentContext: conversationContext,
         userId: context.userId
       });
 

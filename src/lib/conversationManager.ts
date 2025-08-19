@@ -116,6 +116,14 @@ export class ConversationManager {
         ...this.state.currentContext,
         ...conversationContext
       };
+      
+      // Debug logging
+      console.log('🔍 Conversation context stored:', {
+        storedContext: this.state.currentContext,
+        contextKeys: Object.keys(this.state.currentContext),
+        hasPendingRecipient: !!this.state.currentContext.pendingEmailRecipient,
+        hasAction: !!this.state.currentContext.action
+      });
     }
   }
 
