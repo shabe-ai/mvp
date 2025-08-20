@@ -117,18 +117,100 @@ class ChartIntentHandler implements IntentHandler {
       userId: context.userId
     });
 
-    if (intent.action === 'modify_chart') {
+    if (intent.action === 'create_chart') {
+      return await this.handleCreateChart(intent, context);
+    } else if (intent.action === 'modify_chart') {
       logger.info('Handling chart modification request', {
         userId: context.userId
       });
+      return {
+        type: 'text',
+        content: 'Chart modification is not yet implemented. Please create a new chart instead.',
+        hasData: false
+      };
+    } else if (intent.action === 'analyze_data') {
+      return await this.handleDataAnalysis(intent, context);
     }
 
-    // Use conversational handler for chart operations
-    return await conversationalHandler.handleConversation(
-      intent.context.userGoal || 'Chart operation',
-      context.conversationManager,
-      context
-    );
+    // Fallback
+    return {
+      type: 'text',
+      content: 'I\'m not sure how to handle this chart request. Could you please be more specific?',
+      hasData: false
+    };
+  }
+
+  private async handleCreateChart(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
+    const { dataType, dimension } = intent.entities;
+    
+    logger.info('Creating chart', {
+      dataType,
+      dimension,
+      userId: context.userId
+    });
+
+    if (!dataType) {
+      return {
+        type: 'text',
+        content: 'I need to know what type of data you want to chart. Please specify the data type (e.g., contacts, deals, accounts).',
+        hasData: false
+      };
+    }
+
+    if (!dimension) {
+      return {
+        type: 'text',
+        content: `I need to know what dimension to chart for ${dataType}. Please specify a dimension (e.g., stage, company, lead status).`,
+        hasData: false
+      };
+    }
+
+    // Create a chart configuration
+    const chartConfig = {
+      type: 'bar',
+      dataType: dataType,
+      dimension: dimension,
+      title: `${dataType} by ${dimension}`,
+      description: `Chart showing ${dataType} grouped by ${dimension}`
+    };
+
+    logger.info('Chart configuration created', {
+      chartConfig,
+      userId: context.userId
+    });
+
+    return {
+      type: 'text',
+      content: `I've created a chart configuration for ${dataType} by ${dimension}. The chart will be displayed below.`,
+      chartSpec: {
+        chartType: 'bar',
+        dataType: dataType,
+        dimension: dimension,
+        title: `${dataType} by ${dimension}`,
+        description: `Chart showing ${dataType} grouped by ${dimension}`,
+        chartConfig: {
+          margin: { top: 20, right: 30, left: 20, bottom: 60 },
+          height: 400,
+          width: 600
+        }
+      },
+      hasData: true
+    };
+  }
+
+  private async handleDataAnalysis(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
+    const { dataType } = intent.entities;
+    
+    logger.info('Analyzing data', {
+      dataType,
+      userId: context.userId
+    });
+
+    return {
+      type: 'text',
+      content: `I'll analyze your ${dataType || 'data'}. This feature is coming soon!`,
+      hasData: false
+    };
   }
 }
 
