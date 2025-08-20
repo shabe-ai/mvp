@@ -164,7 +164,7 @@ class ChartIntentHandler implements IntentHandler {
       const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
       
       if (!teams || teams.length === 0) {
-        return {
+      return {
           type: 'text',
           content: 'No team found for your account. Please contact your administrator.',
           hasData: false
@@ -253,8 +253,8 @@ class ChartIntentHandler implements IntentHandler {
         dimension,
         userId: context.userId
       });
-      
-      return {
+    
+    return {
         type: 'text',
         content: `Sorry, I encountered an error while creating the chart for ${dataType} by ${dimension}. Please try again.`,
         hasData: false
@@ -278,7 +278,7 @@ class ChartIntentHandler implements IntentHandler {
       // Get the current chart data and remove the 'total' column
       try {
         const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-        const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
         
         if (!teams || teams.length === 0) {
           return {
@@ -299,8 +299,8 @@ class ChartIntentHandler implements IntentHandler {
           modifiedDataLength: chartData.length,
           userId: context.userId
         });
-        
-        return {
+      
+      return {
           type: 'text',
           content: 'I\'ve removed the totals column from the chart. The chart now shows only the count data.',
           chartSpec: {
@@ -324,13 +324,13 @@ class ChartIntentHandler implements IntentHandler {
             column: 'total'
           }
         };
-      } catch (error) {
+    } catch (error) {
         logger.error('Error modifying chart', error instanceof Error ? error : new Error(String(error)), {
           field,
           userId: context.userId
         });
         
-        return {
+      return {
           type: 'text',
           content: 'Sorry, I encountered an error while modifying the chart. Please try again.',
           hasData: false
@@ -342,7 +342,7 @@ class ChartIntentHandler implements IntentHandler {
     if (intent.originalMessage.toLowerCase().includes('stack')) {
       try {
         const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-        const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
         
         if (!teams || teams.length === 0) {
           return {
@@ -362,8 +362,8 @@ class ChartIntentHandler implements IntentHandler {
           originalDataLength: chartData.length,
           userId: context.userId
         });
-        
-        return {
+      
+      return {
           type: 'text',
           content: 'I\'ve modified the chart to use stacked bars. The chart now shows stacked data.',
           chartSpec: {
@@ -387,12 +387,12 @@ class ChartIntentHandler implements IntentHandler {
             type: 'stack_chart'
           }
         };
-      } catch (error) {
+    } catch (error) {
         logger.error('Error stacking chart', error instanceof Error ? error : new Error(String(error)), {
           userId: context.userId
         });
         
-        return {
+      return {
           type: 'text',
           content: 'Sorry, I encountered an error while stacking the chart. Please try again.',
           hasData: false
@@ -473,7 +473,7 @@ class ChartIntentHandler implements IntentHandler {
         const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
         
         if (!teams || teams.length === 0) {
-          return {
+    return {
             type: 'text',
             content: 'No team found for your account. Please contact your administrator.',
             hasData: false
@@ -494,8 +494,8 @@ class ChartIntentHandler implements IntentHandler {
           aggregationField: 'amount',
           userId: context.userId
         });
-        
-        return {
+      
+      return {
           type: 'text',
           content: `I've changed the chart to a ${intent.entities.chartType} chart showing the sum of amounts.`,
           chartSpec: {
@@ -521,12 +521,12 @@ class ChartIntentHandler implements IntentHandler {
             aggregationField: 'amount'
           }
         };
-      } catch (error) {
+    } catch (error) {
         logger.error('Error changing chart type', error instanceof Error ? error : new Error(String(error)), {
           userId: context.userId
         });
         
-        return {
+      return {
           type: 'text',
           content: 'Sorry, I encountered an error while changing the chart type. Please try again.',
           hasData: false
@@ -539,7 +539,7 @@ class ChartIntentHandler implements IntentHandler {
     if (modificationType.includes('group') || modificationType.includes('aggregate')) {
       try {
         const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-        const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
         
         if (!teams || teams.length === 0) {
           return {
@@ -559,8 +559,8 @@ class ChartIntentHandler implements IntentHandler {
           originalDataLength: chartData.length,
           userId: context.userId
         });
-        
-        return {
+      
+      return {
           type: 'text',
           content: 'I\'ve grouped the data on the X-axis. The chart now shows aggregated values.',
           chartSpec: {
@@ -584,12 +584,12 @@ class ChartIntentHandler implements IntentHandler {
             type: 'group_data'
           }
         };
-      } catch (error) {
+    } catch (error) {
         logger.error('Error grouping chart', error instanceof Error ? error : new Error(String(error)), {
           userId: context.userId
         });
         
-        return {
+      return {
           type: 'text',
           content: 'Sorry, I encountered an error while grouping the chart. Please try again.',
           hasData: false
@@ -646,7 +646,7 @@ class ChartIntentHandler implements IntentHandler {
       
       // Only add total if includeTotal is true
       if (includeTotal) {
-        return {
+      return {
           ...baseData,
           total: count  // Alternative numeric column
         };
@@ -704,8 +704,8 @@ class ChartIntentHandler implements IntentHandler {
       dataType,
       userId: context.userId
     });
-
-    return {
+      
+      return {
       type: 'text',
       content: `I'll analyze your ${dataType || 'data'}. This feature is coming soon!`,
       hasData: false
@@ -758,7 +758,7 @@ class DataIntentHandler implements IntentHandler {
           });
         } catch (error) {
           logger.error('Failed to get team ID', error as Error, { userId: context.userId });
-          return {
+        return {
             type: 'text',
             content: "I'm having trouble accessing your team data. Please try again in a moment.",
             data: { error: 'Failed to get team ID' }
@@ -1108,7 +1108,7 @@ class CrudIntentHandler implements IntentHandler {
       }
     }
 
-    return {
+      return {
       firstName,
       lastName,
       email,
@@ -1152,14 +1152,14 @@ class CrudIntentHandler implements IntentHandler {
 You provided: ${JSON.stringify(contactData, null, 2)}
 
 Please provide the missing required fields.`,
-                conversationContext: {
+          conversationContext: {
                   phase: 'data_collection',
                   action: 'create_contact',
-                  referringTo: 'new_request'
-                }
-              };
-            }
-
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
             // Get team ID
             const teams = await this.convex.query(api.crm.getTeamsByUser, { userId: context.userId });
             const teamId = teams.length > 0 ? teams[0]._id : 'default';
@@ -1183,8 +1183,8 @@ Please provide the missing required fields.`,
               contactData,
               userId: context.userId
             });
-
-            return {
+        
+        return {
               type: 'text',
               content: `✅ Contact created successfully!
 
@@ -1196,31 +1196,31 @@ ${contactData.company ? `• Company: ${contactData.company}` : ''}
 • Lead Status: ${contactData.leadStatus || 'new'}
 
 The contact has been added to your database.`,
-              conversationContext: {
+        conversationContext: {
                 phase: 'exploration',
                 action: 'create_contact',
                 referringTo: 'new_request'
               }
             };
 
-          } catch (error) {
+    } catch (error) {
             logger.error('Failed to create contact', error instanceof Error ? error : undefined, {
               entities: intent.entities,
               userId: context.userId
             });
 
-            return {
+      return {
               type: 'text',
               content: `❌ Sorry, I encountered an error while creating the contact. Please try again or provide the information in a different format.
 
 Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              conversationContext: {
+        conversationContext: {
                 phase: 'data_collection',
                 action: 'create_contact',
-                referringTo: 'new_request'
-              }
-            };
-          }
+          referringTo: 'new_request'
+        }
+      };
+    }
         } else {
           // No contact details provided, show data collection prompt
           return {
@@ -1248,14 +1248,14 @@ What details would you like to include for the new contact?`,
               "Add contact: Sarah Wilson, sarah@company.com, phone 555-0123",
               "New contact: Mike Johnson, mike@tech.com, company TechStart"
             ],
-            conversationContext: {
+        conversationContext: {
               phase: 'data_collection',
               action: 'create_contact',
-              referringTo: 'new_request'
-            }
-          };
+          referringTo: 'new_request'
         }
-
+      };
+    }
+    
       case 'create_account':
         return {
           type: 'text',
@@ -1316,12 +1316,12 @@ What details would you like to include for the new deal?`,
             "Add deal: Consulting Project, qualification, 25K",
             "New deal: Enterprise Contract, negotiation, 100K"
           ],
-          conversationContext: {
+        conversationContext: {
             phase: 'data_collection',
             action: 'create_deal',
-            referringTo: 'new_request'
-          }
-        };
+          referringTo: 'new_request'
+        }
+      };
 
       case 'update_contact':
         // Check if we have update details in the intent entities
@@ -1334,9 +1334,9 @@ What details would you like to include for the new deal?`,
             });
 
             const contactName = intent.entities.contactName;
-            const field = intent.entities.field;
-            const value = intent.entities.value;
-
+    const field = intent.entities.field;
+    const value = intent.entities.value;
+    
             // Get team ID
             const teams = await this.convex.query(api.crm.getTeamsByUser, { userId: context.userId });
             const teamId = teams.length > 0 ? teams[0]._id : 'default';
@@ -1349,7 +1349,7 @@ What details would you like to include for the new deal?`,
             });
 
             if (!targetContact) {
-              return {
+      return {
                 type: 'text',
                 content: `❌ I couldn't find a contact named "${contactName}". 
 
@@ -1362,14 +1362,14 @@ ${contacts.slice(0, 5).map(contact => {
 }).join('\n')}
 
 Please check the spelling or try a different contact name.`,
-                conversationContext: {
+        conversationContext: {
                   phase: 'data_collection',
                   action: 'update_contact',
-                  referringTo: 'new_request'
-                }
-              };
-            }
-
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
             // Validate field name and handle field name variations
             const validFields = ['firstName', 'lastName', 'email', 'phone', 'company', 'title', 'leadStatus', 'notes'];
             
@@ -1388,14 +1388,14 @@ Valid fields to update:
 • firstName, lastName, email, phone, company, title, leadStatus, notes
 
 Please specify a valid field to update.`,
-                conversationContext: {
+          conversationContext: {
                   phase: 'data_collection',
                   action: 'update_contact',
-                  referringTo: 'new_request'
-                }
-              };
-            }
-
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
             // Update the contact
             await this.convex.mutation(api.crm.updateContact, {
               contactId: targetContact._id,
@@ -1423,12 +1423,12 @@ Please specify a valid field to update.`,
 • New Value: ${value}
 
 The changes have been saved to your database.`,
-              conversationContext: {
+        conversationContext: {
                 phase: 'exploration',
                 action: 'update_contact',
-                referringTo: 'new_request'
-              }
-            };
+          referringTo: 'new_request'
+        }
+      };
 
           } catch (error) {
             logger.error('Failed to update contact', error instanceof Error ? error : undefined, {
@@ -1436,18 +1436,18 @@ The changes have been saved to your database.`,
               userId: context.userId
             });
 
-            return {
+      return {
               type: 'text',
               content: `❌ Sorry, I encountered an error while updating the contact. Please try again.
 
 Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              conversationContext: {
+        conversationContext: {
                 phase: 'data_collection',
                 action: 'update_contact',
-                referringTo: 'new_request'
-              }
-            };
-          }
+          referringTo: 'new_request'
+        }
+      };
+    }
         } else {
           // No update details provided, show data collection prompt
           return {
@@ -1470,14 +1470,14 @@ Which contact would you like to update and what changes should I make?`,
               "Change Sarah Wilson's phone to 555-9999",
               "Set Mike Johnson's lead status to qualified"
             ],
-            conversationContext: {
+          conversationContext: {
               phase: 'data_collection',
               action: 'update_contact',
-              referringTo: 'new_request'
-            }
-          };
-        }
-
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
       case 'update_account':
         return {
           type: 'text',
@@ -1499,12 +1499,12 @@ Which account would you like to update and what changes should I make?`,
             "Change Global Solutions revenue to 10M",
             "Set Startup Inc website to startupinc.com"
           ],
-          conversationContext: {
+        conversationContext: {
             phase: 'data_collection',
             action: 'update_account',
-            referringTo: 'new_request'
-          }
-        };
+          referringTo: 'new_request'
+        }
+      };
 
       case 'update_deal':
         return {
@@ -1527,12 +1527,12 @@ Which deal would you like to update and what changes should I make?`,
             "Change Consulting Project amount to 30K",
             "Set Enterprise Contract close date to December 15"
           ],
-          conversationContext: {
+        conversationContext: {
             phase: 'data_collection',
             action: 'update_deal',
-            referringTo: 'new_request'
-          }
-        };
+          referringTo: 'new_request'
+        }
+      };
 
       case 'delete_contact':
         // Check if we have the contact name in the intent entities
@@ -1548,7 +1548,7 @@ Which deal would you like to update and what changes should I make?`,
 
             // Get team ID
             const teams = await this.convex.query(api.crm.getTeamsByUser, { userId: context.userId });
-            const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
 
             // Find the contact by name
             const contacts = await this.convex.query(api.crm.getContactsByTeam, { teamId });
@@ -1558,7 +1558,7 @@ Which deal would you like to update and what changes should I make?`,
             });
 
             if (!targetContact) {
-              return {
+        return {
                 type: 'text',
                 content: `❌ I couldn't find a contact named "${contactName}". 
 
@@ -1571,14 +1571,14 @@ ${contacts.slice(0, 5).map(contact => {
 }).join('\n')}
 
 Please check the spelling or try a different contact name.`,
-                conversationContext: {
+          conversationContext: {
                   phase: 'data_collection',
                   action: 'delete_contact',
-                  referringTo: 'new_request'
-                }
-              };
-            }
-
+            referringTo: 'new_request'
+          }
+        };
+      }
+      
             // Delete the contact
             await this.convex.mutation(api.crm.deleteContact, {
               contactId: targetContact._id
@@ -1603,12 +1603,12 @@ Please check the spelling or try a different contact name.`,
 • Email: ${targetContact.email || 'No email'}
 
 The contact has been permanently removed from your database.`,
-              conversationContext: {
+        conversationContext: {
                 phase: 'exploration',
                 action: 'delete_contact',
-                referringTo: 'new_request'
-              }
-            };
+          referringTo: 'new_request'
+        }
+      };
 
           } catch (error) {
             logger.error('Failed to delete contact', error instanceof Error ? error : undefined, {
@@ -1616,17 +1616,17 @@ The contact has been permanently removed from your database.`,
               userId: context.userId
             });
 
-            return {
+      return {
               type: 'text',
               content: `❌ Sorry, I encountered an error while deleting the contact. Please try again.
 
 Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-              conversationContext: {
+        conversationContext: {
                 phase: 'data_collection',
                 action: 'delete_contact',
-                referringTo: 'new_request'
-              }
-            };
+          referringTo: 'new_request'
+        }
+      };
           }
         }
 
@@ -1677,8 +1677,8 @@ Which account would you like to delete?`,
             "Remove Global Solutions account",
             "Delete account Startup Inc"
           ],
-          conversationContext: {
-            phase: 'confirmation',
+        conversationContext: {
+          phase: 'confirmation',
             action: 'delete_account',
             referringTo: 'new_request'
           }
@@ -1704,12 +1704,12 @@ Which deal would you like to delete?`,
             "Remove Consulting Project",
             "Delete deal Enterprise Contract"
           ],
-          conversationContext: {
+        conversationContext: {
             phase: 'confirmation',
             action: 'delete_deal',
-            referringTo: 'new_request'
-          }
-        };
+          referringTo: 'new_request'
+        }
+      };
 
       default:
         // For any other CRUD operations, use conversational handler
@@ -1798,7 +1798,7 @@ class EmailIntentHandler implements IntentHandler {
           // Continue with email drafting logic below
         } else {
           // Still no clear recipient or content
-          return {
+        return {
             type: 'text',
             content: `I'd be happy to help you send an email! 
 
@@ -1815,14 +1815,14 @@ Who would you like to send an email to?`,
               "Email Sarah Johnson",
               "Send thank you to Mike Chen"
             ],
-            conversationContext: {
+        conversationContext: {
               phase: 'data_collection',
               action: 'send_email',
-              referringTo: 'new_request'
-            }
-          };
+          referringTo: 'new_request'
         }
-      }
+      };
+    }
+  }
 
       if (!finalRecipient) {
         return {
@@ -1842,14 +1842,14 @@ Who would you like to send an email to?`,
             "Email Sarah Johnson",
             "Send thank you to Mike Chen"
           ],
-          conversationContext: {
+        conversationContext: {
             phase: 'data_collection',
             action: 'send_email',
-            referringTo: 'new_request'
-          }
-        };
-      }
-
+          referringTo: 'new_request'
+        }
+      };
+    }
+    
       // Get team ID and find the contact
       const teams = await this.convex.query(api.crm.getTeamsByUser, { userId: context.userId });
       const teamId = teams.length > 0 ? teams[0]._id : 'default';
@@ -1912,7 +1912,7 @@ Who would you like to send an email to?`,
 
         if (!hasSpecificContent) {
           // User provided vague request, ask for more information
-          return {
+      return {
             type: 'text',
             content: `I found ${matchingContact.firstName} ${matchingContact.lastName} in your contacts. 
 
@@ -1930,7 +1930,7 @@ What would you like to communicate?`,
               `Send ${matchingContact.firstName} an email about the proposal`,
               `Email ${matchingContact.firstName} regarding the invoice`
             ],
-            conversationContext: {
+        conversationContext: {
               phase: 'data_collection',
               action: 'send_email',
               referringTo: 'new_request',
@@ -1950,12 +1950,12 @@ What would you like to communicate?`,
             subject: emailContent.subject,
             content: emailContent.content
           },
-          conversationContext: {
+        conversationContext: {
             phase: 'confirmation',
             action: 'send_email',
-            referringTo: 'new_request'
-          }
-        };
+          referringTo: 'new_request'
+        }
+      };
         
         logger.info('Email draft response created', {
           type: emailResponse.type,
@@ -1988,7 +1988,7 @@ For example:
           }
         };
       }
-
+      
     } catch (error) {
       logger.error('Error handling email intent', error instanceof Error ? error : undefined, {
         intent,

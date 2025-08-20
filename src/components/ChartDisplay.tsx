@@ -20,7 +20,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { BarChart3, TrendingUp, PieChart as PieChartIcon, Download, Palette, Settings } from "lucide-react";
+import { BarChart3, TrendingUp, PieChart as PieChartIcon, Download, Palette, Settings, FileSpreadsheet } from "lucide-react";
 
 type ChartDisplayProps = {
   chartSpec?: {
@@ -37,9 +37,10 @@ type ChartDisplayProps = {
   narrative?: string;
   onExport?: (format: string) => void;
   onColorChange?: (colors: string[]) => void;
+  onGoogleSheetsExport?: (chartData: any[], chartConfig: any, chartTitle: string) => void;
 };
 
-export default function ChartDisplay({ chartSpec, narrative, onExport, onColorChange }: ChartDisplayProps) {
+export default function ChartDisplay({ chartSpec, narrative, onExport, onColorChange, onGoogleSheetsExport }: ChartDisplayProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [currentColors, setCurrentColors] = useState([
     '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#06b6d4'
@@ -381,17 +382,29 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
               Colors
             </button>
             
-            {/* Export Button */}
-            {onExport && (
-              <button
-                onClick={() => onExport('png')}
-                className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7] hover:bg-[#f3e89a]/10 transition-colors flex items-center gap-1"
-                title="Export chart"
-              >
-                <Download className="w-3 h-3" />
-                Export
-              </button>
-            )}
+            {/* Export Buttons */}
+            <div className="flex items-center gap-2">
+              {onExport && (
+                <button
+                  onClick={() => onExport('png')}
+                  className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7] hover:bg-[#f3e89a]/10 transition-colors flex items-center gap-1"
+                  title="Export as PNG"
+                >
+                  <Download className="w-3 h-3" />
+                  PNG
+                </button>
+              )}
+              {onGoogleSheetsExport && (
+                <button
+                  onClick={() => onGoogleSheetsExport(data, chartConfig, `Chart - ${normalizedChartType}`)}
+                  className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7] hover:bg-[#f3e89a]/10 transition-colors flex items-center gap-1"
+                  title="Export to Google Sheets"
+                >
+                  <FileSpreadsheet className="w-3 h-3" />
+                  Sheets
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

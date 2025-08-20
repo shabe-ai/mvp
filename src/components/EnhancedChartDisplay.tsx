@@ -49,6 +49,7 @@ interface EnhancedChartDisplayProps {
   narrative?: string;
   onUpdate?: (newConfig: any) => void;
   onExport?: (format: string) => void;
+  onGoogleSheetsExport?: (chartData: any[], chartConfig: any, chartTitle: string) => void;
   onShare?: () => void;
   onInsightAction?: (insight: string) => void;
   isInteractive?: boolean;
@@ -65,11 +66,12 @@ interface Insight {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8', '#82CA9D'];
 
-export default function EnhancedChartDisplay({
-  chartSpec,
-  narrative,
+export default function EnhancedChartDisplay({ 
+  chartSpec, 
+  narrative, 
   onUpdate,
   onExport,
+  onGoogleSheetsExport,
   onShare,
   onInsightAction,
   isInteractive = true
@@ -321,10 +323,10 @@ export default function EnhancedChartDisplay({
               <YAxis />
               <Tooltip />
               <Legend />
-              {areaDataKeys.map((key, index) => (
+            {areaDataKeys.map((key, index) => (
                 <Area key={key} type="monotone" dataKey={key} fill={COLORS[index % COLORS.length]} stroke={COLORS[index % COLORS.length]} />
-              ))}
-            </AreaChart>
+            ))}
+          </AreaChart>
           </ResponsiveContainer>
         );
 
@@ -355,22 +357,22 @@ export default function EnhancedChartDisplay({
         return (
           <ResponsiveContainer width="100%" height={400}>
             <PieChart margin={chartConfig.margin}>
-              <Pie
-                data={pieData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                outerRadius={80}
+            <Pie
+              data={pieData}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+              outerRadius={80}
                 fill="#8884d8"
-                dataKey="value"
-              >
-                {pieData.map((entry, index) => (
+              dataKey="value"
+            >
+              {pieData.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
+              ))}
+            </Pie>
               <Tooltip />
-            </PieChart>
+          </PieChart>
           </ResponsiveContainer>
         );
 
@@ -390,7 +392,7 @@ export default function EnhancedChartDisplay({
               <YAxis type="number" dataKey={scatterYKey} name={scatterYKey} />
               <Tooltip cursor={{ strokeDasharray: '3 3' }} />
               <Scatter name="Data" data={data} fill="#8884d8" />
-            </ScatterChart>
+          </ScatterChart>
           </ResponsiveContainer>
         );
 
@@ -448,8 +450,8 @@ export default function EnhancedChartDisplay({
                 Share
               </Button>
             </div>
-          )}
-        </div>
+                )}
+              </div>
       </CardHeader>
       
       <CardContent>
@@ -475,7 +477,7 @@ export default function EnhancedChartDisplay({
                 <div className="text-center py-8 text-gray-500">
                   <Brain className="h-12 w-12 mx-auto mb-2 text-gray-300" />
                   <p>No insights available for this data</p>
-                </div>
+            </div>
               ) : (
                 <div className="grid gap-4">
                   {insights.map((insight) => (
@@ -499,12 +501,12 @@ export default function EnhancedChartDisplay({
                                   <Zap className="h-3 w-3 mr-1" />
                                   {insight.action}
                                 </Button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
+            )}
+          </div>
+        </div>
+      </div>
                         <Eye className="h-4 w-4 text-gray-400" />
-                      </div>
+            </div>
                     </div>
                   ))}
                 </div>

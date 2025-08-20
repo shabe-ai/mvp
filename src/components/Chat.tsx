@@ -455,6 +455,66 @@ export default function Chat({ onAction }: ChatProps = {}) {
     setMessages(prev => [...prev, updateMessage]);
   };
 
+  const handleGoogleSheetsExport = async (chartData: any[], chartConfig: any, chartTitle: string) => {
+    try {
+      logger.info('Google Sheets export requested', { 
+        userId: user?.id,
+        chartTitle,
+        dataPoints: chartData?.length || 0
+      });
+
+      const response = await fetch('/api/export-sheets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          chartData,
+          chartConfig,
+          chartTitle
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to export to Google Sheets');
+      }
+
+      const result = await response.json();
+      
+      logger.info('Google Sheets export completed successfully', { 
+        userId: user?.id,
+        spreadsheetUrl: result.spreadsheetUrl
+      });
+      
+      // Add success message
+      const exportMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: `I've exported the chart data to Google Sheets. You can view it here: ${result.spreadsheetUrl}`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, exportMessage]);
+
+      // Open the spreadsheet in a new tab
+      window.open(result.spreadsheetUrl, '_blank');
+      
+    } catch (error) {
+      logger.error('Error exporting to Google Sheets', error instanceof Error ? error : new Error(String(error)), {
+        userId: user?.id
+      });
+      
+      // Add error message
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: `Sorry, I couldn't export to Google Sheets. Please make sure you're connected to Google and try again.`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
+  };
+
   const handleChartExport = async (format: string) => {
     try {
       logger.info('Chart export requested', { 
@@ -747,6 +807,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
                       narrative={message.narrative}
                       onUpdate={handleChartUpdate}
                       onExport={handleChartExport}
+                      onGoogleSheetsExport={handleGoogleSheetsExport}
                       onShare={handleChartShare}
                       onInsightAction={handleInsightAction}
                     />
@@ -766,6 +827,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
                       }}
                       narrative={message.narrative}
                       onExport={handleChartExport}
+                      onGoogleSheetsExport={handleGoogleSheetsExport}
                     />
                   )}
                 </div>

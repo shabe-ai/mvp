@@ -41,6 +41,8 @@ export async function GET(request: NextRequest) {
         'https://www.googleapis.com/auth/calendar.readonly',
         'https://www.googleapis.com/auth/drive.readonly',
         'https://www.googleapis.com/auth/drive.metadata.readonly',
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/spreadsheets.readonly',
       ],
       prompt: 'consent',
       include_granted_scopes: true,
