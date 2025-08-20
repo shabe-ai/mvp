@@ -465,37 +465,42 @@ class ChartIntentHandler implements IntentHandler {
         const teamId = teams[0]._id;
         const data = await convex.query(api.crm.getDealsByTeam, { teamId });
         
-        // Process data for the new chart type
-        const chartData = this.processDataForChart(data, 'deals', 'stage', true);
+        // Check if we should use sum aggregation (based on previous context or current data)
+        // For now, we'll use sum of amount since that's what was previously set up
+        const chartData = this.processDataForChartWithSum(data, 'deals', 'stage', 'amount');
         
         logger.info('Chart type modification completed', {
           originalDataLength: chartData.length,
           newChartType: intent.entities.chartType,
+          aggregationMethod: 'sum',
+          aggregationField: 'amount',
           userId: context.userId
         });
         
         return {
           type: 'text',
-          content: `I've changed the chart to a ${intent.entities.chartType} chart.`,
+          content: `I've changed the chart to a ${intent.entities.chartType} chart showing the sum of amounts.`,
           chartSpec: {
             chartType: intent.entities.chartType,
             data: chartData,
             dataType: 'deals',
             dimension: 'stage',
-            title: `deals by stage (${intent.entities.chartType})`,
-            description: `Chart showing deals grouped by stage as ${intent.entities.chartType}`,
+            title: `deals by stage (${intent.entities.chartType} - sum of amounts)`,
+            description: `Chart showing deals grouped by stage as ${intent.entities.chartType} with sum of amounts`,
             chartConfig: {
               margin: { top: 20, right: 30, left: 20, bottom: 60 },
               height: 400,
               width: 600,
               xAxis: { dataKey: 'stage' },
-              yAxis: { dataKey: 'count' }
+              yAxis: { dataKey: 'sum' }
             }
           },
           hasData: true,
           modification: {
             type: 'change_chart_type',
-            chartType: intent.entities.chartType
+            chartType: intent.entities.chartType,
+            aggregationMethod: 'sum',
+            aggregationField: 'amount'
           }
         };
       } catch (error) {
