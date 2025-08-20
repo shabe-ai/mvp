@@ -204,28 +204,50 @@ class DataIntentHandler implements IntentHandler {
           userId: context.userId
         });
 
-        // Apply filters based on entities
-        if (intent.entities?.company) {
-          const companyFilter = intent.entities.company.toLowerCase();
+        // Apply filters based on entities or conversation context
+        let companyFilter = intent.entities?.company;
+        
+        // If no company in current entities, check conversation context for previous company filter
+        if (!companyFilter && context.conversationManager) {
+          const conversationState = context.conversationManager.getState();
+          companyFilter = conversationState.currentContext.lastCompanyFilter;
+          if (companyFilter) {
+            logger.info('Using company filter from conversation context', {
+              company: companyFilter,
+              userId: context.userId
+            });
+          }
+        }
+        
+        if (companyFilter) {
+          const companyFilterLower = companyFilter.toLowerCase();
           const originalCount = data.length;
           
           data = data.filter(item => {
             if (dataType === 'contacts') {
-              return item.company && item.company.toLowerCase().includes(companyFilter);
+              return item.company && item.company.toLowerCase().includes(companyFilterLower);
             } else if (dataType === 'accounts') {
-              return item.name && item.name.toLowerCase().includes(companyFilter);
+              return item.name && item.name.toLowerCase().includes(companyFilterLower);
             } else if (dataType === 'deals') {
-              return item.accountName && item.accountName.toLowerCase().includes(companyFilter);
+              return item.accountName && item.accountName.toLowerCase().includes(companyFilterLower);
             }
             return true;
           });
           
           logger.info('Applied company filter', {
-            company: intent.entities.company,
+            company: companyFilter,
             originalCount,
             filteredCount: data.length,
             userId: context.userId
           });
+          
+          // Store the company filter in conversation context for future reference
+          if (context.conversationManager) {
+            context.conversationManager.updateFullContext({
+              lastCompanyFilter: companyFilter,
+              lastDataType: dataType
+            });
+          }
         }
 
         // Generate intelligent response based on query type
@@ -238,8 +260,8 @@ class DataIntentHandler implements IntentHandler {
         
         switch (queryType) {
           case 'count':
-            if (intent.entities?.company) {
-              content = `You have ${data.length} ${dataType} at ${intent.entities.company} in your database.`;
+            if (companyFilter) {
+              content = `You have ${data.length} ${dataType} at ${companyFilter} in your database.`;
             } else {
               content = `You have ${data.length} ${dataType} in your database.`;
             }
@@ -254,11 +276,11 @@ class DataIntentHandler implements IntentHandler {
                 return firstName && lastName ? `${firstName} ${lastName}` : firstName || lastName || 'Unknown';
               });
               
-              if (intent.entities?.company) {
+              if (companyFilter) {
                 if (names.length <= 10) {
-                  content = `Here are your ${dataType} at ${intent.entities.company}:\n${names.join(', ')}`;
+                  content = `Here are your ${dataType} at ${companyFilter}:\n${names.join(', ')}`;
                 } else {
-                  content = `You have ${data.length} ${dataType} at ${intent.entities.company}. Here are the first 10:\n${names.slice(0, 10).join(', ')}...`;
+                  content = `You have ${data.length} ${dataType} at ${companyFilter}. Here are the first 10:\n${names.slice(0, 10).join(', ')}...`;
                 }
               } else {
                 if (names.length <= 10) {

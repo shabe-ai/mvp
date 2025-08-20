@@ -33,6 +33,8 @@ export interface ConversationState {
     currentTopic?: string;
     pendingEmailRecipient?: string;
     action?: string;
+    lastCompanyFilter?: string;
+    lastDataType?: string;
   };
   memory: {
     recentTopics: string[];

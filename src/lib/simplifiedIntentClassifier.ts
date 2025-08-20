@@ -232,6 +232,15 @@ If the user's intent is unclear or ambiguous, set needsClarification to true and
       this should be treated as continuing the send_email flow for ${recipient}, NOT as a new general_conversation.`;
     }
 
+    // Add specific context for data viewing follow-ups
+    if (currentAction === 'view_data' && lastAssistantMessage?.conversationContext?.lastCompanyFilter) {
+      const company = lastAssistantMessage.conversationContext.lastCompanyFilter;
+      const dataType = lastAssistantMessage.conversationContext.lastDataType || 'contacts';
+      contextString += `\n\nIMPORTANT: The user was just viewing ${dataType} data for ${company}. 
+      If the user asks follow-up questions like "who are they", "show me their names", "list them", etc., 
+      this should be treated as continuing the view_data flow for ${dataType} at ${company}, NOT as a new general_conversation.`;
+    }
+
     return contextString;
   }
 
