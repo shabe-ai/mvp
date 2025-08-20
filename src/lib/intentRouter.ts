@@ -200,31 +200,49 @@ class ChartIntentHandler implements IntentHandler {
         };
       }
 
-      // Process data for chart (include total by default)
-      const chartData = this.processDataForChart(data, dataType, dimension, true);
+      // Determine chart type and aggregation method from intent
+      const chartType = intent.entities?.chartType || 'bar';
+      const aggregationField = intent.entities?.field;
+      
+      // Use sum aggregation if field is specified, otherwise use count
+      let chartData;
+      let yAxisDataKey;
+      let aggregationMethod;
+      
+      if (aggregationField) {
+        chartData = this.processDataForChartWithSum(data, dataType, dimension, aggregationField);
+        yAxisDataKey = 'sum';
+        aggregationMethod = `sum of ${aggregationField}`;
+      } else {
+        chartData = this.processDataForChart(data, dataType, dimension, true);
+        yAxisDataKey = 'count';
+        aggregationMethod = 'count';
+      }
       
       logger.info('Chart data processed', {
         chartDataLength: chartData.length,
         chartData: chartData,
+        chartType: chartType,
+        aggregationMethod: aggregationMethod,
         userId: context.userId
       });
 
       return {
         type: 'text',
-        content: `I've created a chart showing ${dataType} by ${dimension}. The chart will be displayed below.`,
+        content: `I've created a ${chartType} chart showing ${dataType} by ${dimension} (${aggregationMethod}). The chart will be displayed below.`,
         chartSpec: {
-          chartType: 'bar',
+          chartType: chartType,
           data: chartData,
           dataType: dataType,
           dimension: dimension,
-          title: `${dataType} by ${dimension}`,
-          description: `Chart showing ${dataType} grouped by ${dimension}`,
+          title: `${dataType} by ${dimension} (${aggregationMethod})`,
+          description: `Chart showing ${dataType} grouped by ${dimension} with ${aggregationMethod}`,
           chartConfig: {
             margin: { top: 20, right: 30, left: 20, bottom: 60 },
             height: 400,
             width: 600,
             xAxis: { dataKey: dimension },
-            yAxis: { dataKey: 'count' }
+            yAxis: { dataKey: yAxisDataKey }
           }
         },
         hasData: true
