@@ -253,32 +253,71 @@ class ChartIntentHandler implements IntentHandler {
     });
 
     if (field === 'totals' || field === 'total') {
-      // Remove the 'total' column from the chart data
-      return {
-        type: 'text',
-        content: 'I\'ve removed the totals column from the chart. The chart now shows only the count data.',
-        chartSpec: {
-          chartType: 'bar',
-          data: [], // This will be populated by the frontend with modified data
-          dataType: 'deals',
-          dimension: 'stage',
-          title: 'deals by stage',
-          description: 'Chart showing deals grouped by stage (counts only)',
-          chartConfig: {
-            margin: { top: 20, right: 30, left: 20, bottom: 60 },
-            height: 400,
-            width: 600,
-            xAxis: { dataKey: 'stage' },
-            yAxis: { dataKey: 'count' },
-            excludeColumns: ['total'] // Signal to frontend to exclude this column
-          }
-        },
-        hasData: true,
-        modification: {
-          type: 'remove_column',
-          column: 'total'
+      // Get the current chart data and remove the 'total' column
+      try {
+        const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+        const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+        
+        if (!teams || teams.length === 0) {
+          return {
+            type: 'text',
+            content: 'No team found for your account. Please contact your administrator.',
+            hasData: false
+          };
         }
-      };
+        
+        const teamId = teams[0]._id;
+        const data = await convex.query(api.crm.getDealsByTeam, { teamId });
+        
+        // Process data and remove the 'total' column
+        const chartData = this.processDataForChart(data, 'deals', 'stage');
+        const modifiedData = chartData.map(item => {
+          const { total, ...rest } = item;
+          return rest;
+        });
+        
+        logger.info('Chart modification completed', {
+          originalDataLength: chartData.length,
+          modifiedDataLength: modifiedData.length,
+          userId: context.userId
+        });
+        
+        return {
+          type: 'text',
+          content: 'I\'ve removed the totals column from the chart. The chart now shows only the count data.',
+          chartSpec: {
+            chartType: 'bar',
+            data: modifiedData,
+            dataType: 'deals',
+            dimension: 'stage',
+            title: 'deals by stage',
+            description: 'Chart showing deals grouped by stage (counts only)',
+            chartConfig: {
+              margin: { top: 20, right: 30, left: 20, bottom: 60 },
+              height: 400,
+              width: 600,
+              xAxis: { dataKey: 'stage' },
+              yAxis: { dataKey: 'count' }
+            }
+          },
+          hasData: true,
+          modification: {
+            type: 'remove_column',
+            column: 'total'
+          }
+        };
+      } catch (error) {
+        logger.error('Error modifying chart', error instanceof Error ? error : new Error(String(error)), {
+          field,
+          userId: context.userId
+        });
+        
+        return {
+          type: 'text',
+          content: 'Sorry, I encountered an error while modifying the chart. Please try again.',
+          hasData: false
+        };
+      }
     }
 
     return {
