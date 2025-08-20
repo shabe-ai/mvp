@@ -254,7 +254,9 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
       case "pie":
       case "piechart":
         // For pie charts, we need to use the first data key that's not the x-axis
-        const pieDataKey = data.length > 0 ? Object.keys(data[0]).find(key => key !== xAxisDataKey) : 'value';
+        const pieDataKey: string = data.length > 0 
+          ? Object.keys(data[0]).find(key => key !== xAxisDataKey) || (chartConfig.yAxis?.dataKey as string) || 'value'
+          : 'value';
         console.log('📊 PieChart data key:', pieDataKey);
         console.log('📊 PieChart data structure:', data[0]);
         
