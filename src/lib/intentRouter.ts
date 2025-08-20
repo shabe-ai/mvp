@@ -448,6 +448,69 @@ class ChartIntentHandler implements IntentHandler {
       }
     }
 
+    // Handle chart type changes
+    if (intent.entities?.chartType) {
+      try {
+        const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+        const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+        
+        if (!teams || teams.length === 0) {
+          return {
+            type: 'text',
+            content: 'No team found for your account. Please contact your administrator.',
+            hasData: false
+          };
+        }
+        
+        const teamId = teams[0]._id;
+        const data = await convex.query(api.crm.getDealsByTeam, { teamId });
+        
+        // Process data for the new chart type
+        const chartData = this.processDataForChart(data, 'deals', 'stage', true);
+        
+        logger.info('Chart type modification completed', {
+          originalDataLength: chartData.length,
+          newChartType: intent.entities.chartType,
+          userId: context.userId
+        });
+        
+        return {
+          type: 'text',
+          content: `I've changed the chart to a ${intent.entities.chartType} chart.`,
+          chartSpec: {
+            chartType: intent.entities.chartType,
+            data: chartData,
+            dataType: 'deals',
+            dimension: 'stage',
+            title: `deals by stage (${intent.entities.chartType})`,
+            description: `Chart showing deals grouped by stage as ${intent.entities.chartType}`,
+            chartConfig: {
+              margin: { top: 20, right: 30, left: 20, bottom: 60 },
+              height: 400,
+              width: 600,
+              xAxis: { dataKey: 'stage' },
+              yAxis: { dataKey: 'count' }
+            }
+          },
+          hasData: true,
+          modification: {
+            type: 'change_chart_type',
+            chartType: intent.entities.chartType
+          }
+        };
+      } catch (error) {
+        logger.error('Error changing chart type', error instanceof Error ? error : new Error(String(error)), {
+          userId: context.userId
+        });
+        
+        return {
+          type: 'text',
+          content: 'Sorry, I encountered an error while changing the chart type. Please try again.',
+          hasData: false
+        };
+      }
+    }
+
     // Handle other modifications
     const modificationType = intent.originalMessage.toLowerCase();
     if (modificationType.includes('group') || modificationType.includes('aggregate')) {
