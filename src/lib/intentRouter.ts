@@ -211,6 +211,7 @@ class ChartIntentHandler implements IntentHandler {
       
       logger.info('Chart data processed', {
         chartDataLength: chartData.length,
+        chartData: chartData,
         userId: context.userId
       });
 
@@ -227,7 +228,9 @@ class ChartIntentHandler implements IntentHandler {
           chartConfig: {
             margin: { top: 20, right: 30, left: 20, bottom: 60 },
             height: 400,
-            width: 600
+            width: 600,
+            xAxis: { dataKey: dimension },
+            yAxis: { dataKey: 'count' }
           }
         },
         hasData: true
