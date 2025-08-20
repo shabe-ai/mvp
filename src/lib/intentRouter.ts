@@ -200,8 +200,8 @@ class ChartIntentHandler implements IntentHandler {
         };
       }
 
-      // Process data for chart
-      const chartData = this.processDataForChart(data, dataType, dimension);
+      // Process data for chart (include total by default)
+      const chartData = this.processDataForChart(data, dataType, dimension, true);
       
       logger.info('Chart data processed', {
         chartDataLength: chartData.length,
@@ -273,16 +273,12 @@ class ChartIntentHandler implements IntentHandler {
         const teamId = teams[0]._id;
         const data = await convex.query(api.crm.getDealsByTeam, { teamId });
         
-        // Process data and remove the 'total' column
-        const chartData = this.processDataForChart(data, 'deals', 'stage');
-        const modifiedData = chartData.map(item => {
-          const { total, ...rest } = item;
-          return rest;
-        });
+        // Process data without total column
+        const chartData = this.processDataForChart(data, 'deals', 'stage', false);
         
         logger.info('Chart modification completed', {
           originalDataLength: chartData.length,
-          modifiedDataLength: modifiedData.length,
+          modifiedDataLength: chartData.length,
           userId: context.userId
         });
         
@@ -291,7 +287,7 @@ class ChartIntentHandler implements IntentHandler {
           content: 'I\'ve removed the totals column from the chart. The chart now shows only the count data.',
           chartSpec: {
             chartType: 'bar',
-            data: modifiedData,
+            data: chartData,
             dataType: 'deals',
             dimension: 'stage',
             title: 'deals by stage',
@@ -341,8 +337,8 @@ class ChartIntentHandler implements IntentHandler {
         const teamId = teams[0]._id;
         const data = await convex.query(api.crm.getDealsByTeam, { teamId });
         
-        // Process data for stacked chart
-        const chartData = this.processDataForChart(data, 'deals', 'stage');
+        // Process data for stacked chart (include total for stacking)
+        const chartData = this.processDataForChart(data, 'deals', 'stage', true);
         
         logger.info('Chart stacking modification completed', {
           originalDataLength: chartData.length,
@@ -404,8 +400,8 @@ class ChartIntentHandler implements IntentHandler {
         const teamId = teams[0]._id;
         const data = await convex.query(api.crm.getDealsByTeam, { teamId });
         
-        // Process data for grouped chart
-        const chartData = this.processDataForChart(data, 'deals', 'stage');
+        // Process data for grouped chart (include total for grouping)
+        const chartData = this.processDataForChart(data, 'deals', 'stage', true);
         
         logger.info('Chart grouping modification completed', {
           originalDataLength: chartData.length,
@@ -456,7 +452,7 @@ class ChartIntentHandler implements IntentHandler {
     };
   }
 
-  private processDataForChart(data: any[], dataType: string, dimension: string): any[] {
+  private processDataForChart(data: any[], dataType: string, dimension: string, includeTotal: boolean = true): any[] {
     // Group data by the specified dimension
     const groupedData: { [key: string]: number } = {};
     
@@ -490,11 +486,22 @@ class ChartIntentHandler implements IntentHandler {
     
     // Convert to chart data format that matches what the chart component expects
     // The chart component expects: xAxisDataKey for labels, and numeric columns for bars
-    return Object.entries(groupedData).map(([name, count]) => ({
-      [dimension]: name,  // This will be used as xAxisDataKey
-      count: count,       // This will be used as dataKey for the bar
-      total: count        // Alternative numeric column
-    }));
+    return Object.entries(groupedData).map(([name, count]) => {
+      const baseData = {
+        [dimension]: name,  // This will be used as xAxisDataKey
+        count: count        // This will be used as dataKey for the bar
+      };
+      
+      // Only add total if includeTotal is true
+      if (includeTotal) {
+        return {
+          ...baseData,
+          total: count  // Alternative numeric column
+        };
+      }
+      
+      return baseData;
+    });
   }
 
   private async handleDataAnalysis(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
