@@ -120,14 +120,7 @@ class ChartIntentHandler implements IntentHandler {
     if (intent.action === 'create_chart') {
       return await this.handleCreateChart(intent, context);
     } else if (intent.action === 'modify_chart') {
-      logger.info('Handling chart modification request', {
-        userId: context.userId
-      });
-      return {
-        type: 'text',
-        content: 'Chart modification is not yet implemented. Please create a new chart instead.',
-        hasData: false
-      };
+      return await this.handleModifyChart(intent, context);
     } else if (intent.action === 'analyze_data') {
       return await this.handleDataAnalysis(intent, context);
     }
@@ -195,6 +188,7 @@ class ChartIntentHandler implements IntentHandler {
       logger.info('Data fetched for chart', {
         dataType,
         dataCount: data.length,
+        rawData: data,
         userId: context.userId
       });
 
@@ -248,6 +242,50 @@ class ChartIntentHandler implements IntentHandler {
         hasData: false
       };
     }
+  }
+
+  private async handleModifyChart(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
+    const { field } = intent.entities;
+    
+    logger.info('Handling chart modification request', {
+      field,
+      userId: context.userId
+    });
+
+    if (field === 'totals' || field === 'total') {
+      // Remove the 'total' column from the chart data
+      return {
+        type: 'text',
+        content: 'I\'ve removed the totals column from the chart. The chart now shows only the count data.',
+        chartSpec: {
+          chartType: 'bar',
+          data: [], // This will be populated by the frontend with modified data
+          dataType: 'deals',
+          dimension: 'stage',
+          title: 'deals by stage',
+          description: 'Chart showing deals grouped by stage (counts only)',
+          chartConfig: {
+            margin: { top: 20, right: 30, left: 20, bottom: 60 },
+            height: 400,
+            width: 600,
+            xAxis: { dataKey: 'stage' },
+            yAxis: { dataKey: 'count' },
+            excludeColumns: ['total'] // Signal to frontend to exclude this column
+          }
+        },
+        hasData: true,
+        modification: {
+          type: 'remove_column',
+          column: 'total'
+        }
+      };
+    }
+
+    return {
+      type: 'text',
+      content: `I'm not sure how to modify the chart for "${field}". Please specify what you'd like to change.`,
+      hasData: false
+    };
   }
 
   private processDataForChart(data: any[], dataType: string, dimension: string): any[] {
