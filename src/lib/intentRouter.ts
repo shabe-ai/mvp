@@ -46,6 +46,49 @@ class IntentRouter {
       return await handler.handle(intent, context);
     }
 
+    // Check if this is a follow-up question that should use conversation context
+    if (intent.action === 'general_conversation' && context.conversationManager) {
+      const conversationState = context.conversationManager.getState();
+      const lastCompanyFilter = conversationState.currentContext.lastCompanyFilter;
+      const lastDataType = conversationState.currentContext.lastDataType;
+      
+      if (lastCompanyFilter && lastDataType) {
+        logger.info('Detected follow-up question, using conversation context', {
+          lastCompanyFilter,
+          lastDataType,
+          originalMessage: intent.originalMessage,
+          userId: context.userId
+        });
+        
+        // Create a view_data intent for the follow-up question
+        const followUpIntent = {
+          action: 'view_data' as const,
+          confidence: 0.8,
+          originalMessage: intent.originalMessage,
+          entities: {
+            dataType: lastDataType,
+            query: 'list',
+            company: lastCompanyFilter
+          },
+          context: {
+            referringTo: 'follow_up' as const,
+            userGoal: intent.originalMessage
+          },
+          metadata: {
+            isAmbiguous: false,
+            needsClarification: false,
+            clarificationQuestion: undefined
+          }
+        };
+        
+        // Route to data handler
+        const dataHandler = this.handlers.find(h => h.canHandle(followUpIntent));
+        if (dataHandler) {
+          return await dataHandler.handle(followUpIntent, context);
+        }
+      }
+    }
+
     logger.warn('No specific handler found, falling back to general conversation', {
       action: intent.action,
       userId: context.userId

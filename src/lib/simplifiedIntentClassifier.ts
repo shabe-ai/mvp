@@ -13,7 +13,7 @@ export interface SimplifiedIntent {
   originalMessage: string;
   entities: Record<string, any>;
   context: {
-    referringTo?: 'current_chart' | 'previous_chart' | 'new_request' | 'existing_data';
+    referringTo?: 'current_chart' | 'previous_chart' | 'new_request' | 'existing_data' | 'follow_up';
     userGoal?: string;
   };
   metadata: {
@@ -240,8 +240,13 @@ If the user's intent is unclear or ambiguous, set needsClarification to true and
       const company = lastAssistantMessage.conversationContext.lastCompanyFilter;
       const dataType = lastAssistantMessage.conversationContext.lastDataType || 'contacts';
       contextString += `\n\nIMPORTANT: The user was just viewing ${dataType} data for ${company}. 
-      If the user asks follow-up questions like "who are they", "show me their names", "list them", etc., 
-      this should be treated as continuing the view_data flow for ${dataType} at ${company}, NOT as a new general_conversation.`;
+      If the user asks follow-up questions like "who are they", "show me their names", "list them", "what are their names", etc., 
+      this should be treated as continuing the view_data flow for ${dataType} at ${company}, NOT as a new general_conversation.
+      
+      Examples for follow-up questions:
+      - "who are they" → action: "view_data", entities: {"dataType": "${dataType}", "query": "list", "company": "${company}"}
+      - "show me their names" → action: "view_data", entities: {"dataType": "${dataType}", "query": "list", "company": "${company}"}
+      - "list them" → action: "view_data", entities: {"dataType": "${dataType}", "query": "list", "company": "${company}"}`;
     }
 
     return contextString;
