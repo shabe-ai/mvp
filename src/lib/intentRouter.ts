@@ -165,37 +165,126 @@ class ChartIntentHandler implements IntentHandler {
       };
     }
 
-    // Create a chart configuration
-    const chartConfig = {
-      type: 'bar',
-      dataType: dataType,
-      dimension: dimension,
-      title: `${dataType} by ${dimension}`,
-      description: `Chart showing ${dataType} grouped by ${dimension}`
-    };
+    try {
+      // Get team ID first
+      const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      
+      if (!teams || teams.length === 0) {
+        return {
+          type: 'text',
+          content: 'No team found for your account. Please contact your administrator.',
+          hasData: false
+        };
+      }
+      
+      const teamId = teams[0]._id;
+      
+      // Fetch data based on dataType
+      let data: any[] = [];
+      if (dataType === 'deals') {
+        data = await convex.query(api.crm.getDealsByTeam, { teamId });
+      } else if (dataType === 'contacts') {
+        data = await convex.query(api.crm.getContactsByTeam, { teamId });
+      } else if (dataType === 'accounts') {
+        data = await convex.query(api.crm.getAccountsByTeam, { teamId });
+      } else if (dataType === 'activities') {
+        data = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+      }
 
-    logger.info('Chart configuration created', {
-      chartConfig,
-      userId: context.userId
-    });
+      logger.info('Data fetched for chart', {
+        dataType,
+        dataCount: data.length,
+        userId: context.userId
+      });
 
-    return {
-      type: 'text',
-      content: `I've created a chart configuration for ${dataType} by ${dimension}. The chart will be displayed below.`,
-      chartSpec: {
-        chartType: 'bar',
-        dataType: dataType,
-        dimension: dimension,
-        title: `${dataType} by ${dimension}`,
-        description: `Chart showing ${dataType} grouped by ${dimension}`,
-        chartConfig: {
-          margin: { top: 20, right: 30, left: 20, bottom: 60 },
-          height: 400,
-          width: 600
+      if (data.length === 0) {
+        return {
+          type: 'text',
+          content: `No ${dataType} found in your database. Please add some ${dataType} first.`,
+          hasData: false
+        };
+      }
+
+      // Process data for chart
+      const chartData = this.processDataForChart(data, dataType, dimension);
+      
+      logger.info('Chart data processed', {
+        chartDataLength: chartData.length,
+        userId: context.userId
+      });
+
+      return {
+        type: 'text',
+        content: `I've created a chart showing ${dataType} by ${dimension}. The chart will be displayed below.`,
+        chartSpec: {
+          chartType: 'bar',
+          data: chartData,
+          dataType: dataType,
+          dimension: dimension,
+          title: `${dataType} by ${dimension}`,
+          description: `Chart showing ${dataType} grouped by ${dimension}`,
+          chartConfig: {
+            margin: { top: 20, right: 30, left: 20, bottom: 60 },
+            height: 400,
+            width: 600
+          }
+        },
+        hasData: true
+      };
+    } catch (error) {
+      logger.error('Error creating chart', error instanceof Error ? error : new Error(String(error)), {
+        dataType,
+        dimension,
+        userId: context.userId
+      });
+      
+      return {
+        type: 'text',
+        content: `Sorry, I encountered an error while creating the chart for ${dataType} by ${dimension}. Please try again.`,
+        hasData: false
+      };
+    }
+  }
+
+  private processDataForChart(data: any[], dataType: string, dimension: string): any[] {
+    // Group data by the specified dimension
+    const groupedData: { [key: string]: number } = {};
+    
+    data.forEach(item => {
+      let value: string;
+      
+      if (dataType === 'deals') {
+        value = item.stage || 'Unknown';
+      } else if (dataType === 'contacts') {
+        if (dimension === 'company') {
+          value = item.company || 'Unknown';
+        } else if (dimension === 'leadStatus') {
+          value = item.leadStatus || 'Unknown';
+        } else {
+          value = 'Unknown';
         }
-      },
-      hasData: true
-    };
+      } else if (dataType === 'accounts') {
+        if (dimension === 'industry') {
+          value = item.industry || 'Unknown';
+        } else if (dimension === 'type') {
+          value = item.type || 'Unknown';
+        } else {
+          value = 'Unknown';
+        }
+      } else {
+        value = item[dimension] || 'Unknown';
+      }
+      
+      groupedData[value] = (groupedData[value] || 0) + 1;
+    });
+    
+    // Convert to chart data format
+    return Object.entries(groupedData).map(([name, value]) => ({
+      name,
+      value,
+      [dimension]: name
+    }));
   }
 
   private async handleDataAnalysis(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
