@@ -256,6 +256,7 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
         // For pie charts, we need to use the first data key that's not the x-axis
         const pieDataKey = data.length > 0 ? Object.keys(data[0]).find(key => key !== xAxisDataKey) : 'value';
         console.log('📊 PieChart data key:', pieDataKey);
+        console.log('📊 PieChart data structure:', data[0]);
         
         return (
           <PieChart {...commonProps}>
@@ -264,7 +265,12 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
               cx={chartConfig.width / 2}
               cy={chartConfig.height / 2}
               labelLine={false}
-              label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+              label={({ payload, percent }) => {
+                // Use the xAxisDataKey (e.g., 'stage') for the name, and format the value
+                const name = payload[xAxisDataKey] || payload.name || 'Unknown';
+                const value = payload[pieDataKey] || 0;
+                return `${name} ${((percent || 0) * 100).toFixed(0)}%`;
+              }}
               outerRadius={80}
               fill="#f59e0b"
               dataKey={pieDataKey}
@@ -275,6 +281,11 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
                 border: '1px solid #e2e8f0',
                 borderRadius: '8px',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+              }}
+              formatter={(value, name, props) => {
+                const stageName = props.payload[xAxisDataKey] || props.payload.name || 'Unknown';
+                const formattedValue = typeof value === 'number' ? `$${value.toLocaleString()}` : value;
+                return [formattedValue, stageName];
               }}
             />
           </PieChart>
