@@ -449,6 +449,12 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
           </ResponsiveContainer>
         </div>
 
+        {/* Chart Data for Export */}
+        <div 
+          data-chart-data={JSON.stringify(data)}
+          style={{ display: 'none' }}
+        />
+        
         {/* Insights */}
         {narrative && (
           <div className="bg-gradient-to-r from-[#f3e89a]/10 to-[#efe076]/10 border border-[#f3e89a]/20 rounded-xl p-4">

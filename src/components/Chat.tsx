@@ -462,7 +462,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
         userId: user?.id 
       });
       
-      // Find the chart element to export
+      // For now, create a simple text-based export with chart data
       const chartElement = document.querySelector('[data-chart-export]');
       if (!chartElement) {
         logger.error('Chart element not found for export', undefined, {
@@ -472,37 +472,39 @@ export default function Chat({ onAction }: ChatProps = {}) {
         return;
       }
 
-      // Import html2canvas dynamically
-      const html2canvas = (await import('html2canvas')).default;
+      // Get chart data from the element
+      const chartTitle = chartElement.querySelector('h3')?.textContent || 'Chart';
+      const chartData = chartElement.querySelectorAll('[data-chart-data]');
       
-      // Capture the chart as canvas
-      const canvas = await html2canvas(chartElement as HTMLElement, {
-        backgroundColor: '#ffffff',
-        scale: 2, // Higher resolution
-        useCORS: true,
-        allowTaint: true,
-        logging: false
+      // Create a simple text representation
+      let exportContent = `${chartTitle}\n\n`;
+      
+      // Add chart data if available
+      chartData.forEach((element) => {
+        const data = element.getAttribute('data-chart-data');
+        if (data) {
+          try {
+            const parsedData = JSON.parse(data);
+            exportContent += `Data: ${JSON.stringify(parsedData, null, 2)}\n\n`;
+          } catch (e) {
+            exportContent += `Data: ${data}\n\n`;
+          }
+        }
       });
 
-      // Convert canvas to blob
-      const blob = await new Promise<Blob>((resolve) => {
-        canvas.toBlob((blob) => {
-          resolve(blob!);
-        }, `image/${format}`, 0.9);
-      });
-
-      // Create download link
+      // Create and download text file
+      const blob = new Blob([exportContent], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `chart-${Date.now()}.${format}`;
+      link.download = `chart-data-${Date.now()}.txt`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      logger.info('Chart exported successfully', { 
-        format,
+      logger.info('Chart data exported successfully', { 
+        format: 'txt',
         fileName: link.download,
         userId: user?.id 
       });
@@ -511,7 +513,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
       const exportMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
-        content: `I've exported the chart as ${format.toUpperCase()}.`,
+        content: `I've exported the chart data as a text file.`,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, exportMessage]);
