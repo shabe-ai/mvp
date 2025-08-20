@@ -140,6 +140,9 @@ Available actions:
 
 Examples:
 - "how many contacts do i have" → action: "view_data", entities: {"dataType": "contacts", "query": "count"}
+- "how many contacts at shabe" → action: "view_data", entities: {"dataType": "contacts", "query": "count", "company": "shabe"}
+- "how many at shabe" → action: "view_data", entities: {"dataType": "contacts", "query": "count", "company": "shabe"}
+- "contacts at acme" → action: "view_data", entities: {"dataType": "contacts", "company": "acme"}
 - "show me my contacts" → action: "view_data", entities: {"dataType": "contacts"}
 - "what are the names of the contacts" → action: "view_data", entities: {"dataType": "contacts", "query": "list"}
 - "list all contacts" → action: "view_data", entities: {"dataType": "contacts", "query": "list"}

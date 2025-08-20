@@ -303,8 +303,10 @@ export class ConversationalHandler {
           if (structured) {
             console.log('🔍 Using structured analysis with lower confidence for count query');
             // Route directly to intent router for count queries to avoid timeout
+            // For count queries, if the action is general_conversation, force it to view_data to avoid infinite loops
+            const action = structured.action === 'general_conversation' ? 'view_data' : structured.action;
             const simplifiedIntent = {
-              action: structured.action as 'create_chart' | 'modify_chart' | 'analyze_data' | 'export_data' | 'explore_data' | 'view_data' | 'send_email' | 'create_contact' | 'update_contact' | 'delete_contact' | 'create_account' | 'update_account' | 'delete_account' | 'create_deal' | 'update_deal' | 'delete_deal' | 'create_activity' | 'update_activity' | 'delete_activity' | 'general_conversation',
+              action: action as 'create_chart' | 'modify_chart' | 'analyze_data' | 'export_data' | 'explore_data' | 'view_data' | 'send_email' | 'create_contact' | 'update_contact' | 'delete_contact' | 'create_account' | 'update_account' | 'delete_account' | 'create_deal' | 'update_deal' | 'delete_deal' | 'create_activity' | 'update_activity' | 'delete_activity' | 'general_conversation',
               confidence: structured.confidence,
               originalMessage: message,
               entities: structured.entities,
