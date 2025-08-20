@@ -383,7 +383,8 @@ class ChartIntentHandler implements IntentHandler {
     }
 
     // Handle aggregation method changes
-    if (intent.entities?.query === 'sum' && intent.entities?.field) {
+    if ((intent.entities?.query === 'sum' && intent.entities?.field) || 
+        (intent.entities?.field && intent.originalMessage.toLowerCase().includes('instead of count'))) {
       try {
         const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
         const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
@@ -400,24 +401,25 @@ class ChartIntentHandler implements IntentHandler {
         const data = await convex.query(api.crm.getDealsByTeam, { teamId });
         
         // Process data with sum aggregation
-        const chartData = this.processDataForChartWithSum(data, 'deals', 'stage', intent.entities.field);
+        const sumField = intent.entities.field;
+        const chartData = this.processDataForChartWithSum(data, 'deals', 'stage', sumField);
         
         logger.info('Chart aggregation modification completed', {
           originalDataLength: chartData.length,
-          aggregationField: intent.entities.field,
+          aggregationField: sumField,
           userId: context.userId
         });
         
         return {
           type: 'text',
-          content: `I've changed the chart to show the sum of ${intent.entities.field} instead of count.`,
+          content: `I've changed the chart to show the sum of ${sumField} instead of count.`,
           chartSpec: {
             chartType: 'bar',
             data: chartData,
             dataType: 'deals',
             dimension: 'stage',
-            title: `deals by stage (sum of ${intent.entities.field})`,
-            description: `Chart showing deals grouped by stage with sum of ${intent.entities.field}`,
+            title: `deals by stage (sum of ${sumField})`,
+            description: `Chart showing deals grouped by stage with sum of ${sumField}`,
             chartConfig: {
               margin: { top: 20, right: 30, left: 20, bottom: 60 },
               height: 400,
@@ -429,7 +431,7 @@ class ChartIntentHandler implements IntentHandler {
           hasData: true,
           modification: {
             type: 'change_aggregation',
-            field: intent.entities.field,
+            field: sumField,
             method: 'sum'
           }
         };
