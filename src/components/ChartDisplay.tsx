@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   LineChart,
   Line,
@@ -8,6 +8,7 @@ import {
   Bar,
   PieChart,
   Pie,
+  Cell,
   AreaChart,
   Area,
   ScatterChart,
@@ -19,7 +20,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { BarChart3, TrendingUp, PieChart as PieChartIcon } from "lucide-react";
+import { BarChart3, TrendingUp, PieChart as PieChartIcon, Download, Palette, Settings } from "lucide-react";
 
 type ChartDisplayProps = {
   chartSpec?: {
@@ -34,9 +35,16 @@ type ChartDisplayProps = {
     };
   };
   narrative?: string;
+  onExport?: (format: string) => void;
+  onColorChange?: (colors: string[]) => void;
 };
 
-export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps) {
+export default function ChartDisplay({ chartSpec, narrative, onExport, onColorChange }: ChartDisplayProps) {
+  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [currentColors, setCurrentColors] = useState([
+    '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#06b6d4'
+  ]);
+  
   console.log('📊 ChartDisplay received:', { chartSpec, narrative });
   
   if (!chartSpec) {
@@ -164,10 +172,10 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
                 key={key}
                 type="monotone"
                 dataKey={key}
-                stroke={index === 0 ? "#f59e0b" : "#3b82f6"}
+                stroke={currentColors[index % currentColors.length]}
                 strokeWidth={3}
-                activeDot={{ r: 8, fill: index === 0 ? "#f59e0b" : "#3b82f6" }}
-                dot={{ fill: index === 0 ? "#f59e0b" : "#3b82f6", strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 8, fill: currentColors[index % currentColors.length] }}
+                dot={{ fill: currentColors[index % currentColors.length], strokeWidth: 2, r: 4 }}
               />
             ))}
           </LineChart>
@@ -204,7 +212,7 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
               <Bar 
                 key={key}
                 dataKey={key} 
-                fill={index === 0 ? "#f59e0b" : "#3b82f6"}
+                fill={currentColors[index % currentColors.length]}
                 radius={[4, 4, 0, 0]}
               />
             ))}
@@ -243,8 +251,8 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
                 key={key}
                 type="monotone"
                 dataKey={key}
-                stroke={index === 0 ? "#f59e0b" : "#3b82f6"}
-                fill={index === 0 ? "#f59e0b" : "#3b82f6"}
+                stroke={currentColors[index % currentColors.length]}
+                fill={currentColors[index % currentColors.length]}
                 fillOpacity={0.3}
               />
             ))}
@@ -277,7 +285,11 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
               innerRadius={Math.min(chartConfig.width, chartConfig.height) * 0.15}
               fill="#f59e0b"
               dataKey={pieDataKey}
-            />
+            >
+              {data.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={currentColors[index % currentColors.length]} />
+              ))}
+            </Pie>
             <Tooltip 
               contentStyle={{
                 backgroundColor: 'white',
@@ -324,7 +336,7 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
               }}
             />
             <Legend />
-            <Scatter name="Data" data={data} fill="#f59e0b" />
+            <Scatter name="Data" data={data} fill={currentColors[0]} />
           </ScatterChart>
         );
 
@@ -358,12 +370,79 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
             <span className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7]">
               {data.length} data points
             </span>
+            
+            {/* Color Picker Button */}
+            <button
+              onClick={() => setShowColorPicker(!showColorPicker)}
+              className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7] hover:bg-[#f3e89a]/10 transition-colors flex items-center gap-1"
+              title="Customize colors"
+            >
+              <Palette className="w-3 h-3" />
+              Colors
+            </button>
+            
+            {/* Export Button */}
+            {onExport && (
+              <button
+                onClick={() => onExport('png')}
+                className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7] hover:bg-[#f3e89a]/10 transition-colors flex items-center gap-1"
+                title="Export chart"
+              >
+                <Download className="w-3 h-3" />
+                Export
+              </button>
+            )}
           </div>
         </div>
       </div>
       
       {/* Chart */}
       <div className="p-6">
+        {/* Color Picker Dropdown */}
+        {showColorPicker && (
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-[#d9d2c7]">
+            <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+              <Palette className="w-4 h-4" />
+              Customize Chart Colors
+            </h4>
+            <div className="grid grid-cols-6 gap-2">
+              {currentColors.map((color, index) => (
+                <div key={index} className="flex flex-col items-center gap-1">
+                  <input
+                    type="color"
+                    value={color}
+                    onChange={(e) => {
+                      const newColors = [...currentColors];
+                      newColors[index] = e.target.value;
+                      setCurrentColors(newColors);
+                      if (onColorChange) {
+                        onColorChange(newColors);
+                      }
+                    }}
+                    className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
+                    title={`Color ${index + 1}`}
+                  />
+                  <span className="text-xs text-gray-500">{index + 1}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => setCurrentColors(['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#06b6d4'])}
+                className="text-xs px-2 py-1 bg-white border border-[#d9d2c7] rounded hover:bg-[#f3e89a]/10 transition-colors"
+              >
+                Reset to Default
+              </button>
+              <button
+                onClick={() => setShowColorPicker(false)}
+                className="text-xs px-2 py-1 bg-white border border-[#d9d2c7] rounded hover:bg-[#f3e89a]/10 transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+        
         <div className="mb-6">
           <ResponsiveContainer width="100%" height={500}>
             {renderChart()}

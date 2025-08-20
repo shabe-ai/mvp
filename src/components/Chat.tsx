@@ -668,6 +668,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
                         }
                       }}
                       narrative={message.narrative}
+                      onExport={handleChartExport}
                     />
                   )}
                 </div>
