@@ -353,7 +353,7 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
   };
 
   return (
-    <div className="bg-white rounded-xl border border-[#d9d2c7] shadow-sm overflow-hidden">
+    <div className="bg-white rounded-xl border border-[#d9d2c7] shadow-sm overflow-hidden" data-chart-export>
       {/* Header */}
       <div className="bg-gradient-to-r from-[#f3e89a]/20 to-[#efe076]/20 px-6 py-4 border-b border-[#d9d2c7]">
         <div className="flex items-center justify-between">

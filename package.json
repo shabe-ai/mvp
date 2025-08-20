@@ -24,6 +24,7 @@
     "convex": "^1.25.4",
     "enhanced-resolve": "^5.18.3",
     "googleapis": "^153.0.0",
+    "html2canvas": "^1.4.1",
     "lucide-react": "^0.525.0",
     "mammoth": "^1.9.1",
     "next": "15.4.1",
@@ -42,6 +43,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/html2canvas": "^1.0.0",
     "@types/node": "^20.19.8",
     "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19.1.8",

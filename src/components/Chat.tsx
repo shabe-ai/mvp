@@ -462,6 +462,51 @@ export default function Chat({ onAction }: ChatProps = {}) {
         userId: user?.id 
       });
       
+      // Find the chart element to export
+      const chartElement = document.querySelector('[data-chart-export]');
+      if (!chartElement) {
+        logger.error('Chart element not found for export', undefined, {
+          format,
+          userId: user?.id
+        });
+        return;
+      }
+
+      // Import html2canvas dynamically
+      const html2canvas = (await import('html2canvas')).default;
+      
+      // Capture the chart as canvas
+      const canvas = await html2canvas(chartElement as HTMLElement, {
+        backgroundColor: '#ffffff',
+        scale: 2, // Higher resolution
+        useCORS: true,
+        allowTaint: true,
+        logging: false
+      });
+
+      // Convert canvas to blob
+      const blob = await new Promise<Blob>((resolve) => {
+        canvas.toBlob((blob) => {
+          resolve(blob!);
+        }, `image/${format}`, 0.9);
+      });
+
+      // Create download link
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `chart-${Date.now()}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      logger.info('Chart exported successfully', { 
+        format,
+        fileName: link.download,
+        userId: user?.id 
+      });
+      
       // Add export message
       const exportMessage: Message = {
         id: Date.now().toString(),
@@ -475,6 +520,15 @@ export default function Chat({ onAction }: ChatProps = {}) {
         format,
         userId: user?.id
       });
+      
+      // Add error message
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: `Sorry, I couldn't export the chart. Please try again.`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
     }
   };
 
