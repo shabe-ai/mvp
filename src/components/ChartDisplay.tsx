@@ -112,9 +112,9 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
   const renderChart = () => {
     // Provide default values for missing chartConfig properties
     const defaultConfig = {
-      width: 600,
-      height: 400,
-      margin: { top: 5, right: 30, left: 20, bottom: 5 },
+      width: 700,
+      height: 500,
+      margin: { top: 20, right: 80, left: 20, bottom: 20 },
       xAxis: { dataKey: "date" },
       yAxis: { dataKey: "value" }
     };
@@ -266,14 +266,15 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
               data={data}
               cx={chartConfig.width / 2}
               cy={chartConfig.height / 2}
-              labelLine={false}
+              labelLine={true}
               label={({ payload, percent }) => {
                 // Use the xAxisDataKey (e.g., 'stage') for the name, and format the value
                 const name = payload[xAxisDataKey] || payload.name || 'Unknown';
                 const value = payload[pieDataKey] || 0;
                 return `${name} ${((percent || 0) * 100).toFixed(0)}%`;
               }}
-              outerRadius={80}
+              outerRadius={Math.min(chartConfig.width, chartConfig.height) * 0.35}
+              innerRadius={Math.min(chartConfig.width, chartConfig.height) * 0.15}
               fill="#f59e0b"
               dataKey={pieDataKey}
             />
@@ -364,7 +365,7 @@ export default function ChartDisplay({ chartSpec, narrative }: ChartDisplayProps
       {/* Chart */}
       <div className="p-6">
         <div className="mb-6">
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="100%" height={500}>
             {renderChart()}
           </ResponsiveContainer>
         </div>
