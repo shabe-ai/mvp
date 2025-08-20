@@ -382,6 +382,70 @@ class ChartIntentHandler implements IntentHandler {
       }
     }
 
+    // Handle aggregation method changes
+    if (intent.entities?.query === 'sum' && intent.entities?.field) {
+      try {
+        const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+        const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+        
+        if (!teams || teams.length === 0) {
+          return {
+            type: 'text',
+            content: 'No team found for your account. Please contact your administrator.',
+            hasData: false
+          };
+        }
+        
+        const teamId = teams[0]._id;
+        const data = await convex.query(api.crm.getDealsByTeam, { teamId });
+        
+        // Process data with sum aggregation
+        const chartData = this.processDataForChartWithSum(data, 'deals', 'stage', intent.entities.field);
+        
+        logger.info('Chart aggregation modification completed', {
+          originalDataLength: chartData.length,
+          aggregationField: intent.entities.field,
+          userId: context.userId
+        });
+        
+        return {
+          type: 'text',
+          content: `I've changed the chart to show the sum of ${intent.entities.field} instead of count.`,
+          chartSpec: {
+            chartType: 'bar',
+            data: chartData,
+            dataType: 'deals',
+            dimension: 'stage',
+            title: `deals by stage (sum of ${intent.entities.field})`,
+            description: `Chart showing deals grouped by stage with sum of ${intent.entities.field}`,
+            chartConfig: {
+              margin: { top: 20, right: 30, left: 20, bottom: 60 },
+              height: 400,
+              width: 600,
+              xAxis: { dataKey: 'stage' },
+              yAxis: { dataKey: 'sum' }
+            }
+          },
+          hasData: true,
+          modification: {
+            type: 'change_aggregation',
+            field: intent.entities.field,
+            method: 'sum'
+          }
+        };
+      } catch (error) {
+        logger.error('Error changing chart aggregation', error instanceof Error ? error : new Error(String(error)), {
+          userId: context.userId
+        });
+        
+        return {
+          type: 'text',
+          content: 'Sorry, I encountered an error while changing the chart aggregation. Please try again.',
+          hasData: false
+        };
+      }
+    }
+
     // Handle other modifications
     const modificationType = intent.originalMessage.toLowerCase();
     if (modificationType.includes('group') || modificationType.includes('aggregate')) {
@@ -502,6 +566,47 @@ class ChartIntentHandler implements IntentHandler {
       
       return baseData;
     });
+  }
+
+  private processDataForChartWithSum(data: any[], dataType: string, dimension: string, sumField: string): any[] {
+    // Group data by the specified dimension and sum the specified field
+    const groupedData: { [key: string]: number } = {};
+    
+    data.forEach(item => {
+      let value: string;
+      
+      if (dataType === 'deals') {
+        value = item.stage || 'Unknown';
+      } else if (dataType === 'contacts') {
+        if (dimension === 'company') {
+          value = item.company || 'Unknown';
+        } else if (dimension === 'leadStatus') {
+          value = item.leadStatus || 'Unknown';
+        } else {
+          value = 'Unknown';
+        }
+      } else if (dataType === 'accounts') {
+        if (dimension === 'industry') {
+          value = item.industry || 'Unknown';
+        } else if (dimension === 'type') {
+          value = item.type || 'Unknown';
+        } else {
+          value = 'Unknown';
+        }
+      } else {
+        value = item[dimension] || 'Unknown';
+      }
+      
+      // Sum the specified field instead of counting
+      const fieldValue = item[sumField] || 0;
+      groupedData[value] = (groupedData[value] || 0) + fieldValue;
+    });
+    
+    // Convert to chart data format
+    return Object.entries(groupedData).map(([name, sum]) => ({
+      [dimension]: name,  // This will be used as xAxisDataKey
+      sum: sum           // This will be used as dataKey for the bar
+    }));
   }
 
   private async handleDataAnalysis(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
