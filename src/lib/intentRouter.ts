@@ -389,30 +389,64 @@ class ChartIntentHandler implements IntentHandler {
     // Handle other modifications
     const modificationType = intent.originalMessage.toLowerCase();
     if (modificationType.includes('group') || modificationType.includes('aggregate')) {
-      return {
-        type: 'text',
-        content: 'I\'ve grouped the data on the X-axis. The chart now shows aggregated values.',
-        chartSpec: {
-          chartType: 'bar',
-          data: [],
-          dataType: 'deals',
-          dimension: 'stage',
-          title: 'deals by stage (grouped)',
-          description: 'Chart showing deals grouped by stage',
-          chartConfig: {
-            margin: { top: 20, right: 30, left: 20, bottom: 60 },
-            height: 400,
-            width: 600,
-            xAxis: { dataKey: 'stage' },
-            yAxis: { dataKey: 'count' },
-            grouped: true
-          }
-        },
-        hasData: true,
-        modification: {
-          type: 'group_data'
+      try {
+        const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+        const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+        
+        if (!teams || teams.length === 0) {
+          return {
+            type: 'text',
+            content: 'No team found for your account. Please contact your administrator.',
+            hasData: false
+          };
         }
-      };
+        
+        const teamId = teams[0]._id;
+        const data = await convex.query(api.crm.getDealsByTeam, { teamId });
+        
+        // Process data for grouped chart
+        const chartData = this.processDataForChart(data, 'deals', 'stage');
+        
+        logger.info('Chart grouping modification completed', {
+          originalDataLength: chartData.length,
+          userId: context.userId
+        });
+        
+        return {
+          type: 'text',
+          content: 'I\'ve grouped the data on the X-axis. The chart now shows aggregated values.',
+          chartSpec: {
+            chartType: 'bar',
+            data: chartData,
+            dataType: 'deals',
+            dimension: 'stage',
+            title: 'deals by stage (grouped)',
+            description: 'Chart showing deals grouped by stage',
+            chartConfig: {
+              margin: { top: 20, right: 30, left: 20, bottom: 60 },
+              height: 400,
+              width: 600,
+              xAxis: { dataKey: 'stage' },
+              yAxis: { dataKey: 'count' },
+              grouped: true
+            }
+          },
+          hasData: true,
+          modification: {
+            type: 'group_data'
+          }
+        };
+      } catch (error) {
+        logger.error('Error grouping chart', error instanceof Error ? error : new Error(String(error)), {
+          userId: context.userId
+        });
+        
+        return {
+          type: 'text',
+          content: 'Sorry, I encountered an error while grouping the chart. Please try again.',
+          hasData: false
+        };
+      }
     }
 
     return {
