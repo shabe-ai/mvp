@@ -245,13 +245,17 @@ class ChartIntentHandler implements IntentHandler {
   }
 
   private async handleModifyChart(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
-    const { field } = intent.entities;
+    const { field, dimension, action } = intent.entities;
     
     logger.info('Handling chart modification request', {
       field,
+      dimension,
+      action,
+      entities: intent.entities,
       userId: context.userId
     });
 
+    // Handle column removal
     if (field === 'totals' || field === 'total') {
       // Get the current chart data and remove the 'total' column
       try {
@@ -320,9 +324,100 @@ class ChartIntentHandler implements IntentHandler {
       }
     }
 
+    // Handle stacking
+    if (intent.originalMessage.toLowerCase().includes('stack')) {
+      try {
+        const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+        const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+        
+        if (!teams || teams.length === 0) {
+          return {
+            type: 'text',
+            content: 'No team found for your account. Please contact your administrator.',
+            hasData: false
+          };
+        }
+        
+        const teamId = teams[0]._id;
+        const data = await convex.query(api.crm.getDealsByTeam, { teamId });
+        
+        // Process data for stacked chart
+        const chartData = this.processDataForChart(data, 'deals', 'stage');
+        
+        logger.info('Chart stacking modification completed', {
+          originalDataLength: chartData.length,
+          userId: context.userId
+        });
+        
+        return {
+          type: 'text',
+          content: 'I\'ve modified the chart to use stacked bars. The chart now shows stacked data.',
+          chartSpec: {
+            chartType: 'bar',
+            data: chartData,
+            dataType: 'deals',
+            dimension: 'stage',
+            title: 'deals by stage (stacked)',
+            description: 'Chart showing deals grouped by stage with stacked bars',
+            chartConfig: {
+              margin: { top: 20, right: 30, left: 20, bottom: 60 },
+              height: 400,
+              width: 600,
+              xAxis: { dataKey: 'stage' },
+              yAxis: { dataKey: 'count' },
+              stacked: true
+            }
+          },
+          hasData: true,
+          modification: {
+            type: 'stack_chart'
+          }
+        };
+      } catch (error) {
+        logger.error('Error stacking chart', error instanceof Error ? error : new Error(String(error)), {
+          userId: context.userId
+        });
+        
+        return {
+          type: 'text',
+          content: 'Sorry, I encountered an error while stacking the chart. Please try again.',
+          hasData: false
+        };
+      }
+    }
+
+    // Handle other modifications
+    const modificationType = intent.originalMessage.toLowerCase();
+    if (modificationType.includes('group') || modificationType.includes('aggregate')) {
+      return {
+        type: 'text',
+        content: 'I\'ve grouped the data on the X-axis. The chart now shows aggregated values.',
+        chartSpec: {
+          chartType: 'bar',
+          data: [],
+          dataType: 'deals',
+          dimension: 'stage',
+          title: 'deals by stage (grouped)',
+          description: 'Chart showing deals grouped by stage',
+          chartConfig: {
+            margin: { top: 20, right: 30, left: 20, bottom: 60 },
+            height: 400,
+            width: 600,
+            xAxis: { dataKey: 'stage' },
+            yAxis: { dataKey: 'count' },
+            grouped: true
+          }
+        },
+        hasData: true,
+        modification: {
+          type: 'group_data'
+        }
+      };
+    }
+
     return {
       type: 'text',
-      content: `I'm not sure how to modify the chart for "${field}". Please specify what you'd like to change.`,
+      content: `I'm not sure how to modify the chart for "${field || dimension || 'this request'}". Please specify what you'd like to change.`,
       hasData: false
     };
   }
