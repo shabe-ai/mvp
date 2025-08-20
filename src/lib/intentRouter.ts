@@ -279,11 +279,12 @@ class ChartIntentHandler implements IntentHandler {
       groupedData[value] = (groupedData[value] || 0) + 1;
     });
     
-    // Convert to chart data format
-    return Object.entries(groupedData).map(([name, value]) => ({
-      name,
-      value,
-      [dimension]: name
+    // Convert to chart data format that matches what the chart component expects
+    // The chart component expects: xAxisDataKey for labels, and numeric columns for bars
+    return Object.entries(groupedData).map(([name, count]) => ({
+      [dimension]: name,  // This will be used as xAxisDataKey
+      count: count,       // This will be used as dataKey for the bar
+      total: count        // Alternative numeric column
     }));
   }
 
