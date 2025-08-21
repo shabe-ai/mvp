@@ -38,6 +38,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if token is expired and try to refresh
+    logger.info('Checking token expiration', {
+      userId,
+      expiresAt: tokenData.expiresAt,
+      currentTime: Date.now(),
+      isExpired: tokenData.expiresAt < Date.now(),
+      timeUntilExpiry: tokenData.expiresAt - Date.now()
+    });
+    
     if (tokenData.expiresAt < Date.now()) {
       logger.info('Google token expired, attempting to refresh', { userId });
       
@@ -101,6 +109,21 @@ export async function POST(request: NextRequest) {
       access_token: tokenData.accessToken,
       refresh_token: tokenData.refreshToken,
     });
+
+    // Test the token by making a simple API call to check scopes
+    try {
+      logger.info('Testing Google token scopes', { userId });
+      const testResponse = await google.oauth2({ version: 'v2', auth: oauth2Client }).userinfo.get();
+      logger.info('Token scope test successful', { userId, email: testResponse.data.email });
+    } catch (scopeError) {
+      logger.error('Token scope test failed', scopeError instanceof Error ? scopeError : new Error(String(scopeError)), { userId });
+      return NextResponse.json({ 
+        error: 'Google authentication scope issue',
+        message: 'Your Google account needs additional permissions. Please reconnect your Google account in Admin settings.',
+        action: 'reconnect_google',
+        requiresReauth: true
+      }, { status: 403 });
+    }
 
     // Initialize Google Calendar API
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
