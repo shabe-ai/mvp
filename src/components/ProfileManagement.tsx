@@ -22,6 +22,15 @@ export default function ProfileManagement() {
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
+  // Add error handling
+  if (!user) {
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-[#d9d2c7] p-6">
+        <p className="text-[#d9d2c7]">Loading user...</p>
+      </div>
+    );
+  }
+
   // Get user's teams
   const teams = useQuery(api.crm.getTeamsByUser, { userId: user?.id || '' });
   const teamId = teams?.[0]?._id;

@@ -21,6 +21,15 @@ export default function OnboardingPage() {
     user?.id ? { userId: user.id } : 'skip'
   );
 
+  // Debug logging
+  console.log('Onboarding Debug:', {
+    user: user?.id,
+    userProfile,
+    teams,
+    isLoaded,
+    isCheckingProfile
+  });
+
   useEffect(() => {
     if (isLoaded && user) {
       // If user already has a profile and teams, redirect to main app
