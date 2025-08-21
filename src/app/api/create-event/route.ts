@@ -63,8 +63,38 @@ export async function POST(request: NextRequest) {
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
     // Parse date and time
+    logger.info('Parsing event date/time', {
+      userId,
+      date: eventPreview.date,
+      time: eventPreview.time,
+      duration: eventPreview.duration
+    });
+    
     const eventDateTime = parseEventDateTime(eventPreview.date, eventPreview.time);
     const endDateTime = new Date(eventDateTime.getTime() + (eventPreview.duration * 60000));
+    
+    logger.info('Parsed event date/time', {
+      userId,
+      originalDate: eventPreview.date,
+      originalTime: eventPreview.time,
+      parsedDateTime: eventDateTime.toISOString(),
+      endDateTime: endDateTime.toISOString()
+    });
+    
+    // Validate parsed date
+    if (isNaN(eventDateTime.getTime())) {
+      logger.error('Invalid parsed date/time', new Error('Invalid date/time format'), {
+        userId,
+        date: eventPreview.date,
+        time: eventPreview.time,
+        parsedDateTime: eventDateTime
+      });
+      return NextResponse.json({
+        error: 'Invalid date/time format',
+        message: 'Could not parse the event date and time. Please try again with a different format.',
+        details: `Date: ${eventPreview.date}, Time: ${eventPreview.time}`
+      }, { status: 400 });
+    }
 
     // Prepare attendees
     const attendees = eventPreview.attendees
