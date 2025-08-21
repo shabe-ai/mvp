@@ -8,6 +8,7 @@ export interface SimplifiedIntent {
           'create_account' | 'update_account' | 'delete_account' |
           'create_deal' | 'update_deal' | 'delete_deal' |
           'create_activity' | 'update_activity' | 'delete_activity' |
+          'create_calendar_event' |
           'general_conversation';
   confidence: number;
   originalMessage: string;
@@ -155,6 +156,10 @@ Examples:
 - "show contact emails" → action: "view_data", entities: {"dataType": "contacts", "query": "details"}
 - "create a bar chart" → action: "create_chart", entities: {"chartType": "bar"}
 - "send email to john" → action: "send_email", entities: {"recipient": "john"}
+- "schedule a meeting with john tomorrow at 2pm" → action: "create_calendar_event", entities: {"attendee": "john", "date": "tomorrow", "time": "2pm"}
+- "create calendar event with sarah next friday" → action: "create_calendar_event", entities: {"attendee": "sarah", "date": "next friday"}
+- "book a meeting with the acme team" → action: "create_calendar_event", entities: {"attendee": "acme team"}
+- "set up a call with john smith" → action: "create_calendar_event", entities: {"attendee": "john smith"}
 
 Data Collection Context Examples:
 - If user says "create a new contact" → action: "create_contact"
@@ -175,6 +180,7 @@ Extract relevant entities like:
 - contactName, accountName, dealName, activitySubject
 - field, value, date, amount, email, phone, company, industry, website
 - recipient, subject, content_type (for emails)
+- attendee, date, time, duration, location, title (for calendar events)
 - query: count, list, show, display (for view_data actions)
 
 Conversation context: ${conversationContext}

@@ -15,6 +15,7 @@ import {
 import PreviewCard from "@/components/PreviewCard";
 import ChartDisplay from "@/components/ChartDisplay";
 import EnhancedChartDisplay from "@/components/EnhancedChartDisplay";
+import CalendarPreviewModal from "@/components/CalendarPreviewModal";
 import { logger } from "@/lib/logger";
 
 interface Message {
@@ -76,6 +77,11 @@ export default function Chat({ onAction }: ChatProps = {}) {
     activityData: Record<string, unknown>;
   } | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [calendarPreview, setCalendarPreview] = useState<{
+    eventPreview: any;
+    aiMessage: Message;
+  } | null>(null);
+  const [creatingEvent, setCreatingEvent] = useState(false);
   const [sessionFiles, setSessionFiles] = useState<Array<{
     id: string;
     name: string;
@@ -362,6 +368,14 @@ export default function Chat({ onAction }: ChatProps = {}) {
         });
       }
 
+      // Handle calendar preview if present
+      if (data.type === 'calendar_preview' && data.eventPreview) {
+        setCalendarPreview({
+          eventPreview: data.eventPreview,
+          aiMessage: assistantMessage
+        });
+      }
+
     } catch (error) {
       logger.error("Error sending message", error instanceof Error ? error : new Error(String(error)), {
         userId: user.id,
@@ -436,6 +450,74 @@ export default function Chat({ onAction }: ChatProps = {}) {
     } finally {
       setSendingEmail(false);
     }
+  };
+
+  const handleCreateCalendarEvent = async (eventPreview: any) => {
+    if (!user) return;
+    
+    setCreatingEvent(true);
+    try {
+      const response = await fetch("/api/create-event", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          eventPreview: eventPreview,
+          userId: user.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      // Add success message
+      const successMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: `✅ Calendar event created successfully! ${result.message || ''}`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, successMessage]);
+      
+      // Clear calendar preview
+      setCalendarPreview(null);
+
+    } catch (error) {
+      logger.error("Error creating calendar event", error instanceof Error ? error : new Error(String(error)), {
+        userId: user.id,
+        eventPreview: eventPreview
+      });
+      
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "I'm sorry, I encountered an error while creating the calendar event. Please try again.",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setCreatingEvent(false);
+    }
+  };
+
+  const handleModifyCalendarEvent = (field: string, value: any) => {
+    if (!calendarPreview) return;
+    
+    setCalendarPreview(prev => prev ? {
+      ...prev,
+      eventPreview: {
+        ...prev.eventPreview,
+        [field]: value
+      }
+    } : null);
   };
 
   const handleChartUpdate = async (newConfig: any) => {
@@ -920,6 +1002,16 @@ export default function Chat({ onAction }: ChatProps = {}) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Calendar Preview Modal */}
+      {calendarPreview && (
+        <CalendarPreviewModal
+          eventPreview={calendarPreview.eventPreview}
+          onConfirm={handleCreateCalendarEvent}
+          onModify={handleModifyCalendarEvent}
+          onCancel={() => setCalendarPreview(null)}
+        />
       )}
 
       {/* Input Container */}

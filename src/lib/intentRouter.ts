@@ -2111,6 +2111,189 @@ Best regards,
   }
 }
 
+// Calendar Intent Handler
+class CalendarIntentHandler implements IntentHandler {
+  canHandle(intent: SimplifiedIntent): boolean {
+    return intent.action === 'create_calendar_event';
+  }
+
+  async handle(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
+    logger.info('Handling calendar event creation intent', {
+      action: intent.action,
+      entities: intent.entities,
+      userId: context.userId
+    });
+
+    try {
+      // Parse event details from the intent
+      const eventDetails = this.parseEventDetails(intent);
+      
+      // Resolve attendees to contacts in the database
+      const attendees = await this.resolveAttendees(eventDetails.attendees, context);
+      
+      // Create event preview
+      const eventPreview = {
+        title: eventDetails.title || 'Meeting',
+        date: eventDetails.date,
+        time: eventDetails.time,
+        duration: eventDetails.duration || 30,
+        attendees: attendees,
+        location: eventDetails.location || '',
+        description: eventDetails.description || ''
+      };
+
+      // Generate preview message
+      const previewMessage = this.generatePreviewMessage(eventPreview);
+
+      logger.info('Created calendar event preview', {
+        eventPreview,
+        userId: context.userId
+      });
+
+      return {
+        type: 'calendar_preview',
+        content: previewMessage,
+        eventPreview: eventPreview,
+        metadata: {
+          action: 'create_calendar_event',
+          needsConfirmation: true
+        }
+      };
+
+    } catch (error) {
+      logger.error('Error handling calendar event creation', error instanceof Error ? error : new Error(String(error)), {
+        intent: intent.action,
+        userId: context.userId
+      });
+
+      return {
+        type: 'error',
+        content: 'Sorry, I encountered an issue while creating the calendar event. Please try again with more specific details.',
+        metadata: {
+          action: 'create_calendar_event',
+          error: true
+        }
+      };
+    }
+  }
+
+  private parseEventDetails(intent: SimplifiedIntent): any {
+    const entities = intent.entities || {};
+    
+    return {
+      title: entities.title || 'Meeting',
+      attendees: entities.attendee || entities.attendees || [],
+      date: entities.date || 'today',
+      time: entities.time || '9:00 AM',
+      duration: entities.duration || 30,
+      location: entities.location || '',
+      description: entities.description || ''
+    };
+  }
+
+  private async resolveAttendees(attendeeNames: string[], context: IntentRouterContext): Promise<any[]> {
+    if (!attendeeNames || attendeeNames.length === 0) {
+      return [];
+    }
+
+    const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+    
+    try {
+      // Get team ID from context (similar to other handlers)
+      const teamId = context.companyData?.teamId;
+      if (!teamId) {
+        logger.warn('No team ID in context, cannot resolve attendees', { userId: context.userId });
+        return attendeeNames.map(name => ({
+          name,
+          email: '',
+          contactId: null,
+          resolved: false
+        }));
+      }
+
+      // Get all contacts for the user's team
+      const contacts = await convex.query(api.crm.getContactsByTeam, {
+        teamId: teamId
+      });
+
+      const resolvedAttendees = [];
+
+      for (const attendeeName of attendeeNames) {
+        // Try to find contact by name (case insensitive)
+        const contact = contacts.find((c: any) => 
+          c.name?.toLowerCase().includes(attendeeName.toLowerCase()) ||
+          c.email?.toLowerCase().includes(attendeeName.toLowerCase())
+        );
+
+        if (contact) {
+          const fullName = contact.firstName && contact.lastName ? 
+            `${contact.firstName} ${contact.lastName}` : 
+            contact.firstName || contact.lastName || 'Unknown';
+          
+          resolvedAttendees.push({
+            name: fullName,
+            email: contact.email,
+            contactId: contact._id,
+            resolved: true
+          });
+        } else {
+          // If not found, add as unresolved attendee
+          resolvedAttendees.push({
+            name: attendeeName,
+            email: '',
+            contactId: null,
+            resolved: false
+          });
+        }
+      }
+
+      return resolvedAttendees;
+
+    } catch (error) {
+      logger.error('Error resolving attendees', error instanceof Error ? error : new Error(String(error)), {
+        attendeeNames,
+        userId: context.userId
+      });
+      
+      // Return unresolved attendees as fallback
+      return attendeeNames.map(name => ({
+        name,
+        email: '',
+        contactId: null,
+        resolved: false
+      }));
+    }
+  }
+
+  private generatePreviewMessage(eventPreview: any): string {
+    const { title, date, time, duration, attendees, location } = eventPreview;
+    
+    let message = `📅 **Calendar Event Preview**\n\n`;
+    message += `**Meeting:** ${title}\n`;
+    message += `**Date:** ${date}\n`;
+    message += `**Time:** ${time} (${duration} minutes)\n`;
+    
+    if (attendees && attendees.length > 0) {
+      message += `**Attendees:**\n`;
+      attendees.forEach((attendee: any) => {
+        if (attendee.resolved) {
+          message += `- ${attendee.name} (${attendee.email})\n`;
+        } else {
+          message += `- ${attendee.name} (not found in contacts)\n`;
+        }
+      });
+    }
+    
+    if (location) {
+      message += `**Location:** ${location}\n`;
+    }
+    
+    message += `\nPlease confirm the details above. You can modify any information before creating the event.`;
+    
+    return message;
+  }
+}
+
 // Analysis Intent Handler
 class AnalysisIntentHandler implements IntentHandler {
   canHandle(intent: SimplifiedIntent): boolean {
@@ -2140,4 +2323,5 @@ intentRouter.registerHandler(new ChartIntentHandler());
 intentRouter.registerHandler(new DataIntentHandler());
 intentRouter.registerHandler(new CrudIntentHandler());
 intentRouter.registerHandler(new EmailIntentHandler());
+intentRouter.registerHandler(new CalendarIntentHandler());
 intentRouter.registerHandler(new AnalysisIntentHandler()); 
