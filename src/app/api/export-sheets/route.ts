@@ -31,13 +31,21 @@ export async function POST(request: NextRequest) {
 
     if (!tokenResponse.ok) {
       logger.error('Failed to get Google tokens', undefined, { userId });
-      return NextResponse.json({ error: 'Google authentication required' }, { status: 401 });
+      return NextResponse.json({ 
+        error: 'Google authentication required',
+        message: 'Please connect your Google account in Admin settings to export charts to Google Sheets.',
+        action: 'connect_google'
+      }, { status: 401 });
     }
 
     const tokens = await tokenResponse.json();
     if (!tokens.data?.[0]?.token) {
       logger.error('No Google tokens found', undefined, { userId });
-      return NextResponse.json({ error: 'Google authentication required' }, { status: 401 });
+      return NextResponse.json({ 
+        error: 'Google authentication required',
+        message: 'Please connect your Google account in Admin settings to export charts to Google Sheets.',
+        action: 'connect_google'
+      }, { status: 401 });
     }
 
     // Initialize Google Sheets API

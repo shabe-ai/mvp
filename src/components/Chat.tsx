@@ -477,6 +477,9 @@ export default function Chat({ onAction }: ChatProps = {}) {
 
       if (!response.ok) {
         const errorData = await response.json();
+        if (errorData.action === 'connect_google') {
+          throw new Error('Please connect your Google account in Admin settings to export charts to Google Sheets.');
+        }
         throw new Error(errorData.error || 'Failed to export to Google Sheets');
       }
 
@@ -504,11 +507,15 @@ export default function Chat({ onAction }: ChatProps = {}) {
         userId: user?.id
       });
       
-      // Add error message
+      // Add error message with guidance
+      const errorContent = error instanceof Error && error.message.includes('connect your Google account') 
+        ? `Sorry, I couldn't export to Google Sheets. ${error.message} You can connect your Google account by going to Admin → Google Workspace Integration.`
+        : `Sorry, I couldn't export to Google Sheets. Please make sure you're connected to Google and try again.`;
+      
       const errorMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
-        content: `Sorry, I couldn't export to Google Sheets. Please make sure you're connected to Google and try again.`,
+        content: errorContent,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);
