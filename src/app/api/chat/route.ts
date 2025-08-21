@@ -206,7 +206,8 @@ export async function POST(request: NextRequest) {
             }
           }
         } else if (lastMessage?.conversationContext?.action === 'create_calendar_event' && 
-                   lastMessage?.conversationContext?.phase === 'confirmation') {
+            (lastMessage?.conversationContext?.phase === 'confirmation' || 
+             (lastMessage?.conversationContext as any)?.eventPreview)) {
           
           logger.info('Pending calendar event confirmation found, processing directly', { userId: actualUserId });
           
@@ -273,6 +274,81 @@ export async function POST(request: NextRequest) {
               
             } catch (error) {
               logger.error('Direct calendar event creation failed', error instanceof Error ? error : new Error(String(error)), {
+                userId: actualUserId
+              });
+              return NextResponse.json({
+                message: "I encountered an error while creating the calendar event. Please try again.",
+                conversationContext: {
+                  phase: 'error',
+                  action: 'create_calendar_event',
+                  referringTo: 'new_request'
+                }
+              });
+            }
+          }
+        } else if ((currentState as any)?.action === 'create_calendar_event' && 
+                   ((currentState as any)?.phase === 'confirmation' || (currentState as any)?.eventPreview)) {
+          
+          logger.info('Calendar event confirmation detected from current state', { userId: actualUserId });
+          
+          // Extract confirmation data from current state
+          const eventPreview = (currentState as any).eventPreview;
+          
+          if (eventPreview) {
+            try {
+              logger.info('Starting calendar event creation from current state', { userId: actualUserId });
+              
+              // Call the create-event API
+              const createEventResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/create-event`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${request.headers.get('authorization')}`
+                },
+                body: JSON.stringify({ eventPreview })
+              });
+              
+              if (createEventResponse.ok) {
+                const result = await createEventResponse.json();
+                
+                logger.info('Calendar event creation successful from current state', { 
+                  result,
+                  userId: actualUserId 
+                });
+                
+                // Update conversation state
+                conversationManager.updateContext(messageContent, 'create_calendar_event');
+                
+                // Add assistant response to history
+                const assistantMessage = {
+                  role: 'assistant' as const,
+                  content: result.message || 'Calendar event created successfully!',
+                  timestamp: new Date(),
+                  conversationContext: {
+                    phase: 'exploration',
+                    action: 'create_calendar_event',
+                    referringTo: 'new_request'
+                  }
+                };
+                conversationManager.addToHistory(assistantMessage);
+                
+                return NextResponse.json({
+                  message: result.message || 'Calendar event created successfully!',
+                  action: "calendar_event_created",
+                  suggestions: conversationManager.getSuggestions(),
+                  conversationContext: {
+                    phase: 'exploration',
+                    action: 'create_calendar_event',
+                    referringTo: 'new_request'
+                  }
+                });
+                
+              } else {
+                throw new Error('Failed to create calendar event');
+              }
+              
+            } catch (error) {
+              logger.error('Calendar event creation failed from current state', error instanceof Error ? error : new Error(String(error)), {
                 userId: actualUserId
               });
               return NextResponse.json({
@@ -426,6 +502,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           message: response.message,
           type: response.type,
+          eventPreview: (response as any).eventPreview, // Add eventPreview for calendar events
           emailDraft: response.emailDraft,
           chartSpec: response.chartSpec,
           enhancedChart: response.enhancedChart,
