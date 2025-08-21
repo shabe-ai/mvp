@@ -21,14 +21,7 @@ export default function OnboardingPage() {
     user?.id ? { userId: user.id } : 'skip'
   );
 
-  // Debug logging
-  console.log('Onboarding Debug:', {
-    user: user?.id,
-    userProfile,
-    teams,
-    isLoaded,
-    isCheckingProfile
-  });
+
 
   useEffect(() => {
     if (isLoaded && user) {
