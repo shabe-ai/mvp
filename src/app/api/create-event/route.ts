@@ -122,16 +122,30 @@ export async function POST(request: NextRequest) {
       eventPreview: body?.eventPreview
     });
 
-    if (error instanceof Error && error.message.includes('Google authentication')) {
-      return NextResponse.json({
-        error: 'Google authentication required',
-        message: 'Please connect your Google account in Admin settings to create calendar events.',
-        action: 'connect_google'
-      }, { status: 401 });
+    // Check for specific Google API errors
+    if (error instanceof Error) {
+      if (error.message.includes('insufficient authentication scopes') || 
+          error.message.includes('403') ||
+          (error as any).code === 403) {
+        return NextResponse.json({
+          error: 'Insufficient Google Calendar permissions',
+          message: 'Your Google account needs calendar permissions. Please reconnect your Google account in Admin settings.',
+          action: 'connect_google',
+          details: 'Calendar event creation requires calendar.events scope'
+        }, { status: 403 });
+      }
+      
+      if (error.message.includes('Google authentication')) {
+        return NextResponse.json({
+          error: 'Google authentication required',
+          message: 'Please connect your Google account in Admin settings to create calendar events.',
+          action: 'connect_google'
+        }, { status: 401 });
+      }
     }
 
     return NextResponse.json(
-      { error: 'Failed to create calendar event' },
+      { error: 'Failed to create calendar event', message: 'Please try again or contact support.' },
       { status: 500 }
     );
   }
