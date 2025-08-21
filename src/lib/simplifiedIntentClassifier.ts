@@ -157,9 +157,13 @@ Examples:
 - "create a bar chart" → action: "create_chart", entities: {"chartType": "bar"}
 - "send email to john" → action: "send_email", entities: {"recipient": "john"}
 - "schedule a meeting with john tomorrow at 2pm" → action: "create_calendar_event", entities: {"attendee": "john", "date": "tomorrow", "time": "2pm"}
+- "schedule a meeting with vigeash gobal tomorrow at 2pm" → action: "create_calendar_event", entities: {"attendee": "vigeash gobal", "date": "tomorrow", "time": "2pm"}
 - "create calendar event with sarah next friday" → action: "create_calendar_event", entities: {"attendee": "sarah", "date": "next friday"}
 - "book a meeting with the acme team" → action: "create_calendar_event", entities: {"attendee": "acme team"}
 - "set up a call with john smith" → action: "create_calendar_event", entities: {"attendee": "john smith"}
+- "schedule meeting with john" → action: "create_calendar_event", entities: {"attendee": "john"}
+- "book meeting with sarah" → action: "create_calendar_event", entities: {"attendee": "sarah"}
+- "set up meeting with team" → action: "create_calendar_event", entities: {"attendee": "team"}
 
 Data Collection Context Examples:
 - If user says "create a new contact" → action: "create_contact"
@@ -182,6 +186,8 @@ Extract relevant entities like:
 - recipient, subject, content_type (for emails)
 - attendee, date, time, duration, location, title (for calendar events)
 - query: count, list, show, display (for view_data actions)
+
+IMPORTANT: When the user mentions scheduling, booking, or setting up meetings or calls with specific people and times, this should be classified as "create_calendar_event", NOT "create_activity". Calendar events are for scheduling future meetings, while activities are for logging past interactions.
 
 Conversation context: ${conversationContext}
 
