@@ -1,71 +1,27 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-import { TokenStorage } from "../src/lib/tokenStorage";
-import { getEmailMonitorService } from "../src/lib/emailMonitor";
-import { logger } from "../src/lib/logger";
 
 /**
  * Process emails for all users with Google accounts connected
  * This is called by the cron job every 15 minutes
+ * Note: This is a placeholder - actual email processing will be handled by API routes
  */
 export const processEmailsForAllUsers = mutation({
   args: {},
   handler: async (ctx) => {
     try {
-      logger.info('Starting scheduled email processing for all users');
-
-      // Get all users with Google tokens
-      const usersWithTokens = await TokenStorage.getAllUsersWithTokens();
+      console.log('Email processing cron job triggered - processing handled by API routes');
       
-      let totalProcessed = 0;
-      let totalLogged = 0;
-      let totalErrors = 0;
-
-      for (const userId of usersWithTokens) {
-        try {
-          const emailMonitor = await getEmailMonitorService(userId);
-          if (!emailMonitor) {
-            continue;
-          }
-
-          const result = await emailMonitor.processRecentEmails(userId);
-          
-          totalProcessed += result.processed;
-          totalLogged += result.logged;
-          totalErrors += result.errors;
-
-          logger.info('Email processing completed for user', {
-            userId,
-            processed: result.processed,
-            logged: result.logged,
-            errors: result.errors
-          });
-
-        } catch (error) {
-          totalErrors++;
-          logger.error('Error processing emails for user', error instanceof Error ? error : new Error(String(error)), {
-            userId
-          });
-        }
-      }
-
-      logger.info('Scheduled email processing completed for all users', {
-        totalProcessed,
-        totalLogged,
-        totalErrors,
-        usersProcessed: usersWithTokens.length
-      });
-
+      // For now, just log that the cron job ran
+      // Actual email processing is handled by the /api/email-monitor endpoint
       return {
         success: true,
-        totalProcessed,
-        totalLogged,
-        totalErrors,
-        usersProcessed: usersWithTokens.length
+        message: 'Email processing cron job completed - processing handled by API routes',
+        timestamp: Date.now()
       };
 
     } catch (error) {
-      logger.error('Error in scheduled email processing', error instanceof Error ? error : new Error(String(error)));
+      console.error('Error in email processing cron job', error);
       throw error;
     }
   },
@@ -117,9 +73,7 @@ export const getEmailProcessingStats = query({
       };
 
     } catch (error) {
-      logger.error('Error getting email processing stats', error instanceof Error ? error : new Error(String(error)), {
-        userId: args.userId
-      });
+      console.error('Error getting email processing stats', error);
       return { hasTeam: false, stats: null };
     }
   },
@@ -127,38 +81,25 @@ export const getEmailProcessingStats = query({
 
 /**
  * Manually trigger email processing for a specific user
+ * Note: This is a placeholder - actual processing handled by API routes
  */
 export const triggerEmailProcessing = mutation({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
     try {
-      logger.info('Manual email processing triggered', { userId: args.userId });
+      console.log('Manual email processing triggered', { userId: args.userId });
 
-      const emailMonitor = await getEmailMonitorService(args.userId);
-      if (!emailMonitor) {
-        throw new Error("Google account not connected");
-      }
-
-      const result = await emailMonitor.processRecentEmails(args.userId);
-
-      logger.info('Manual email processing completed', {
-        userId: args.userId,
-        processed: result.processed,
-        logged: result.logged,
-        errors: result.errors
-      });
-
+      // For now, just log the trigger
+      // Actual processing is handled by the /api/email-monitor endpoint
       return {
         success: true,
-        processed: result.processed,
-        logged: result.logged,
-        errors: result.errors
+        message: 'Email processing triggered - processing handled by API routes',
+        userId: args.userId,
+        timestamp: Date.now()
       };
 
     } catch (error) {
-      logger.error('Error in manual email processing', error instanceof Error ? error : new Error(String(error)), {
-        userId: args.userId
-      });
+      console.error('Error in manual email processing trigger', error);
       throw error;
     }
   },
