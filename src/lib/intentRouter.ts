@@ -2154,6 +2154,12 @@ class CalendarIntentHandler implements IntentHandler {
         type: 'calendar_preview',
         content: previewMessage,
         eventPreview: eventPreview,
+        conversationContext: {
+          phase: 'confirmation',
+          action: 'create_calendar_event',
+          referringTo: 'new_request',
+          eventPreview: eventPreview
+        },
         metadata: {
           action: 'create_calendar_event',
           needsConfirmation: true
@@ -2207,10 +2213,10 @@ class CalendarIntentHandler implements IntentHandler {
     const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
     
     try {
-      // Get team ID from context (similar to other handlers)
-      const teamId = context.companyData?.teamId;
-      if (!teamId) {
-        logger.warn('No team ID in context, cannot resolve attendees', { userId: context.userId });
+      // Get team ID from user's teams
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      if (!teams || teams.length === 0) {
+        logger.warn('No teams found for user, cannot resolve attendees', { userId: context.userId });
         return attendeeNames.map(name => ({
           name,
           email: '',
@@ -2218,6 +2224,8 @@ class CalendarIntentHandler implements IntentHandler {
           resolved: false
         }));
       }
+      
+      const teamId = teams[0]._id; // Use the first team
 
       // Get all contacts for the user's team
       const contacts = await convex.query(api.crm.getContactsByTeam, {

@@ -200,6 +200,86 @@ export async function POST(request: NextRequest) {
               });
             }
           }
+        } else if (lastMessage?.conversationContext?.action === 'create_calendar_event' && 
+                   lastMessage?.conversationContext?.phase === 'confirmation') {
+          
+          logger.info('Pending calendar event confirmation found, processing directly', { userId: actualUserId });
+          
+          // Extract confirmation data
+          const eventPreview = (lastMessage.conversationContext as any).eventPreview;
+          
+          logger.debug('Calendar confirmation data extracted', { 
+            eventPreview,
+            userId: actualUserId 
+          });
+          
+          if (eventPreview) {
+            try {
+              logger.info('Starting direct calendar event creation', { userId: actualUserId });
+              
+              // Call the create-event API
+              const createEventResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/create-event`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'Authorization': `Bearer ${request.headers.get('authorization')}`
+                },
+                body: JSON.stringify({ eventPreview })
+              });
+              
+              if (createEventResponse.ok) {
+                const result = await createEventResponse.json();
+                
+                logger.info('Direct calendar event creation successful', { 
+                  result,
+                  userId: actualUserId 
+                });
+                
+                // Update conversation state
+                conversationManager.updateContext(messageContent, 'create_calendar_event');
+                
+                // Add assistant response to history
+                const assistantMessage = {
+                  role: 'assistant' as const,
+                  content: result.message || 'Calendar event created successfully!',
+                  timestamp: new Date(),
+                  conversationContext: {
+                    phase: 'exploration',
+                    action: 'create_calendar_event',
+                    referringTo: 'new_request'
+                  }
+                };
+                conversationManager.addToHistory(assistantMessage);
+                
+                return NextResponse.json({
+                  message: result.message || 'Calendar event created successfully!',
+                  action: "calendar_event_created",
+                  suggestions: conversationManager.getSuggestions(),
+                  conversationContext: {
+                    phase: 'exploration',
+                    action: 'create_calendar_event',
+                    referringTo: 'new_request'
+                  }
+                });
+                
+              } else {
+                throw new Error('Failed to create calendar event');
+              }
+              
+            } catch (error) {
+              logger.error('Direct calendar event creation failed', error instanceof Error ? error : new Error(String(error)), {
+                userId: actualUserId
+              });
+              return NextResponse.json({
+                message: "I encountered an error while creating the calendar event. Please try again.",
+                conversationContext: {
+                  phase: 'error',
+                  action: 'create_calendar_event',
+                  referringTo: 'new_request'
+                }
+              });
+            }
+          }
         } else if (lastMessage?.conversationContext?.action === 'delete_contact' && 
                    lastMessage?.conversationContext?.phase === 'confirmation') {
           
