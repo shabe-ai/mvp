@@ -5,6 +5,7 @@ import MonitoringDashboard from "@/components/MonitoringDashboard";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
 import ProfileManagement from "@/components/ProfileManagement";
 import { useAdminAuth } from "@/lib/adminAuth";
+import ConvexProviderWrapper from "@/components/ConvexProvider";
 
 function ProfileSection() {
   const { user } = useUser();
@@ -439,7 +440,7 @@ function EmailMonitoringSection() {
   );
 }
 
-export default function AdminPage() {
+function AdminPageContent() {
   const { user } = useUser();
   const { isAdmin, adminLoading } = useAdminAuth();
 
@@ -531,5 +532,13 @@ export default function AdminPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <ConvexProviderWrapper>
+      <AdminPageContent />
+    </ConvexProviderWrapper>
   );
 } 
