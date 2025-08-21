@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Get user's Google tokens
-    const tokenResponse = await fetch(`${process.env.NEXT_PUBLIC_CLERK_FRONTEND_API}/users/${userId}/oauth_access_tokens/oauth_google`, {
+    const tokenResponse = await fetch(`https://api.clerk.com/v1/users/${userId}/oauth_access_tokens/oauth_google`, {
       headers: {
         'Authorization': `Bearer ${process.env.CLERK_SECRET_KEY}`,
         'Content-Type': 'application/json',
