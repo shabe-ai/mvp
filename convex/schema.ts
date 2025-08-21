@@ -31,6 +31,131 @@ export default defineSchema({
     .index("by_owner", ["ownerId"])
     .index("by_member", ["members"]),
 
+  // User profiles table - enhanced user information
+  userProfiles: defineTable({
+    userId: v.string(),
+    teamId: v.string(),
+    
+    // Personal Information
+    firstName: v.string(),
+    lastName: v.string(),
+    email: v.string(),
+    phone: v.optional(v.string()),
+    title: v.optional(v.string()),
+    department: v.optional(v.string()),
+    bio: v.optional(v.string()),
+    
+    // Preferences
+    timezone: v.optional(v.string()),
+    language: v.optional(v.string()),
+    dateFormat: v.optional(v.string()),
+    
+    // AI Personalization
+    communicationStyle: v.optional(v.union(
+      v.literal("formal"),
+      v.literal("casual"), 
+      v.literal("friendly"),
+      v.literal("professional")
+    )),
+    preferredDetailLevel: v.optional(v.union(
+      v.literal("brief"),
+      v.literal("detailed"),
+      v.literal("comprehensive")
+    )),
+    responseLength: v.optional(v.union(
+      v.literal("short"),
+      v.literal("medium"),
+      v.literal("long")
+    )),
+    humorPreference: v.optional(v.union(
+      v.literal("none"),
+      v.literal("light"),
+      v.literal("moderate")
+    )),
+    emojiUsage: v.optional(v.union(
+      v.literal("none"),
+      v.literal("minimal"),
+      v.literal("moderate"),
+      v.literal("frequent")
+    )),
+    
+    // Business Context
+    role: v.optional(v.string()),
+    responsibilities: v.optional(v.array(v.string())),
+    targetIndustries: v.optional(v.array(v.string())),
+    targetCompanySizes: v.optional(v.array(v.string())),
+    
+    // Custom fields
+    customFields: v.optional(v.record(v.string(), customFieldValue)),
+    
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_team", ["teamId"]),
+
+  // Company profiles table - enhanced company information
+  companyProfiles: defineTable({
+    teamId: v.string(),
+    ownerId: v.string(),
+    
+    // Basic Information
+    name: v.string(),
+    website: v.optional(v.string()),
+    description: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    founded: v.optional(v.number()),
+    
+    // Contact Information
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    
+    // Address
+    address: v.optional(v.object({
+      street: v.optional(v.string()),
+      city: v.optional(v.string()),
+      state: v.optional(v.string()),
+      zip: v.optional(v.string()),
+      country: v.optional(v.string()),
+    })),
+    
+    // Business Information
+    companySize: v.optional(v.union(
+      v.literal("1-10"),
+      v.literal("11-50"),
+      v.literal("51-200"),
+      v.literal("201-1000"),
+      v.literal("1000+")
+    )),
+    annualRevenue: v.optional(v.union(
+      v.literal("<$1M"),
+      v.literal("$1M-$10M"),
+      v.literal("$10M-$100M"),
+      v.literal("$100M+")
+    )),
+    businessModel: v.optional(v.string()),
+    targetMarket: v.optional(v.string()),
+    
+    // CRM Context
+    currentCrm: v.optional(v.string()),
+    painPoints: v.optional(v.array(v.string())),
+    goals: v.optional(v.array(v.string())),
+    teamSize: v.optional(v.number()),
+    
+    // Branding
+    logo: v.optional(v.string()),
+    primaryColor: v.optional(v.string()),
+    brandVoice: v.optional(v.string()),
+    
+    // Custom fields
+    customFields: v.optional(v.record(v.string(), customFieldValue)),
+    
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_team", ["teamId"])
+    .index("by_owner", ["ownerId"]),
+
   // Contacts table (leads + contacts)
   contacts: defineTable({
     teamId: v.string(),

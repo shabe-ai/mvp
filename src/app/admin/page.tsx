@@ -3,6 +3,7 @@ import { useUser } from "@clerk/nextjs";
 import { useState, useEffect, useCallback } from "react";
 import MonitoringDashboard from "@/components/MonitoringDashboard";
 import AnalyticsDashboard from "@/components/AnalyticsDashboard";
+import ProfileManagement from "@/components/ProfileManagement";
 import { useAdminAuth } from "@/lib/adminAuth";
 
 function ProfileSection() {
@@ -493,6 +494,11 @@ export default function AdminPage() {
             <GoogleIntegrationSection />
             <EmailMonitoringSection />
           </div>
+        </div>
+
+        {/* Profile Management Section */}
+        <div className="mt-8">
+          <ProfileManagement />
         </div>
 
         {/* Monitoring Dashboard - Only for Analytics Admins */}
