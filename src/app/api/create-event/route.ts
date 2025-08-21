@@ -125,6 +125,42 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
+    // Force token refresh to get updated scopes (even if not expired)
+    // This ensures we have the latest calendar scopes
+    if (tokenData.refreshToken) {
+      try {
+        logger.info('Forcing token refresh to get updated calendar scopes', { userId });
+        
+        // Refresh the token to get updated scopes
+        const { credentials } = await oauth2Client.refreshAccessToken();
+        
+        // Update stored tokens
+        await TokenStorage.setToken(
+          userId,
+          credentials.access_token!,
+          credentials.refresh_token || tokenData.refreshToken,
+          Math.floor((credentials.expiry_date! - Date.now()) / 1000), // Convert to seconds
+          tokenData.email
+        );
+
+        logger.info('Token refreshed with updated scopes', { userId });
+        
+        // Update tokenData and oauth2Client for use below
+        tokenData.accessToken = credentials.access_token!;
+        tokenData.expiresAt = credentials.expiry_date!;
+        
+        // Update the oauth2Client with new credentials
+        oauth2Client.setCredentials({
+          access_token: credentials.access_token!,
+          refresh_token: credentials.refresh_token || tokenData.refreshToken,
+        });
+        
+      } catch (refreshError) {
+        logger.error('Failed to refresh token for updated scopes', refreshError instanceof Error ? refreshError : new Error(String(refreshError)), { userId });
+        // Continue with existing tokens - the calendar API call will fail if scopes are still insufficient
+      }
+    }
+
     // Initialize Google Calendar API
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
