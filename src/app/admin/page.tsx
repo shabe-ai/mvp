@@ -307,6 +307,122 @@ function GoogleIntegrationSection() {
   );
 }
 
+function EmailMonitoringSection() {
+  const { user } = useUser();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [stats, setStats] = useState<any>(null);
+  const [recentEmails, setRecentEmails] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchStats = useCallback(async () => {
+    if (!user) return;
+    
+    try {
+      const response = await fetch('/api/email-monitor');
+      const data = await response.json();
+      
+      if (data.success) {
+        setRecentEmails(data.data.recentEmails || []);
+      } else {
+        setError(data.error || 'Failed to fetch email stats');
+      }
+    } catch (error) {
+      setError('Failed to fetch email stats');
+    }
+  }, [user]);
+
+  const triggerEmailProcessing = async () => {
+    if (!user) return;
+    
+    setIsProcessing(true);
+    setError(null);
+    
+    try {
+      const response = await fetch('/api/email-monitor', {
+        method: 'POST'
+      });
+      const data = await response.json();
+      
+      if (data.success) {
+        setStats(data.data);
+        await fetchStats(); // Refresh stats
+      } else {
+        setError(data.error || 'Failed to process emails');
+      }
+    } catch (error) {
+      setError('Failed to process emails');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">Email Activity Monitoring</h3>
+          <p className="text-sm text-gray-600 mt-1">
+            Automatically log emails from contacts as activities
+          </p>
+        </div>
+        <button
+          onClick={triggerEmailProcessing}
+          disabled={isProcessing}
+          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        >
+          {isProcessing ? 'Processing...' : 'Process Emails'}
+        </button>
+      </div>
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-sm text-red-800">{error}</p>
+        </div>
+      )}
+
+      {stats && (
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+          <h4 className="font-medium text-green-800 mb-2">Processing Results</h4>
+          <div className="text-sm text-green-700">
+            <p>Processed: {stats.processed} emails</p>
+            <p>Logged: {stats.logged} activities</p>
+            <p>Errors: {stats.errors}</p>
+          </div>
+        </div>
+      )}
+
+      {recentEmails.length > 0 && (
+        <div>
+          <h4 className="font-medium text-gray-900 mb-3">Recent Emails</h4>
+          <div className="space-y-2">
+            {recentEmails.slice(0, 5).map((email, index) => (
+              <div key={index} className="p-3 bg-gray-50 rounded-lg">
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-gray-900">{email.subject || 'No Subject'}</p>
+                    <p className="text-xs text-gray-600">{email.from}</p>
+                    <p className="text-xs text-gray-500">{new Date(email.date).toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+        <p className="text-sm text-blue-800">
+          💡 <strong>Auto-monitoring:</strong> Emails are automatically processed every 15 minutes for users with connected Google accounts.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminPage() {
   const { user } = useUser();
   const { isAdmin, adminLoading } = useAdminAuth();
@@ -358,8 +474,9 @@ export default function AdminPage() {
             <CompanySection />
           </div>
           
-          <div>
+          <div className="space-y-8">
             <GoogleIntegrationSection />
+            <EmailMonitoringSection />
           </div>
         </div>
 

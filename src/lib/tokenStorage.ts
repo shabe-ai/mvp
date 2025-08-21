@@ -316,4 +316,19 @@ export class TokenStorage {
     const tokenData = tokens[userId];
     return !!(tokenData && tokenData.refreshToken);
   }
+
+  // Get all users with valid tokens
+  static async getAllUsersWithTokens(): Promise<string[]> {
+    const tokens = await loadTokens();
+    const usersWithTokens: string[] = [];
+
+    for (const [userId, tokenData] of Object.entries(tokens)) {
+      // Check if token is still valid (not expired)
+      if (Date.now() <= tokenData.expiresAt) {
+        usersWithTokens.push(userId);
+      }
+    }
+
+    return usersWithTokens;
+  }
 } 
