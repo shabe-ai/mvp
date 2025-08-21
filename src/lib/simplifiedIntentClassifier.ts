@@ -291,6 +291,7 @@ If the user's intent is unclear or ambiguous, set needsClarification to true and
       'create_account', 'update_account', 'delete_account',
       'create_deal', 'update_deal', 'delete_deal',
       'create_activity', 'update_activity', 'delete_activity',
+      'create_calendar_event',
       'general_conversation'
     ];
 
