@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { auth } from '@clerk/nextjs/server';
 import { logger } from '@/lib/logger';
+import { TokenStorage } from '@/lib/tokenStorage';
 
 export async function POST(request: NextRequest) {
   let userId: string | null = null;
@@ -21,16 +22,11 @@ export async function POST(request: NextRequest) {
       dataPoints: chartData?.length || 0
     });
 
-    // Get user's Google tokens
-    const tokenResponse = await fetch(`https://api.clerk.com/v1/users/${userId}/oauth_access_tokens/oauth_google`, {
-      headers: {
-        'Authorization': `Bearer ${process.env.CLERK_SECRET_KEY}`,
-        'Content-Type': 'application/json',
-      },
-    });
-
-    if (!tokenResponse.ok) {
-      logger.error('Failed to get Google tokens', undefined, { userId });
+    // Get user's Google tokens from custom TokenStorage
+    const tokenData = await TokenStorage.getTokenInfo(userId);
+    
+    if (!tokenData || !tokenData.accessToken) {
+      logger.error('No Google tokens found in TokenStorage', undefined, { userId });
       return NextResponse.json({ 
         error: 'Google authentication required',
         message: 'Please connect your Google account in Admin settings to export charts to Google Sheets.',
@@ -38,12 +34,12 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
-    const tokens = await tokenResponse.json();
-    if (!tokens.data?.[0]?.token) {
-      logger.error('No Google tokens found', undefined, { userId });
+    // Check if token is expired
+    if (tokenData.expiresAt < Date.now()) {
+      logger.error('Google token expired', undefined, { userId });
       return NextResponse.json({ 
-        error: 'Google authentication required',
-        message: 'Please connect your Google account in Admin settings to export charts to Google Sheets.',
+        error: 'Google authentication expired',
+        message: 'Please reconnect your Google account in Admin settings.',
         action: 'connect_google'
       }, { status: 401 });
     }
@@ -56,8 +52,8 @@ export async function POST(request: NextRequest) {
     );
 
     oauth2Client.setCredentials({
-      access_token: tokens.data[0].token,
-      refresh_token: tokens.data[0].refresh_token,
+      access_token: tokenData.accessToken,
+      refresh_token: tokenData.refreshToken,
     });
 
     const sheets = google.sheets({ version: 'v4', auth: oauth2Client });
