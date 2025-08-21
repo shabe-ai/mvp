@@ -503,10 +503,23 @@ export default function Chat({ onAction }: ChatProps = {}) {
         eventPreview: eventPreview
       });
       
+      // Handle specific Google OAuth errors
+      let errorContent = "I'm sorry, I encountered an error while creating the calendar event. Please try again.";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('Insufficient Google Calendar permissions') || 
+            error.message.includes('insufficient authentication scopes') ||
+            error.message.includes('403')) {
+          errorContent = "I couldn't create the calendar event because your Google account needs additional permissions. Please reconnect your Google account in Admin settings to grant calendar creation access.";
+        } else if (error.message.includes('connect your Google account')) {
+          errorContent = "I couldn't create the calendar event. Please connect your Google account in Admin settings first.";
+        }
+      }
+      
       const errorMessage: Message = {
         id: Date.now().toString(),
         role: "assistant",
-        content: "I'm sorry, I encountered an error while creating the calendar event. Please try again.",
+        content: errorContent,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMessage]);

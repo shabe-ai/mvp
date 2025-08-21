@@ -159,9 +159,10 @@ export async function POST(request: NextRequest) {
           (error as any).code === 403) {
         return NextResponse.json({
           error: 'Insufficient Google Calendar permissions',
-          message: 'Your Google account needs calendar permissions. Please reconnect your Google account in Admin settings.',
-          action: 'connect_google',
-          details: 'Calendar event creation requires calendar.events scope'
+          message: 'Your Google account needs additional calendar permissions. Please reconnect your Google account in Admin settings to grant calendar creation access.',
+          action: 'reconnect_google',
+          requiresReauth: true,
+          details: 'Calendar event creation requires calendar.events scope. Your current tokens only have read-only access.'
         }, { status: 403 });
       }
       
