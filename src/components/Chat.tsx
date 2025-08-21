@@ -369,7 +369,14 @@ export default function Chat({ onAction }: ChatProps = {}) {
       }
 
       // Handle calendar preview if present
+      console.log('Checking for calendar preview:', {
+        type: data.type,
+        hasEventPreview: !!data.eventPreview,
+        eventPreview: data.eventPreview
+      });
+      
       if (data.type === 'calendar_preview' && data.eventPreview) {
+        console.log('Setting calendar preview:', data.eventPreview);
         setCalendarPreview({
           eventPreview: data.eventPreview,
           aiMessage: assistantMessage

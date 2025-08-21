@@ -97,9 +97,14 @@ export async function POST(request: NextRequest) {
     const isSimpleConfirmation = messageContent && (
       messageContent.toLowerCase().trim() === 'yes' || 
       messageContent.toLowerCase().trim() === 'y' ||
+      messageContent.toLowerCase().trim() === 'ok' ||
+      messageContent.toLowerCase().trim() === 'okay' ||
+      messageContent.toLowerCase().trim() === 'sure' ||
       messageContent.toLowerCase().trim() === 'confirm' ||
-      messageContent.toLowerCase().trim() === 'confirm' ||
-      messageContent.toLowerCase().trim() === 'correct'
+      messageContent.toLowerCase().trim() === 'confirmed' ||
+      messageContent.toLowerCase().trim() === 'correct' ||
+      messageContent.toLowerCase().trim() === 'go ahead' ||
+      messageContent.toLowerCase().trim() === 'proceed'
     );
 
     if (isSimpleConfirmation) {
