@@ -160,6 +160,17 @@ export async function POST(request: NextRequest) {
           logger.info('Testing refreshed token for calendar scopes', { userId });
           const calendarTest = await google.calendar({ version: 'v3', auth: oauth2Client }).calendarList.list();
           logger.info('Refreshed token has calendar scopes', { userId, calendarCount: calendarTest.data.items?.length || 0 });
+          
+          // Test if we can list events (read-only operation)
+          try {
+            const eventsTest = await google.calendar({ version: 'v3', auth: oauth2Client }).events.list({
+              calendarId: 'primary',
+              maxResults: 1
+            });
+            logger.info('Can list calendar events (read access works)', { userId, eventsCount: eventsTest.data.items?.length || 0 });
+          } catch (eventsTestError) {
+            logger.error('Cannot list calendar events', eventsTestError instanceof Error ? eventsTestError : new Error(String(eventsTestError)), { userId });
+          }
         } catch (calendarTestError) {
           logger.error('Refreshed token still lacks calendar scopes', calendarTestError instanceof Error ? calendarTestError : new Error(String(calendarTestError)), { userId });
           // Force re-authentication since refresh didn't help
@@ -251,6 +262,15 @@ export async function POST(request: NextRequest) {
     };
 
     // Insert the event
+    logger.info('Attempting to create calendar event', {
+      userId,
+      calendarId: 'primary',
+      eventSummary: event.summary,
+      attendeesCount: event.attendees?.length || 0,
+      startTime: event.start.dateTime,
+      endTime: event.end.dateTime
+    });
+    
     const response = await calendar.events.insert({
       calendarId: 'primary',
       requestBody: event,
