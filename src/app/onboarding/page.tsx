@@ -6,8 +6,9 @@ import { api } from '../../../convex/_generated/api';
 import OnboardingWizard from '@/components/OnboardingWizard';
 import { redirect } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import ConvexProviderWrapper from '@/components/ConvexProvider';
 
-export default function OnboardingPage() {
+function OnboardingContent() {
   const { user, isLoaded } = useUser();
   const [isCheckingProfile, setIsCheckingProfile] = useState(true);
   
@@ -52,4 +53,12 @@ export default function OnboardingPage() {
 
   // Show onboarding wizard
   return <OnboardingWizard />;
+}
+
+export default function OnboardingPage() {
+  return (
+    <ConvexProviderWrapper>
+      <OnboardingContent />
+    </ConvexProviderWrapper>
+  );
 }
