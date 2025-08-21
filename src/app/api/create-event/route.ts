@@ -178,7 +178,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Initialize Google Calendar API
+    // Initialize Google Calendar API with the potentially refreshed oauth2Client
+    logger.info('Initializing calendar API with oauth2Client', { 
+      userId,
+      hasAccessToken: !!oauth2Client.credentials.access_token,
+      hasRefreshToken: !!oauth2Client.credentials.refresh_token,
+      accessTokenLength: oauth2Client.credentials.access_token?.length || 0
+    });
+    
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
     // Parse date and time
