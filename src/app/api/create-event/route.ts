@@ -376,5 +376,10 @@ function parseEventDateTime(dateStr: string, timeStr: string): Date {
     targetDate.setHours(hours, minutes, 0, 0);
   }
 
+  // Adjust for timezone - assume user is in EST/EDT (UTC-5/-4)
+  // This will make "2pm" create an event at 2pm EST/EDT instead of 2pm UTC
+  const timezoneOffset = 5 * 60 * 60 * 1000; // 5 hours in milliseconds (EST)
+  targetDate = new Date(targetDate.getTime() + timezoneOffset);
+
   return targetDate;
 }
