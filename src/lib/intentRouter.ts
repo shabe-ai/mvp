@@ -2180,9 +2180,17 @@ class CalendarIntentHandler implements IntentHandler {
   private parseEventDetails(intent: SimplifiedIntent): any {
     const entities = intent.entities || {};
     
+    // Ensure attendees is always an array
+    let attendees = [];
+    if (entities.attendee) {
+      attendees = Array.isArray(entities.attendee) ? entities.attendee : [entities.attendee];
+    } else if (entities.attendees) {
+      attendees = Array.isArray(entities.attendees) ? entities.attendees : [entities.attendees];
+    }
+    
     return {
       title: entities.title || 'Meeting',
-      attendees: entities.attendee || entities.attendees || [],
+      attendees: attendees,
       date: entities.date || 'today',
       time: entities.time || '9:00 AM',
       duration: entities.duration || 30,
@@ -2220,10 +2228,14 @@ class CalendarIntentHandler implements IntentHandler {
 
       for (const attendeeName of attendeeNames) {
         // Try to find contact by name (case insensitive)
-        const contact = contacts.find((c: any) => 
-          c.name?.toLowerCase().includes(attendeeName.toLowerCase()) ||
-          c.email?.toLowerCase().includes(attendeeName.toLowerCase())
-        );
+        const contact = contacts.find((c: any) => {
+          const fullName = c.firstName && c.lastName ? 
+            `${c.firstName} ${c.lastName}` : 
+            c.firstName || c.lastName || '';
+          
+          return fullName.toLowerCase().includes(attendeeName.toLowerCase()) ||
+                 c.email?.toLowerCase().includes(attendeeName.toLowerCase());
+        });
 
         if (contact) {
           const fullName = contact.firstName && contact.lastName ? 
