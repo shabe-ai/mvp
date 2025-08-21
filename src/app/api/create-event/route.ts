@@ -215,7 +215,10 @@ export async function POST(request: NextRequest) {
       originalDate: eventPreview.date,
       originalTime: eventPreview.time,
       parsedDateTime: eventDateTime.toISOString(),
-      endDateTime: endDateTime.toISOString()
+      parsedDateTimeLocal: eventDateTime.toString(),
+      endDateTime: endDateTime.toISOString(),
+      endDateTimeLocal: endDateTime.toString(),
+      timezoneOffset: eventDateTime.getTimezoneOffset()
     });
     
     // Validate parsed date
@@ -244,7 +247,7 @@ export async function POST(request: NextRequest) {
       description: eventPreview.description || '',
       start: {
         dateTime: eventDateTime.toISOString(),
-        timeZone: 'America/New_York', // Default timezone, could be made configurable
+        timeZone: 'America/New_York', // Use a common timezone, could be made configurable
       },
       end: {
         dateTime: endDateTime.toISOString(),
