@@ -154,6 +154,23 @@ export async function POST(request: NextRequest) {
           access_token: credentials.access_token!,
           refresh_token: credentials.refresh_token || tokenData.refreshToken,
         });
+
+        // Test if the refreshed token has calendar scopes
+        try {
+          logger.info('Testing refreshed token for calendar scopes', { userId });
+          const calendarTest = await google.calendar({ version: 'v3', auth: oauth2Client }).calendarList.list();
+          logger.info('Refreshed token has calendar scopes', { userId, calendarCount: calendarTest.data.items?.length || 0 });
+        } catch (calendarTestError) {
+          logger.error('Refreshed token still lacks calendar scopes', calendarTestError instanceof Error ? calendarTestError : new Error(String(calendarTestError)), { userId });
+          // Force re-authentication since refresh didn't help
+          return NextResponse.json({
+            error: 'Calendar scopes require re-authentication',
+            message: 'Your Google account needs to be reconnected to get calendar permissions. Please reconnect your Google account in Admin settings.',
+            action: 'reconnect_google',
+            requiresReauth: true,
+            details: 'Token refresh did not provide calendar scopes. Full re-authentication required.'
+          }, { status: 403 });
+        }
         
       } catch (refreshError) {
         logger.error('Failed to refresh token for updated scopes', refreshError instanceof Error ? refreshError : new Error(String(refreshError)), { userId });
