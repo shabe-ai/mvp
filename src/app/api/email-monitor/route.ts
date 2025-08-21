@@ -77,25 +77,39 @@ export async function GET(req: NextRequest) {
       }, { status: 400 });
     }
 
-    // Get recent emails for preview (without logging)
-    const emails = await emailMonitor.getRecentEmails(5);
+    // Get recent emails and filter for contacts only
+    const emails = await emailMonitor.getRecentEmails(20); // Get more emails to find contacts
     
-    const emailPreviews = emails.map(email => {
+    const contactEmails: any[] = [];
+    
+    for (const email of emails) {
       const details = emailMonitor.extractEmailDetails(email);
-      return {
-        id: email.id,
-        from: details.from,
-        subject: details.subject,
-        date: details.date,
-        snippet: email.snippet
-      };
-    });
+      const fromEmails = emailMonitor.extractEmails(details.from);
+      
+      // Check if any of the sender emails match contacts
+      const matches = await emailMonitor.findMatchingContacts(fromEmails, userId);
+      
+      if (matches.length > 0) {
+        contactEmails.push({
+          id: email.id,
+          from: details.from,
+          subject: details.subject,
+          date: details.date,
+          snippet: email.snippet,
+          matchedContacts: matches.map(m => m.name)
+        });
+      }
+      
+      // Limit to 5 contact emails for preview
+      if (contactEmails.length >= 5) break;
+    }
 
     return NextResponse.json({
       success: true,
       data: {
-        recentEmails: emailPreviews,
-        totalEmails: emails.length
+        recentEmails: contactEmails,
+        totalEmails: contactEmails.length,
+        note: "Showing only emails from contacts in your database"
       }
     });
 

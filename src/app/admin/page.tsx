@@ -395,9 +395,9 @@ function EmailMonitoringSection() {
         </div>
       )}
 
-      {recentEmails.length > 0 && (
+      {recentEmails.length > 0 ? (
         <div>
-          <h4 className="font-medium text-gray-900 mb-3">Recent Emails</h4>
+          <h4 className="font-medium text-gray-900 mb-3">Recent Contact Emails</h4>
           <div className="space-y-2">
             {recentEmails.slice(0, 5).map((email, index) => (
               <div key={index} className="p-3 bg-gray-50 rounded-lg">
@@ -406,10 +406,25 @@ function EmailMonitoringSection() {
                     <p className="text-sm font-medium text-gray-900">{email.subject || 'No Subject'}</p>
                     <p className="text-xs text-gray-600">{email.from}</p>
                     <p className="text-xs text-gray-500">{new Date(email.date).toLocaleString()}</p>
+                    {email.matchedContacts && email.matchedContacts.length > 0 && (
+                      <p className="text-xs text-green-600 mt-1">
+                        📧 Matches: {email.matchedContacts.join(', ')}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      ) : (
+        <div>
+          <h4 className="font-medium text-gray-900 mb-3">Recent Contact Emails</h4>
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm text-yellow-800">
+              📧 No recent emails found from contacts in your database. 
+              The system will automatically log emails when they come from your contacts.
+            </p>
           </div>
         </div>
       )}
