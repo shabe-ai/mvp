@@ -37,14 +37,57 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
-    // Check if token is expired
+    // Check if token is expired and try to refresh
     if (tokenData.expiresAt < Date.now()) {
-      logger.error('Google token expired', undefined, { userId });
-      return NextResponse.json({ 
-        error: 'Google authentication expired',
-        message: 'Please reconnect your Google account in Admin settings.',
-        action: 'connect_google'
-      }, { status: 401 });
+      logger.info('Google token expired, attempting to refresh', { userId });
+      
+      if (!tokenData.refreshToken) {
+        logger.error('No refresh token available', undefined, { userId });
+        return NextResponse.json({ 
+          error: 'Google authentication expired',
+          message: 'Please reconnect your Google account in Admin settings.',
+          action: 'connect_google'
+        }, { status: 401 });
+      }
+
+      try {
+        // Initialize OAuth2 client for refresh
+        const oauth2Client = new google.auth.OAuth2(
+          process.env.GOOGLE_CLIENT_ID,
+          process.env.GOOGLE_CLIENT_SECRET,
+          `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/auth/google/callback`
+        );
+        
+        oauth2Client.setCredentials({
+          refresh_token: tokenData.refreshToken,
+        });
+
+        // Refresh the token
+        const { credentials } = await oauth2Client.refreshAccessToken();
+        
+        // Update stored tokens
+        await TokenStorage.setToken(
+          userId,
+          credentials.access_token!,
+          credentials.refresh_token || tokenData.refreshToken,
+          Math.floor((credentials.expiry_date! - Date.now()) / 1000), // Convert to seconds
+          tokenData.email
+        );
+
+        logger.info('Google token refreshed successfully', { userId });
+        
+        // Update tokenData for use below
+        tokenData.accessToken = credentials.access_token!;
+        tokenData.expiresAt = credentials.expiry_date!;
+        
+      } catch (refreshError) {
+        logger.error('Failed to refresh Google token', refreshError instanceof Error ? refreshError : new Error(String(refreshError)), { userId });
+        return NextResponse.json({ 
+          error: 'Google authentication expired',
+          message: 'Please reconnect your Google account in Admin settings.',
+          action: 'connect_google'
+        }, { status: 401 });
+      }
     }
 
     // Initialize OAuth2 client
