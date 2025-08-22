@@ -13,7 +13,7 @@ export default function TourTrigger() {
   const [showTour, setShowTour] = useState(false);
   const [showBanner, setShowBanner] = useState(true);
 
-  // Get tour preferences
+  // Get tour preferences with error handling
   const tourPreferences = useQuery(api.profiles.getTourPreferences, 
     user?.id ? { userId: user.id } : 'skip'
   );
@@ -22,8 +22,18 @@ export default function TourTrigger() {
   const markTourAsSeen = useMutation(api.profiles.markTourAsSeen);
   const skipTourPermanently = useMutation(api.profiles.skipTourPermanently);
 
+  // Handle loading and error states gracefully
+  if (!user?.id) {
+    return null;
+  }
+
+  // If there's an error or loading, don't show anything
+  if (tourPreferences === undefined) {
+    return null;
+  }
+
   // Don't show if user has skipped tour permanently
-  if (!tourPreferences || tourPreferences.hasSkippedTour || !showBanner) {
+  if (tourPreferences.hasSkippedTour || !showBanner) {
     return null;
   }
 
@@ -32,16 +42,24 @@ export default function TourTrigger() {
   };
 
   const handleTourComplete = async () => {
-    if (user?.id) {
-      await markTourAsSeen({ userId: user.id });
+    try {
+      if (user?.id) {
+        await markTourAsSeen({ userId: user.id });
+      }
+    } catch (error) {
+      console.error('Error marking tour as seen:', error);
     }
     setShowTour(false);
     setShowBanner(false);
   };
 
   const handleTourSkip = async () => {
-    if (user?.id) {
-      await skipTourPermanently({ userId: user.id });
+    try {
+      if (user?.id) {
+        await skipTourPermanently({ userId: user.id });
+      }
+    } catch (error) {
+      console.error('Error skipping tour permanently:', error);
     }
     setShowTour(false);
     setShowBanner(false);

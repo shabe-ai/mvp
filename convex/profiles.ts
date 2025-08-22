@@ -298,53 +298,81 @@ export const getAIProfileContext = query({
 export const getTourPreferences = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    const profile = await ctx.db
-      .query("userProfiles")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
-      .first();
-    
-    return {
-      hasSeenTour: profile?.hasSeenTour || false,
-      hasSkippedTour: profile?.hasSkippedTour || false,
-    };
+    try {
+      const profile = await ctx.db
+        .query("userProfiles")
+        .filter((q) => q.eq(q.field("userId"), args.userId))
+        .first();
+      
+      // Handle cases where profile doesn't exist or tour fields don't exist yet
+      if (!profile) {
+        return {
+          hasSeenTour: false,
+          hasSkippedTour: false,
+        };
+      }
+      
+      // Safely access tour preference fields, defaulting to false if they don't exist
+      return {
+        hasSeenTour: profile.hasSeenTour === true,
+        hasSkippedTour: profile.hasSkippedTour === true,
+      };
+    } catch (error) {
+      console.error('Error getting tour preferences:', error);
+      // Return default values if there's any error
+      return {
+        hasSeenTour: false,
+        hasSkippedTour: false,
+      };
+    }
   },
 });
 
 export const markTourAsSeen = mutation({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    const profile = await ctx.db
-      .query("userProfiles")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
-      .first();
-    
-    if (profile) {
-      await ctx.db.patch(profile._id, {
-        hasSeenTour: true,
-        updatedAt: Date.now(),
-      });
+    try {
+      const profile = await ctx.db
+        .query("userProfiles")
+        .filter((q) => q.eq(q.field("userId"), args.userId))
+        .first();
+      
+      if (profile) {
+        await ctx.db.patch(profile._id, {
+          hasSeenTour: true,
+          updatedAt: Date.now(),
+        });
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error marking tour as seen:', error);
+      return { success: false, error: 'Failed to update tour preferences' };
     }
-    
-    return { success: true };
   },
 });
 
 export const skipTourPermanently = mutation({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    const profile = await ctx.db
-      .query("userProfiles")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
-      .first();
-    
-    if (profile) {
-      await ctx.db.patch(profile._id, {
-        hasSeenTour: true,
-        hasSkippedTour: true,
-        updatedAt: Date.now(),
-      });
+    try {
+      const profile = await ctx.db
+        .query("userProfiles")
+        .filter((q) => q.eq(q.field("userId"), args.userId))
+        .first();
+      
+      if (profile) {
+        await ctx.db.patch(profile._id, {
+          hasSeenTour: true,
+          hasSkippedTour: true,
+          updatedAt: Date.now(),
+        });
+      }
+      
+      return { success: true };
+    } catch (error) {
+      console.error('Error skipping tour permanently:', error);
+      return { success: false, error: 'Failed to update tour preferences' };
     }
-    
-    return { success: true };
   },
 });
