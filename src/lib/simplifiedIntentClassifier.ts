@@ -8,7 +8,7 @@ export interface SimplifiedIntent {
           'create_account' | 'update_account' | 'delete_account' |
           'create_deal' | 'update_deal' | 'delete_deal' |
           'create_activity' | 'update_activity' | 'delete_activity' |
-          'create_calendar_event' |
+          'create_calendar_event' | 'query_profile' |
           'general_conversation';
   confidence: number;
   originalMessage: string;
@@ -137,9 +137,19 @@ Available actions:
 - create_activity: User wants to create a new activity
 - update_activity: User wants to update an existing activity
 - delete_activity: User wants to delete an activity
+- query_profile: User wants to know about their profile or company information
 - general_conversation: General chat, questions, or unclear requests
 
 Examples:
+- "what is my company" → action: "query_profile", entities: {"profileType": "company", "query": "details"}
+- "what's my company name" → action: "query_profile", entities: {"profileType": "company", "query": "name"}
+- "tell me about my company" → action: "query_profile", entities: {"profileType": "company", "query": "details"}
+- "what company do I work for" → action: "query_profile", entities: {"profileType": "company", "query": "details"}
+- "who am I" → action: "query_profile", entities: {"profileType": "user", "query": "details"}
+- "what's my name" → action: "query_profile", entities: {"profileType": "user", "query": "name"}
+- "tell me about myself" → action: "query_profile", entities: {"profileType": "user", "query": "details"}
+- "what's my role" → action: "query_profile", entities: {"profileType": "user", "query": "role"}
+- "what's my job title" → action: "query_profile", entities: {"profileType": "user", "query": "title"}
 - "how many contacts do i have" → action: "view_data", entities: {"dataType": "contacts", "query": "count"}
 - "how many contacts at shabe" → action: "view_data", entities: {"dataType": "contacts", "query": "count", "company": "shabe"}
 - "how many at shabe" → action: "view_data", entities: {"dataType": "contacts", "query": "count", "company": "shabe"}
@@ -180,14 +190,17 @@ Email Continuation Examples:
 Extract relevant entities like:
 - chartType: line, bar, pie, area, scatter
 - dataType: contacts, deals, accounts, activities
+- profileType: user, company
 - dimension: stage, status, industry, type, source, probability
 - contactName, accountName, dealName, activitySubject
 - field, value, date, amount, email, phone, company, industry, website
 - recipient, subject, content_type (for emails)
 - attendee, date, time, duration, location, title (for calendar events)
-- query: count, list, show, display (for view_data actions)
+- query: count, list, show, display, details, name, role, title (for view_data and query_profile actions)
 
 IMPORTANT: When the user mentions scheduling, booking, or setting up meetings or calls with specific people and times, this should be classified as "create_calendar_event", NOT "create_activity". Calendar events are for scheduling future meetings, while activities are for logging past interactions.
+
+IMPORTANT: When the user asks about their own information, company information, or profile details, this should be classified as "query_profile", NOT "view_data". Profile queries are about the user's own data, while view_data is about CRM records.
 
 Conversation context: ${conversationContext}
 
@@ -291,7 +304,7 @@ If the user's intent is unclear or ambiguous, set needsClarification to true and
       'create_account', 'update_account', 'delete_account',
       'create_deal', 'update_deal', 'delete_deal',
       'create_activity', 'update_activity', 'delete_activity',
-      'create_calendar_event',
+      'create_calendar_event', 'query_profile',
       'general_conversation'
     ];
 

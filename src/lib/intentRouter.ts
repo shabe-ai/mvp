@@ -2335,6 +2335,174 @@ class AnalysisIntentHandler implements IntentHandler {
   }
 }
 
+// Profile Intent Handler
+class ProfileIntentHandler implements IntentHandler {
+  canHandle(intent: SimplifiedIntent): boolean {
+    return intent.action === 'query_profile';
+  }
+
+  async handle(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
+    logger.info('Handling profile query intent', {
+      action: intent.action,
+      entities: intent.entities,
+      userId: context.userId
+    });
+
+    try {
+      const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+      
+      // Get user's teams
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      const teamId = teams?.[0]?._id;
+
+      if (!teamId) {
+        return {
+          type: 'text',
+          content: 'I couldn\'t find your team information. Please make sure you\'ve completed the onboarding process.',
+          hasData: false
+        };
+      }
+
+      // Get AI profile context
+      const aiContext = await convex.query(api.profiles.getAIProfileContext, { 
+        userId: context.userId, 
+        teamId 
+      });
+
+      const { profileType, query } = intent.entities;
+      
+      if (profileType === 'company') {
+        return this.handleCompanyQuery(aiContext.company, query);
+      } else if (profileType === 'user') {
+        return this.handleUserQuery(aiContext.user, query);
+      } else {
+        // If no specific profile type, return both
+        return this.handleGeneralProfileQuery(aiContext, query);
+      }
+
+    } catch (error) {
+      logger.error('Error handling profile query', error instanceof Error ? error : new Error(String(error)), {
+        intent: intent.action,
+        userId: context.userId
+      });
+
+      return {
+        type: 'text',
+        content: 'I encountered an error while retrieving your profile information. Please try again.',
+        hasData: false
+      };
+    }
+  }
+
+  private handleCompanyQuery(companyData: any, query: string): any {
+    if (!companyData) {
+      return {
+        type: 'text',
+        content: 'I couldn\'t find your company information. Please complete your company profile in the admin section.',
+        hasData: false
+      };
+    }
+
+    let content = '';
+    
+    if (query === 'name') {
+      content = `Your company name is **${companyData.name}**.`;
+    } else if (query === 'details') {
+      content = `**Company Information:**\n\n`;
+      content += `**Name:** ${companyData.name}\n`;
+      if (companyData.industry) content += `**Industry:** ${companyData.industry}\n`;
+      if (companyData.companySize) content += `**Size:** ${companyData.companySize} employees\n`;
+      if (companyData.annualRevenue) content += `**Revenue:** ${companyData.annualRevenue}\n`;
+      if (companyData.businessModel) content += `**Business Model:** ${companyData.businessModel}\n`;
+      if (companyData.targetMarket) content += `**Target Market:** ${companyData.targetMarket}\n`;
+      if (companyData.teamSize) content += `**Team Size:** ${companyData.teamSize} people\n`;
+      if (companyData.brandVoice) content += `**Brand Voice:** ${companyData.brandVoice}\n`;
+    } else {
+      content = `**Company Information:**\n\n`;
+      content += `**Name:** ${companyData.name}\n`;
+      if (companyData.industry) content += `**Industry:** ${companyData.industry}\n`;
+      if (companyData.companySize) content += `**Size:** ${companyData.companySize} employees\n`;
+    }
+
+    return {
+      type: 'text',
+      content,
+      hasData: true
+    };
+  }
+
+  private handleUserQuery(userData: any, query: string): any {
+    if (!userData) {
+      return {
+        type: 'text',
+        content: 'I couldn\'t find your user information. Please complete your profile in the admin section.',
+        hasData: false
+      };
+    }
+
+    let content = '';
+    
+    if (query === 'name') {
+      content = `Your name is **${userData.name}**.`;
+    } else if (query === 'role' || query === 'title') {
+      if (userData.title) {
+        content = `Your job title is **${userData.title}**.`;
+      } else if (userData.role) {
+        content = `Your role is **${userData.role}**.`;
+      } else {
+        content = 'I don\'t have your job title or role information. You can update this in your profile settings.';
+      }
+    } else if (query === 'details') {
+      content = `**Your Profile Information:**\n\n`;
+      content += `**Name:** ${userData.name}\n`;
+      if (userData.title) content += `**Title:** ${userData.title}\n`;
+      if (userData.department) content += `**Department:** ${userData.department}\n`;
+      if (userData.role) content += `**Role:** ${userData.role}\n`;
+      if (userData.communicationStyle) content += `**Communication Style:** ${userData.communicationStyle}\n`;
+      if (userData.preferredDetailLevel) content += `**Preferred Detail Level:** ${userData.preferredDetailLevel}\n`;
+    } else {
+      content = `**Your Profile Information:**\n\n`;
+      content += `**Name:** ${userData.name}\n`;
+      if (userData.title) content += `**Title:** ${userData.title}\n`;
+      if (userData.department) content += `**Department:** ${userData.department}\n`;
+    }
+
+    return {
+      type: 'text',
+      content,
+      hasData: true
+    };
+  }
+
+  private handleGeneralProfileQuery(aiContext: any, query: string): any {
+    let content = '';
+
+    if (aiContext.company) {
+      content += `**Company Information:**\n`;
+      content += `**Name:** ${aiContext.company.name}\n`;
+      if (aiContext.company.industry) content += `**Industry:** ${aiContext.company.industry}\n`;
+      if (aiContext.company.companySize) content += `**Size:** ${aiContext.company.companySize} employees\n\n`;
+    }
+
+    if (aiContext.user) {
+      content += `**Your Information:**\n`;
+      content += `**Name:** ${aiContext.user.name}\n`;
+      if (aiContext.user.title) content += `**Title:** ${aiContext.user.title}\n`;
+      if (aiContext.user.department) content += `**Department:** ${aiContext.user.department}\n`;
+    }
+
+    if (!aiContext.company && !aiContext.user) {
+      content = 'I couldn\'t find your profile information. Please complete your profile in the admin section.';
+    }
+
+    return {
+      type: 'text',
+      content,
+      hasData: true
+    };
+  }
+}
+
 // Create and configure the router
 export const intentRouter = new IntentRouter();
 
@@ -2344,4 +2512,5 @@ intentRouter.registerHandler(new DataIntentHandler());
 intentRouter.registerHandler(new CrudIntentHandler());
 intentRouter.registerHandler(new EmailIntentHandler());
 intentRouter.registerHandler(new CalendarIntentHandler());
-intentRouter.registerHandler(new AnalysisIntentHandler()); 
+intentRouter.registerHandler(new AnalysisIntentHandler());
+intentRouter.registerHandler(new ProfileIntentHandler()); 
