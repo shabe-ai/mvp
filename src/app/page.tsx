@@ -36,19 +36,20 @@ export default async function Home() {
     if (!userProfile || !teams || teams.length === 0) {
       redirect('/onboarding');
     }
+    
+    // If user has completed onboarding, show main interface with tour trigger
+    return (
+      <div className="flex flex-col bg-white w-full h-screen min-h-0">
+        <main className="flex-1 min-h-0 w-full bg-white flex flex-col p-0 m-0 overflow-hidden">
+          <ConvexProviderWrapper>
+            <ChatWithSidebar />
+          </ConvexProviderWrapper>
+        </main>
+      </div>
+    );
   } catch (error) {
     console.error('Error checking onboarding status:', error);
     // If there's an error, redirect to onboarding to be safe
     redirect('/onboarding');
   }
-
-  return (
-    <div className="flex flex-col bg-white w-full h-screen min-h-0">
-      <main className="flex-1 min-h-0 w-full bg-white flex flex-col p-0 m-0 overflow-hidden">
-        <ConvexProviderWrapper>
-          <ChatWithSidebar />
-        </ConvexProviderWrapper>
-      </main>
-    </div>
-  );
 } 

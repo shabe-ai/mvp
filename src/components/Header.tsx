@@ -7,6 +7,7 @@ import {
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import Logo from "./Logo";
+import TourTrigger from "./TourTrigger";
 
 export default function Header() {
   const { user } = useUser();
@@ -31,6 +32,7 @@ export default function Header() {
                 <Link href="/admin" className="text-text-secondary hover:text-text-primary px-4 py-2 text-sm font-medium transition-colors font-body">
                   Admin
                 </Link>
+                <TourTrigger />
                 <UserButton />
               </div>
             ) : (

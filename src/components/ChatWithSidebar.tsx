@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import Chat from "@/components/Chat";
 import SidebarLayout from "@/components/SidebarLayout";
 import LiveTables from "@/components/LiveTables";
+import TourTrigger from "@/components/TourTrigger";
 
 interface DataRecord {
   _id: string;
@@ -79,7 +80,10 @@ export default function ChatWithSidebar() {
       }
       defaultSidebarOpen={defaultSidebarOpen}
     >
-      <Chat onAction={handleChatAction} />
+      <div className="flex flex-col h-full">
+        <TourTrigger />
+        <Chat onAction={handleChatAction} />
+      </div>
     </SidebarLayout>
   );
 }

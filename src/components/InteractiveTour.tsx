@@ -20,6 +20,8 @@ interface InteractiveTourProps {
   isVisible: boolean;
   onComplete: () => void;
   onSkip: () => void;
+  showSkipPermanently?: boolean;
+  onSkipPermanently?: () => void;
 }
 
 const tourSteps: TourStep[] = [
@@ -110,9 +112,10 @@ const tourSteps: TourStep[] = [
   }
 ];
 
-export default function InteractiveTour({ isVisible, onComplete, onSkip }: InteractiveTourProps) {
+export default function InteractiveTour({ isVisible, onComplete, onSkip, showSkipPermanently = false, onSkipPermanently }: InteractiveTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isTourVisible, setIsTourVisible] = useState(false);
+  const [showSkipDialog, setShowSkipDialog] = useState(false);
 
   useEffect(() => {
     if (isVisible) {
@@ -145,7 +148,23 @@ export default function InteractiveTour({ isVisible, onComplete, onSkip }: Inter
   };
 
   const handleSkip = () => {
+    if (showSkipPermanently) {
+      setShowSkipDialog(true);
+    } else {
+      onSkip();
+    }
+  };
+
+  const handleSkipPermanently = () => {
+    if (onSkipPermanently) {
+      onSkipPermanently();
+    }
+    setShowSkipDialog(false);
+  };
+
+  const handleSkipOnce = () => {
     onSkip();
+    setShowSkipDialog(false);
   };
 
   if (!isTourVisible) return null;
@@ -153,83 +172,118 @@ export default function InteractiveTour({ isVisible, onComplete, onSkip }: Inter
   const currentTourStep = tourSteps[currentStep];
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-      <div className="relative max-w-md w-full">
-        <Card className="w-full">
-          <CardContent className="p-6">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-2">
-                {currentTourStep.icon}
-                <h3 className="text-lg font-semibold text-text-primary">
-                  {currentTourStep.title}
-                </h3>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleSkip}
-                className="text-text-secondary hover:text-text-primary"
-              >
-                <X className="w-4 h-4" />
-              </Button>
-            </div>
-
-            {/* Message */}
-            <div className="mb-6">
-              <p className="text-text-secondary whitespace-pre-line leading-relaxed">
-                {currentTourStep.message}
-              </p>
-            </div>
-
-            {/* Progress */}
-            <div className="mb-6">
-              <div className="flex justify-between text-sm text-text-secondary mb-2">
-                <span>Step {currentStep + 1} of {tourSteps.length}</span>
-                <span>{Math.round(((currentStep + 1) / tourSteps.length) * 100)}%</span>
-              </div>
-              <div className="w-full bg-neutral-secondary/20 rounded-full h-2">
-                <div 
-                  className="bg-accent-primary h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${((currentStep + 1) / tourSteps.length) * 100}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="flex justify-between items-center">
-              <Button
-                variant="outline"
-                onClick={handlePrevious}
-                disabled={currentStep === 0}
-                className="border-neutral-secondary text-text-secondary hover:bg-neutral-secondary/20"
-              >
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Previous
-              </Button>
-
-              <div className="flex space-x-2">
-                {currentTourStep.action && (
-                  <Button
-                    onClick={() => handleAction(currentTourStep)}
-                    className="bg-accent-primary text-text-on-accent-primary hover:bg-accent-primary-hover"
-                  >
-                    {currentTourStep.actionText}
-                  </Button>
-                )}
-                
+    <>
+      <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+        <div className="relative max-w-md w-full">
+          <Card className="w-full">
+            <CardContent className="p-6">
+              {/* Header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center space-x-2">
+                  {currentTourStep.icon}
+                  <h3 className="text-lg font-semibold text-text-primary">
+                    {currentTourStep.title}
+                  </h3>
+                </div>
                 <Button
-                  onClick={handleNext}
-                  className="bg-accent-primary text-text-on-accent-primary hover:bg-accent-primary-hover"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleSkip}
+                  className="text-text-secondary hover:text-text-primary"
                 >
-                  {currentStep === tourSteps.length - 1 ? 'Finish' : 'Next'}
-                  <ArrowRight className="w-4 h-4 ml-2" />
+                  <X className="w-4 h-4" />
                 </Button>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+
+              {/* Message */}
+              <div className="mb-6">
+                <p className="text-text-secondary whitespace-pre-line leading-relaxed">
+                  {currentTourStep.message}
+                </p>
+              </div>
+
+              {/* Progress */}
+              <div className="mb-6">
+                <div className="flex justify-between text-sm text-text-secondary mb-2">
+                  <span>Step {currentStep + 1} of {tourSteps.length}</span>
+                  <span>{Math.round(((currentStep + 1) / tourSteps.length) * 100)}%</span>
+                </div>
+                <div className="w-full bg-neutral-secondary/20 rounded-full h-2">
+                  <div 
+                    className="bg-accent-primary h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${((currentStep + 1) / tourSteps.length) * 100}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-between items-center">
+                <Button
+                  variant="outline"
+                  onClick={handlePrevious}
+                  disabled={currentStep === 0}
+                  className="border-neutral-secondary text-text-secondary hover:bg-neutral-secondary/20"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Previous
+                </Button>
+
+                <div className="flex space-x-2">
+                  {currentTourStep.action && (
+                    <Button
+                      onClick={() => handleAction(currentTourStep)}
+                      className="bg-accent-primary text-text-on-accent-primary hover:bg-accent-primary-hover"
+                    >
+                      {currentTourStep.actionText}
+                    </Button>
+                  )}
+                  
+                  <Button
+                    onClick={handleNext}
+                    className="bg-accent-primary text-text-on-accent-primary hover:bg-accent-primary-hover"
+                  >
+                    {currentStep === tourSteps.length - 1 ? 'Finish' : 'Next'}
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+
+      {/* Skip Dialog */}
+      {showSkipDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-60 flex items-center justify-center p-4">
+          <Card className="w-full max-w-sm">
+            <CardContent className="p-6">
+              <h3 className="text-lg font-semibold text-text-primary mb-4">
+                Skip Tour?
+              </h3>
+              <p className="text-text-secondary mb-6">
+                Would you like to skip this tour? You can always take it again later from the interface.
+              </p>
+              <div className="flex space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={handleSkipOnce}
+                  className="flex-1 border-neutral-secondary text-text-secondary hover:bg-neutral-secondary/20"
+                >
+                  Skip Once
+                </Button>
+                {showSkipPermanently && onSkipPermanently && (
+                  <Button
+                    onClick={handleSkipPermanently}
+                    className="flex-1 bg-red-600 text-white hover:bg-red-700"
+                  >
+                    Skip Permanently
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+    </>
   );
 }

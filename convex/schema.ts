@@ -88,6 +88,10 @@ export default defineSchema({
     // Custom fields
     customFields: v.optional(v.record(v.string(), customFieldValue)),
     
+    // Tour preferences
+    hasSeenTour: v.optional(v.boolean()),
+    hasSkippedTour: v.optional(v.boolean()),
+    
     createdAt: v.number(),
     updatedAt: v.number(),
   })

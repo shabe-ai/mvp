@@ -292,3 +292,59 @@ export const getAIProfileContext = query({
     return aiContext;
   },
 });
+
+// ===== TOUR PREFERENCES FUNCTIONS =====
+
+export const getTourPreferences = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db
+      .query("userProfiles")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+    
+    return {
+      hasSeenTour: profile?.hasSeenTour || false,
+      hasSkippedTour: profile?.hasSkippedTour || false,
+    };
+  },
+});
+
+export const markTourAsSeen = mutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db
+      .query("userProfiles")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+    
+    if (profile) {
+      await ctx.db.patch(profile._id, {
+        hasSeenTour: true,
+        updatedAt: Date.now(),
+      });
+    }
+    
+    return { success: true };
+  },
+});
+
+export const skipTourPermanently = mutation({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const profile = await ctx.db
+      .query("userProfiles")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+    
+    if (profile) {
+      await ctx.db.patch(profile._id, {
+        hasSeenTour: true,
+        hasSkippedTour: true,
+        updatedAt: Date.now(),
+      });
+    }
+    
+    return { success: true };
+  },
+});
