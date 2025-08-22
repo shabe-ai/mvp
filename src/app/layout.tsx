@@ -16,12 +16,12 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en" className="h-screen w-screen" style={{ maxWidth: '100vw', maxHeight: '100vh' }}>
-        <body className="bg-white min-h-screen flex flex-col font-['Inter']" style={{ maxWidth: '100vw', maxHeight: '100vh' }}>
+        <body className="bg-neutral-primary min-h-screen flex flex-col font-body" style={{ maxWidth: '100vw', maxHeight: '100vh' }}>
           {/* Modern Header */}
           <Header />
           
           {/* Main Content */}
-          <main className="flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-white flex flex-col" style={{ maxWidth: '100vw' }}>
+          <main className="flex-1 min-h-0 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-neutral-primary flex flex-col" style={{ maxWidth: '100vw' }}>
             <PostHogProvider>
                 {children}
             </PostHogProvider>

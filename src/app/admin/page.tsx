@@ -85,40 +85,40 @@ function GoogleIntegrationSection() {
   };
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-[#d9d2c7] p-6">
-      <h3 className="text-lg font-semibold text-black mb-4">Google Workspace Integration</h3>
-      <p className="text-sm text-[#d9d2c7] mb-4">
+    <div className="bg-neutral-primary rounded-lg shadow-sm border border-neutral-secondary p-6">
+      <h3 className="text-lg font-semibold text-text-primary mb-4 font-heading">Google Workspace Integration</h3>
+      <p className="text-sm text-text-secondary mb-4 font-body">
         Connect your Google account to enable calendar integration and team features.
       </p>
       
       {loading ? (
-        <div className="flex items-center space-x-2 text-sm text-[#d9d2c7]">
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#f3e89a]"></div>
+        <div className="flex items-center space-x-2 text-sm text-text-secondary">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-accent-primary"></div>
           <span>Checking connection...</span>
         </div>
       ) : isConnected ? (
         <div className="space-y-3">
           <div className="flex items-center space-x-2">
-            <div className="w-2 h-2 bg-[#f3e89a] rounded-full"></div>
-            <span className="text-sm text-black">
+            <div className="w-2 h-2 bg-accent-primary rounded-full"></div>
+            <span className="text-sm text-text-primary font-body">
               Connected to Google Workspace
               {isPersistent && (
-                <span className="ml-2 text-xs bg-[#f3e89a]/20 text-black px-2 py-1 rounded">
+                <span className="ml-2 text-xs bg-accent-primary/20 text-text-on-accent-primary px-2 py-1 rounded-md">
                   Persistent
                 </span>
               )}
             </span>
           </div>
           {calendarError && (
-            <div className="bg-[#f3e89a]/10 border border-[#f3e89a]/20 rounded-lg p-3">
-              <p className="text-sm text-black">
+            <div className="bg-accent-primary/10 border border-accent-primary/20 rounded-md p-3">
+              <p className="text-sm text-text-primary font-body">
                 Calendar access requires additional permissions. Please reconnect your account.
               </p>
             </div>
           )}
           <button
             onClick={handleConnect}
-            className="text-sm text-[#f3e89a] hover:text-[#efe076] underline"
+            className="text-sm text-accent-primary hover:text-accent-primary-hover underline font-body"
           >
             Reconnect Account
           </button>
@@ -126,7 +126,7 @@ function GoogleIntegrationSection() {
       ) : (
         <button
           onClick={handleConnect}
-          className="bg-[#f3e89a] hover:bg-[#efe076] text-black px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="bg-accent-primary hover:bg-accent-primary-hover text-text-on-accent-primary px-4 py-2 rounded-md text-sm font-medium transition-colors font-button"
         >
           Connect Google Workspace
         </button>
@@ -189,33 +189,33 @@ function EmailMonitoringSection() {
   }, [fetchStats]);
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+    <div className="bg-neutral-primary rounded-lg shadow-sm border border-neutral-secondary p-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-gray-900">Email Activity Monitoring</h3>
-          <p className="text-sm text-gray-600 mt-1">
+          <h3 className="text-lg font-semibold text-text-primary font-heading">Email Activity Monitoring</h3>
+          <p className="text-sm text-text-secondary mt-1 font-body">
             Automatically log emails from contacts as activities
           </p>
         </div>
         <button
           onClick={triggerEmailProcessing}
           disabled={isProcessing}
-          className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+          className="bg-accent-primary hover:bg-accent-primary-hover disabled:bg-neutral-secondary text-text-on-accent-primary px-4 py-2 rounded-md text-sm font-medium transition-colors font-button"
         >
           {isProcessing ? 'Processing...' : 'Process Emails'}
         </button>
       </div>
 
       {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-sm text-red-800">{error}</p>
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
+          <p className="text-sm text-red-800 font-body">{error}</p>
         </div>
       )}
 
       {stats && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <h4 className="font-medium text-green-800 mb-2">Processing Results</h4>
-          <div className="text-sm text-green-700">
+        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-md">
+          <h4 className="font-medium text-green-800 mb-2 font-body">Processing Results</h4>
+          <div className="text-sm text-green-700 font-body">
             <p>Processed: {stats.processed} emails</p>
             <p>Logged: {stats.logged} activities</p>
             <p>Errors: {stats.errors}</p>
@@ -225,17 +225,17 @@ function EmailMonitoringSection() {
 
       {recentEmails.length > 0 ? (
         <div>
-          <h4 className="font-medium text-gray-900 mb-3">Recent Contact Emails</h4>
+          <h4 className="font-medium text-text-primary mb-3 font-body">Recent Contact Emails</h4>
           <div className="space-y-2">
             {recentEmails.slice(0, 5).map((email, index) => (
-              <div key={index} className="p-3 bg-gray-50 rounded-lg">
+              <div key={index} className="p-3 bg-neutral-secondary/20 rounded-md">
                 <div className="flex justify-between items-start">
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">{email.subject || 'No Subject'}</p>
-                    <p className="text-xs text-gray-600">{email.from}</p>
-                    <p className="text-xs text-gray-500">{new Date(email.date).toLocaleString()}</p>
+                    <p className="text-sm font-medium text-text-primary font-body">{email.subject || 'No Subject'}</p>
+                    <p className="text-xs text-text-secondary font-body">{email.from}</p>
+                    <p className="text-xs text-text-secondary font-body">{new Date(email.date).toLocaleString()}</p>
                     {email.matchedContacts && email.matchedContacts.length > 0 && (
-                      <p className="text-xs text-green-600 mt-1">
+                      <p className="text-xs text-green-600 mt-1 font-body">
                         📧 Matches: {email.matchedContacts.join(', ')}
                       </p>
                     )}
@@ -247,9 +247,9 @@ function EmailMonitoringSection() {
         </div>
       ) : (
         <div>
-          <h4 className="font-medium text-gray-900 mb-3">Recent Contact Emails</h4>
-          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-            <p className="text-sm text-yellow-800">
+          <h4 className="font-medium text-text-primary mb-3 font-body">Recent Contact Emails</h4>
+          <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <p className="text-sm text-yellow-800 font-body">
               📧 No recent emails found from contacts in your database. 
               The system will automatically log emails when they come from your contacts.
             </p>
@@ -257,8 +257,8 @@ function EmailMonitoringSection() {
         </div>
       )}
 
-      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-800">
+      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
+        <p className="text-sm text-blue-800 font-body">
           💡 <strong>Auto-monitoring:</strong> Emails are automatically processed every 15 minutes for users with connected Google accounts.
         </p>
       </div>
@@ -272,10 +272,10 @@ function AdminPageContent() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#f8f7f4] flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-secondary/20 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-black mb-4">Access Denied</h1>
-          <p className="text-[#d9d2c7]">Please sign in to access the admin panel.</p>
+          <h1 className="text-2xl font-bold text-text-primary mb-4 font-heading">Access Denied</h1>
+          <p className="text-text-secondary font-body">Please sign in to access the admin panel.</p>
         </div>
       </div>
     );
@@ -283,10 +283,10 @@ function AdminPageContent() {
 
   if (adminLoading) {
     return (
-      <div className="min-h-screen bg-[#f8f7f4] flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-secondary/20 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#f3e89a] mx-auto mb-4"></div>
-          <p className="text-[#d9d2c7]">Loading admin status...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-accent-primary mx-auto mb-4"></div>
+          <p className="text-text-secondary font-body">Loading admin status...</p>
         </div>
       </div>
     );
@@ -294,21 +294,21 @@ function AdminPageContent() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-[#f8f7f4] flex items-center justify-center">
+      <div className="min-h-screen bg-neutral-secondary/20 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-black mb-4">Access Denied</h1>
-          <p className="text-[#d9d2c7]">You don&apos;t have permission to access the admin panel.</p>
+          <h1 className="text-2xl font-bold text-text-primary mb-4 font-heading">Access Denied</h1>
+          <p className="text-text-secondary font-body">You don&apos;t have permission to access the admin panel.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#d9d2c7]/20">
+    <div className="min-h-screen bg-neutral-secondary/20">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-black">Admin Dashboard</h1>
-          <p className="text-[#d9d2c7] mt-2">Manage your workspace and integrations</p>
+          <h1 className="text-3xl font-bold text-text-primary font-heading">Admin Dashboard</h1>
+          <p className="text-text-secondary mt-2 font-body">Manage your workspace and integrations</p>
         </div>
 
         {/* Profile Management Section - Now at the top */}
@@ -338,13 +338,13 @@ function AdminPageContent() {
 
         {/* Regular User Message - For non-analytics admins */}
         {!isAdmin && (
-          <div className="mt-8 p-6 bg-gray-50 rounded-lg">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Workspace Management</h3>
-            <p className="text-gray-600 mb-4">
+          <div className="mt-8 p-6 bg-neutral-secondary/10 rounded-lg">
+            <h3 className="text-lg font-medium text-text-primary mb-2 font-heading">Workspace Management</h3>
+            <p className="text-text-secondary mb-4 font-body">
               Use the sections above to manage your profile, company settings, and Google Workspace integration.
             </p>
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-sm text-blue-800">
+            <div className="bg-accent-primary/10 border border-accent-primary/20 rounded-lg p-4">
+              <p className="text-sm text-text-primary font-body">
                 💡 <strong>Tip:</strong> Connect your Google Workspace to enable calendar integration and enhanced features.
               </p>
             </div>

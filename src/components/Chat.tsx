@@ -888,121 +888,138 @@ export default function Chat({ onAction }: ChatProps = {}) {
             }`}
           >
             <div
-              className={`max-w-[80%] rounded-lg p-3 ${
+              className={`max-w-[80%] rounded-md p-3 ${
                 message.role === "user"
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-100 text-gray-900"
+                  ? "bg-accent-primary text-text-on-accent-primary"
+                  : "bg-neutral-secondary/20 text-text-primary"
               }`}
             >
-              <div className="whitespace-pre-wrap">{message.content}</div>
+              <div className="whitespace-pre-wrap font-body">{message.content}</div>
               
               {/* Chart Display */}
               {message.chartSpec && (
-                <div className="mt-4">
+                <div className="mt-3">
                   {message.enhancedChart ? (
                     <EnhancedChartDisplay
                       chartSpec={{
                         ...message.chartSpec,
                         chartConfig: {
                           ...message.chartSpec.chartConfig,
-                          margin: {
-                            top: message.chartSpec.chartConfig?.margin?.top || 20,
-                            right: message.chartSpec.chartConfig?.margin?.right || 30,
-                            left: message.chartSpec.chartConfig?.margin?.left || 20,
-                            bottom: message.chartSpec.chartConfig?.margin?.bottom || 60
+                          margin: message.chartSpec.chartConfig?.margin as { top: number; right: number; bottom: number; left: number } || {
+                            top: 20,
+                            right: 30,
+                            bottom: 60,
+                            left: 20
                           }
                         }
                       }}
                       narrative={message.narrative}
-                      onUpdate={handleChartUpdate}
-                      onExport={handleChartExport}
-                      onGoogleSheetsExport={handleGoogleSheetsExport}
-                      onShare={handleChartShare}
-                      onInsightAction={handleInsightAction}
                     />
                   ) : (
-                    <ChartDisplay
+                    <ChartDisplay 
                       chartSpec={{
                         ...message.chartSpec,
                         chartConfig: {
                           ...message.chartSpec.chartConfig,
-                          margin: {
-                            top: message.chartSpec.chartConfig?.margin?.top || 20,
-                            right: message.chartSpec.chartConfig?.margin?.right || 30,
-                            left: message.chartSpec.chartConfig?.margin?.left || 20,
-                            bottom: message.chartSpec.chartConfig?.margin?.bottom || 60
+                          margin: message.chartSpec.chartConfig?.margin as { top: number; right: number; bottom: number; left: number } || {
+                            top: 20,
+                            right: 30,
+                            bottom: 60,
+                            left: 20
                           }
                         }
                       }}
-                      narrative={message.narrative}
-                      onExport={handleChartExport}
-                      onGoogleSheetsExport={handleGoogleSheetsExport}
                     />
                   )}
                 </div>
               )}
-              
-              {/* Data Preview */}
-              {message.data && (
-                <div className="mt-4">
-                  <PreviewCard
-                    title="Data Preview"
-                    initialData={{
-                      title: "Data Preview",
-                      content: JSON.stringify(message.data, null, 2)
-                    }}
-                    isEditable={false}
-                  />
+
+              {/* CRUD Operation Details */}
+              {(message.contactId || message.accountId || message.dealId || message.activityId) && (
+                <div className="mt-2 p-2 bg-neutral-primary/50 rounded-md border border-neutral-secondary">
+                  <div className="text-xs text-text-secondary font-body">
+                    {message.contactId && (
+                      <div>Contact: {message.contactName} ({message.contactEmail})</div>
+                    )}
+                    {message.accountId && (
+                      <div>Account: {message.accountName}</div>
+                    )}
+                    {message.dealId && (
+                      <div>Deal: {message.dealName}</div>
+                    )}
+                    {message.activityId && (
+                      <div>Activity: {message.activitySubject}</div>
+                    )}
+                    {message.field && message.value && (
+                      <div>Updated: {message.field} = {message.value}</div>
+                    )}
+                  </div>
                 </div>
               )}
+
+              {/* Partial Details for Clarification */}
+              {message.partialDetails && Object.keys(message.partialDetails).length > 0 && (
+                <div className="mt-2 p-2 bg-accent-primary/10 rounded-md border border-accent-primary/20">
+                  <div className="text-xs text-text-primary font-body">
+                    <div className="font-medium mb-1">Please confirm these details:</div>
+                    {Object.entries(message.partialDetails).map(([key, value]) => (
+                      <div key={key} className="flex justify-between">
+                        <span className="capitalize">{key}:</span>
+                        <span className="font-medium">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Timestamp */}
+              <div className="text-xs opacity-70 mt-1 font-body">
+                {message.timestamp.toLocaleTimeString()}
+              </div>
             </div>
           </div>
         ))}
         
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 rounded-lg p-3">
+            <div className="bg-neutral-secondary/20 text-text-primary rounded-md p-3">
               <div className="flex items-center space-x-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Thinking...</span>
+                <span className="font-body">Thinking...</span>
               </div>
             </div>
           </div>
         )}
-        
-        <div ref={messagesEndRef} />
       </div>
 
       {/* Email Draft Modal */}
       {emailDraft && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4">
-            <h3 className="text-lg font-semibold mb-4">Send Email</h3>
+        <div className="fixed inset-0 bg-bg-overlay/50 flex items-center justify-center z-50">
+          <div className="bg-neutral-primary rounded-lg p-6 max-w-2xl w-full mx-4 border border-neutral-secondary">
+            <h3 className="text-lg font-semibold mb-4 font-heading text-text-primary">Email Preview</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1">To:</label>
+                <label className="block text-sm font-medium mb-1 font-body text-text-primary">To:</label>
                 <input
-                  type="email"
                   value={emailDraft.to}
                   onChange={(e) => setEmailDraft(prev => prev ? {...prev, to: e.target.value} : null)}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border border-neutral-secondary rounded-md font-body"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Subject:</label>
+                <label className="block text-sm font-medium mb-1 font-body text-text-primary">Subject:</label>
                 <input
-                  type="text"
                   value={emailDraft.subject}
                   onChange={(e) => setEmailDraft(prev => prev ? {...prev, subject: e.target.value} : null)}
-                  className="w-full p-2 border rounded"
+                  className="w-full p-2 border border-neutral-secondary rounded-md font-body"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Content:</label>
+                <label className="block text-sm font-medium mb-1 font-body text-text-primary">Content:</label>
                 <textarea
                   value={emailDraft.content}
                   onChange={(e) => setEmailDraft(prev => prev ? {...prev, content: e.target.value} : null)}
-                  className="w-full p-2 border rounded h-32"
+                  className="w-full p-2 border border-neutral-secondary rounded-md h-32 font-body"
                 />
               </div>
             </div>
@@ -1010,12 +1027,14 @@ export default function Chat({ onAction }: ChatProps = {}) {
               <Button
                 onClick={() => setEmailDraft(null)}
                 variant="outline"
+                className="font-button"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleSendEmail}
                 disabled={sendingEmail}
+                className="font-button"
               >
                 {sendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Email"}
               </Button>
@@ -1035,12 +1054,12 @@ export default function Chat({ onAction }: ChatProps = {}) {
       )}
 
       {/* Input Container */}
-      <div className="border-t p-4">
+      <div className="border-t border-neutral-secondary p-4">
         <form onSubmit={handleSubmit} className="flex space-x-2">
           <Button
             type="button"
             onClick={handleUploadClick}
-            className="bg-[#f3e89a] text-black hover:bg-[#efe076]"
+            className="bg-accent-primary text-text-on-accent-primary hover:bg-accent-primary-hover"
             size="icon"
             disabled={isLoading}
           >
@@ -1053,9 +1072,10 @@ export default function Chat({ onAction }: ChatProps = {}) {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             disabled={isLoading}
+            className="font-body"
           />
           
-          <Button type="submit" disabled={isLoading || !input.trim()} className="bg-[#f3e89a] text-black hover:bg-[#efe076]">
+          <Button type="submit" disabled={isLoading || !input.trim()} className="bg-accent-primary text-text-on-accent-primary hover:bg-accent-primary-hover">
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
           </Button>
         </form>
@@ -1068,49 +1088,31 @@ export default function Chat({ onAction }: ChatProps = {}) {
 function DataTable({ data, fields }: { data: Record<string, unknown>[]; fields?: string[] }) {
   // Ensure data is an array
   if (!Array.isArray(data)) {
-    return <div>Invalid data format</div>;
+    return <div className="text-text-secondary font-body">Invalid data format</div>;
   }
 
   if (!data || data.length === 0) {
-    return <div>No data to display</div>;
+    return <div className="text-text-secondary font-body">No data to display</div>;
   }
 
   // Ensure we have valid data
   const validData = data.filter(item => item && typeof item === 'object');
   if (validData.length === 0) {
-    return <div>No valid data to display</div>;
+    return <div className="text-text-secondary font-body">No valid data to display</div>;
   }
 
   const allColumns = Object.keys(validData[0]).filter(key => !['_id', '_creationTime', 'teamId', 'createdBy', 'sharedWith'].includes(key));
   const columns = fields && fields.length > 0 ? allColumns.filter(col => fields.includes(col)) : allColumns;
 
   return (
-    <div
-      style={{
-        background: "white",
-        borderRadius: 16,
-        padding: 16,
-        overflowX: "auto",
-        maxWidth: "100%",
-        border: "1px solid #d9d2c7",
-        boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
-        marginTop: 8,
-      }}
-    >
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+    <div className="bg-neutral-primary rounded-lg p-4 overflow-x-auto max-w-full border border-neutral-secondary shadow-sm mt-2">
+      <table className="w-full border-collapse">
         <thead>
           <tr>
             {columns.map((column) => (
               <th
                 key={column}
-                style={{
-                  padding: "12px",
-                  textAlign: "left",
-                  borderBottom: "2px solid #d9d2c7",
-                  fontWeight: 600,
-                  color: "black",
-                  fontSize: "14px",
-                }}
+                className="p-3 text-left border-b-2 border-neutral-secondary font-semibold text-text-primary text-sm font-body"
               >
                 {column}
               </th>
@@ -1123,12 +1125,7 @@ function DataTable({ data, fields }: { data: Record<string, unknown>[]; fields?:
               {columns.map((column) => (
                 <td
                   key={column}
-                  style={{
-                    padding: "12px",
-                    borderBottom: "1px solid #d9d2c7",
-                    fontSize: "14px",
-                    color: "#d9d2c7",
-                  }}
+                  className="p-3 border-b border-neutral-secondary text-sm text-text-secondary font-body"
                 >
                   {formatCellValue(row[column])}
                 </td>
@@ -1138,7 +1135,7 @@ function DataTable({ data, fields }: { data: Record<string, unknown>[]; fields?:
         </tbody>
       </table>
       {validData.length > 10 && (
-        <div style={{ textAlign: "center", padding: "12px", color: "#9ca3af", fontSize: "14px" }}>
+        <div className="text-center p-3 text-text-secondary text-sm font-body">
           Showing 10 of {validData.length} records
         </div>
       )}
