@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowRight, ArrowLeft, CheckCircle, User, Building, Settings, Zap } from 'lucide-react';
+import InteractiveTour from './InteractiveTour';
 
 interface OnboardingStep {
   id: string;
@@ -64,6 +65,7 @@ export default function OnboardingWizard() {
   const { user } = useUser();
   const [currentStep, setCurrentStep] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const [showTour, setShowTour] = useState(false);
   
   // Profile data state
   const [userProfile, setUserProfile] = useState<UserProfileData>({
@@ -114,6 +116,54 @@ export default function OnboardingWizard() {
   // Get user's teams
   const teams = useQuery(api.crm.getTeamsByUser, { userId: user?.id || '' });
 
+  // Validation functions
+  const validateUserProfile = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    
+    if (!userProfile.firstName.trim()) errors.push('First name is required');
+    if (!userProfile.lastName.trim()) errors.push('Last name is required');
+    if (!userProfile.email.trim()) errors.push('Email is required');
+    if (!userProfile.title.trim()) errors.push('Job title is required');
+    if (!userProfile.department.trim()) errors.push('Department is required');
+    if (!userProfile.role.trim()) errors.push('Role is required');
+    
+    return { isValid: errors.length === 0, errors };
+  };
+
+  const validateCompanyProfile = (): { isValid: boolean; errors: string[] } => {
+    const errors: string[] = [];
+    
+    if (!companyProfile.name.trim()) errors.push('Company name is required');
+    if (!companyProfile.website.trim()) errors.push('Website is required');
+    if (!companyProfile.description.trim()) errors.push('Company description is required');
+    if (!companyProfile.industry.trim()) errors.push('Industry is required');
+    if (!companyProfile.email.trim()) errors.push('Company email is required');
+    if (!companyProfile.businessModel.trim()) errors.push('Business model is required');
+    if (!companyProfile.targetMarket.trim()) errors.push('Target market is required');
+    
+    return { isValid: errors.length === 0, errors };
+  };
+
+  const canProceedToNext = (): boolean => {
+    if (currentStep === 1) { // User profile step
+      return validateUserProfile().isValid;
+    }
+    if (currentStep === 2) { // Company profile step
+      return validateCompanyProfile().isValid;
+    }
+    return true;
+  };
+
+  const getValidationErrors = (): string[] => {
+    if (currentStep === 1) {
+      return validateUserProfile().errors;
+    }
+    if (currentStep === 2) {
+      return validateCompanyProfile().errors;
+    }
+    return [];
+  };
+
   const steps: OnboardingStep[] = [
     {
       id: 'welcome',
@@ -132,6 +182,8 @@ export default function OnboardingWizard() {
         onChange={setUserProfile}
         onNext={() => setCurrentStep(2)}
         onBack={() => setCurrentStep(0)}
+        validationErrors={getValidationErrors()}
+        canProceed={canProceedToNext()}
       />
     },
     {
@@ -144,6 +196,8 @@ export default function OnboardingWizard() {
         onChange={setCompanyProfile}
         onNext={() => setCurrentStep(3)}
         onBack={() => setCurrentStep(1)}
+        validationErrors={getValidationErrors()}
+        canProceed={canProceedToNext()}
       />
     },
     {
@@ -182,34 +236,51 @@ export default function OnboardingWizard() {
       });
 
       setIsComplete(true);
+      setShowTour(true); // Show the interactive tour
     } catch (error) {
       console.error('Error completing onboarding:', error);
     }
   }
 
+  const handleTourComplete = () => {
+    setShowTour(false);
+    window.location.href = '/';
+  };
+
+  const handleTourSkip = () => {
+    setShowTour(false);
+    window.location.href = '/';
+  };
+
   if (isComplete) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader className="text-center">
-            <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
-              <CheckCircle className="w-8 h-8 text-green-600" />
-            </div>
-            <CardTitle className="text-2xl">Welcome to Shabe AI!</CardTitle>
-            <CardDescription>
-              Your AI-powered CRM is ready to go. Start chatting with your AI assistant to manage your contacts, deals, and activities.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="text-center">
-            <Button 
-              onClick={() => window.location.href = '/'}
-              className="w-full"
-            >
-              Get Started
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+      <>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md">
+            <CardHeader className="text-center">
+              <div className="mx-auto w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                <CheckCircle className="w-8 h-8 text-green-600" />
+              </div>
+              <CardTitle className="text-2xl">Welcome to Shabe AI!</CardTitle>
+              <CardDescription>
+                Your profile setup is complete! Let me show you around your new AI-powered CRM.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <div className="animate-pulse">
+                <p className="text-sm text-gray-600 mb-4">Preparing your guided tour...</p>
+                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+        
+        <InteractiveTour 
+          isVisible={showTour}
+          onComplete={handleTourComplete}
+          onSkip={handleTourSkip}
+        />
+      </>
     );
   }
 
@@ -304,12 +375,16 @@ function UserProfileStep({
   data, 
   onChange, 
   onNext, 
-  onBack 
+  onBack,
+  validationErrors = [],
+  canProceed = true
 }: { 
   data: UserProfileData; 
   onChange: (data: UserProfileData) => void;
   onNext: () => void;
   onBack: () => void;
+  validationErrors?: string[];
+  canProceed?: boolean;
 }) {
   const handleChange = (field: keyof UserProfileData, value: any) => {
     onChange({ ...data, [field]: value });
@@ -317,33 +392,48 @@ function UserProfileStep({
 
   return (
     <div className="space-y-6">
+      {/* Validation Errors */}
+      {validationErrors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <h4 className="text-sm font-medium text-red-800 mb-2">Please fix the following errors:</h4>
+          <ul className="text-sm text-red-700 space-y-1">
+            {validationErrors.map((error, index) => (
+              <li key={index}>• {error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="firstName">First Name</Label>
+          <Label htmlFor="firstName">First Name *</Label>
           <Input
             id="firstName"
             value={data.firstName}
             onChange={(e) => handleChange('firstName', e.target.value)}
             placeholder="John"
+            className={validationErrors.includes('First name is required') ? 'border-red-300' : ''}
           />
         </div>
         <div>
-          <Label htmlFor="lastName">Last Name</Label>
+          <Label htmlFor="lastName">Last Name *</Label>
           <Input
             id="lastName"
             value={data.lastName}
             onChange={(e) => handleChange('lastName', e.target.value)}
             placeholder="Doe"
+            className={validationErrors.includes('Last name is required') ? 'border-red-300' : ''}
           />
         </div>
         <div>
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">Email *</Label>
           <Input
             id="email"
             type="email"
             value={data.email}
             onChange={(e) => handleChange('email', e.target.value)}
             placeholder="john@company.com"
+            className={validationErrors.includes('Email is required') ? 'border-red-300' : ''}
           />
         </div>
         <div>
@@ -356,27 +446,29 @@ function UserProfileStep({
           />
         </div>
         <div>
-          <Label htmlFor="title">Job Title</Label>
+          <Label htmlFor="title">Job Title *</Label>
           <Input
             id="title"
             value={data.title}
             onChange={(e) => handleChange('title', e.target.value)}
             placeholder="Sales Manager"
+            className={validationErrors.includes('Job title is required') ? 'border-red-300' : ''}
           />
         </div>
         <div>
-          <Label htmlFor="department">Department</Label>
+          <Label htmlFor="department">Department *</Label>
           <Input
             id="department"
             value={data.department}
             onChange={(e) => handleChange('department', e.target.value)}
             placeholder="Sales"
+            className={validationErrors.includes('Department is required') ? 'border-red-300' : ''}
           />
         </div>
       </div>
 
       <div>
-        <Label htmlFor="bio">Bio</Label>
+        <Label htmlFor="bio">Bio (Optional)</Label>
         <Textarea
           id="bio"
           value={data.bio}
@@ -404,12 +496,13 @@ function UserProfileStep({
           </Select>
         </div>
         <div>
-          <Label htmlFor="role">Role</Label>
+          <Label htmlFor="role">Role *</Label>
           <Input
             id="role"
             value={data.role}
             onChange={(e) => handleChange('role', e.target.value)}
             placeholder="Sales, Marketing, etc."
+            className={validationErrors.includes('Role is required') ? 'border-red-300' : ''}
           />
         </div>
       </div>
@@ -419,7 +512,7 @@ function UserProfileStep({
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <Button onClick={onNext}>
+        <Button onClick={onNext} disabled={!canProceed}>
           Next
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
@@ -432,12 +525,16 @@ function CompanyProfileStep({
   data, 
   onChange, 
   onNext, 
-  onBack 
+  onBack,
+  validationErrors = [],
+  canProceed = true
 }: { 
   data: CompanyProfileData; 
   onChange: (data: CompanyProfileData) => void;
   onNext: () => void;
   onBack: () => void;
+  validationErrors?: string[];
+  canProceed?: boolean;
 }) {
   const handleChange = (field: keyof CompanyProfileData, value: any) => {
     onChange({ ...data, [field]: value });
@@ -445,32 +542,47 @@ function CompanyProfileStep({
 
   return (
     <div className="space-y-6">
+      {/* Validation Errors */}
+      {validationErrors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-md p-4">
+          <h4 className="text-sm font-medium text-red-800 mb-2">Please fix the following errors:</h4>
+          <ul className="text-sm text-red-700 space-y-1">
+            {validationErrors.map((error, index) => (
+              <li key={index}>• {error}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="companyName">Company Name</Label>
+          <Label htmlFor="companyName">Company Name *</Label>
           <Input
             id="companyName"
             value={data.name}
             onChange={(e) => handleChange('name', e.target.value)}
             placeholder="Acme Corp"
+            className={validationErrors.includes('Company name is required') ? 'border-red-300' : ''}
           />
         </div>
         <div>
-          <Label htmlFor="website">Website</Label>
+          <Label htmlFor="website">Website *</Label>
           <Input
             id="website"
             value={data.website}
             onChange={(e) => handleChange('website', e.target.value)}
             placeholder="https://acme.com"
+            className={validationErrors.includes('Website is required') ? 'border-red-300' : ''}
           />
         </div>
         <div>
-          <Label htmlFor="industry">Industry</Label>
+          <Label htmlFor="industry">Industry *</Label>
           <Input
             id="industry"
             value={data.industry}
             onChange={(e) => handleChange('industry', e.target.value)}
             placeholder="Technology, Healthcare, etc."
+            className={validationErrors.includes('Industry is required') ? 'border-red-300' : ''}
           />
         </div>
         <div>
@@ -512,36 +624,59 @@ function CompanyProfileStep({
             </SelectContent>
           </Select>
         </div>
+        <div>
+          <Label htmlFor="email">Company Email *</Label>
+          <Input
+            id="email"
+            type="email"
+            value={data.email}
+            onChange={(e) => handleChange('email', e.target.value)}
+            placeholder="contact@company.com"
+            className={validationErrors.includes('Company email is required') ? 'border-red-300' : ''}
+          />
+        </div>
+        <div>
+          <Label htmlFor="phone">Company Phone</Label>
+          <Input
+            id="phone"
+            value={data.phone}
+            onChange={(e) => handleChange('phone', e.target.value)}
+            placeholder="+1 (555) 123-4567"
+          />
+        </div>
       </div>
 
       <div>
-        <Label htmlFor="description">Company Description</Label>
+        <Label htmlFor="description">Company Description *</Label>
         <Textarea
           id="description"
           value={data.description}
           onChange={(e) => handleChange('description', e.target.value)}
-          placeholder="What does your company do?"
+          placeholder="Tell us about your company..."
           rows={3}
+          className={validationErrors.includes('Company description is required') ? 'border-red-300' : ''}
         />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="businessModel">Business Model</Label>
+          <Label htmlFor="businessModel">Business Model *</Label>
           <Input
             id="businessModel"
             value={data.businessModel}
             onChange={(e) => handleChange('businessModel', e.target.value)}
-            placeholder="B2B SaaS, E-commerce, etc."
+            placeholder="SaaS, E-commerce, Consulting, etc."
+            className={validationErrors.includes('Business model is required') ? 'border-red-300' : ''}
           />
         </div>
         <div>
-          <Label htmlFor="targetMarket">Target Market</Label>
+          <Label htmlFor="targetMarket">Target Market *</Label>
           <Input
             id="targetMarket"
             value={data.targetMarket}
             onChange={(e) => handleChange('targetMarket', e.target.value)}
             placeholder="Small businesses, Enterprise, etc."
+            className={validationErrors.includes('Target market is required') ? 'border-red-300' : ''}
           />
         </div>
       </div>
@@ -551,7 +686,7 @@ function CompanyProfileStep({
           <ArrowLeft className="w-4 h-4 mr-2" />
           Back
         </Button>
-        <Button onClick={onNext}>
+        <Button onClick={onNext} disabled={!canProceed}>
           Next
           <ArrowRight className="w-4 h-4 ml-2" />
         </Button>
