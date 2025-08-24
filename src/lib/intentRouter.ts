@@ -2503,6 +2503,110 @@ class ProfileIntentHandler implements IntentHandler {
   }
 }
 
+// LinkedIn Post Intent Handler
+class LinkedInPostIntentHandler implements IntentHandler {
+  canHandle(intent: SimplifiedIntent): boolean {
+    return intent.action === 'create_linkedin_post';
+  }
+
+  async handle(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
+    logger.info('Handling LinkedIn post intent', {
+      action: intent.action,
+      entities: intent.entities,
+      userId: context.userId
+    });
+
+    try {
+      const { content, platform, schedule } = intent.entities;
+      
+      // Generate LinkedIn post content using AI
+      const postContent = await this.generateLinkedInPost(content, context);
+      
+      // Create post preview
+      const postPreview = {
+        content: postContent,
+        platform: 'linkedin',
+        scheduledAt: schedule ? this.parseScheduleTime(schedule) : undefined,
+        visibility: 'public',
+        postType: 'text'
+      };
+
+      return {
+        type: 'linkedin_post_preview',
+        content: postPreview,
+        hasData: true,
+        needsConfirmation: true
+      };
+
+    } catch (error) {
+      logger.error('Error handling LinkedIn post intent', error instanceof Error ? error : new Error(String(error)), {
+        intent: intent.action,
+        userId: context.userId
+      });
+
+      return {
+        type: 'text',
+        content: 'I encountered an error while creating your LinkedIn post. Please try again.',
+        hasData: false
+      };
+    }
+  }
+
+  private async generateLinkedInPost(content: string, context: IntentRouterContext): Promise<string> {
+    // Use the AI to generate LinkedIn post content
+    const prompt = `Create a professional LinkedIn post about: ${content}
+
+Please make it:
+- Engaging and professional
+- Include relevant hashtags
+- Keep it under 1300 characters
+- Add value to the reader
+- Include a call-to-action if appropriate
+
+Format the response as just the post content, no additional text.`;
+
+    const response = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        message: prompt,
+        userId: context.userId,
+        isLinkedInPost: true
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to generate LinkedIn post content');
+    }
+
+    const data = await response.json();
+    return data.content || `Excited to share about ${content}! #innovation #business`;
+  }
+
+  private parseScheduleTime(schedule: string): string | undefined {
+    // Simple schedule parsing - can be enhanced
+    const now = new Date();
+    
+    if (schedule.toLowerCase().includes('tomorrow')) {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(9, 0, 0, 0); // 9 AM
+      return tomorrow.toISOString();
+    }
+    
+    if (schedule.toLowerCase().includes('next week')) {
+      const nextWeek = new Date(now);
+      nextWeek.setDate(nextWeek.getDate() + 7);
+      nextWeek.setHours(9, 0, 0, 0); // 9 AM
+      return nextWeek.toISOString();
+    }
+    
+    return undefined; // Post immediately
+  }
+}
+
 // Create and configure the router
 export const intentRouter = new IntentRouter();
 
@@ -2513,4 +2617,5 @@ intentRouter.registerHandler(new CrudIntentHandler());
 intentRouter.registerHandler(new EmailIntentHandler());
 intentRouter.registerHandler(new CalendarIntentHandler());
 intentRouter.registerHandler(new AnalysisIntentHandler());
-intentRouter.registerHandler(new ProfileIntentHandler()); 
+intentRouter.registerHandler(new ProfileIntentHandler());
+intentRouter.registerHandler(new LinkedInPostIntentHandler()); 

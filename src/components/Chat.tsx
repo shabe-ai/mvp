@@ -16,6 +16,7 @@ import PreviewCard from "@/components/PreviewCard";
 import ChartDisplay from "@/components/ChartDisplay";
 import EnhancedChartDisplay from "@/components/EnhancedChartDisplay";
 import CalendarPreviewModal from "@/components/CalendarPreviewModal";
+import LinkedInPostPreviewModal from './LinkedInPostPreviewModal';
 import { logger } from "@/lib/logger";
 
 interface Message {
@@ -78,8 +79,13 @@ export default function Chat({ onAction }: ChatProps = {}) {
   } | null>(null);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [calendarPreview, setCalendarPreview] = useState<{
-    eventPreview: any;
-    aiMessage: Message;
+    eventDetails: any;
+    isVisible: boolean;
+  } | null>(null);
+
+  const [linkedinPostPreview, setLinkedInPostPreview] = useState<{
+    postPreview: any;
+    isVisible: boolean;
   } | null>(null);
   const [creatingEvent, setCreatingEvent] = useState(false);
   const [sessionFiles, setSessionFiles] = useState<Array<{
@@ -307,6 +313,15 @@ export default function Chat({ onAction }: ChatProps = {}) {
         });
       }
 
+      // Handle LinkedIn post preview
+      if (data.type === 'linkedin_post_preview') {
+        console.log('Setting LinkedIn post preview:', data.content);
+        setLinkedInPostPreview({
+          postPreview: data.content,
+          isVisible: true
+        });
+      }
+
       const assistantMessage: Message = {
               id: (Date.now() + 1).toString(),
               role: "assistant",
@@ -378,8 +393,8 @@ export default function Chat({ onAction }: ChatProps = {}) {
       if (data.type === 'calendar_preview' && data.eventPreview) {
         console.log('Setting calendar preview:', data.eventPreview);
         setCalendarPreview({
-          eventPreview: data.eventPreview,
-          aiMessage: assistantMessage
+          eventDetails: data.eventPreview,
+          isVisible: true
         });
       }
 
@@ -533,8 +548,8 @@ export default function Chat({ onAction }: ChatProps = {}) {
     
     setCalendarPreview(prev => prev ? {
       ...prev,
-      eventPreview: {
-        ...prev.eventPreview,
+      eventDetails: {
+        ...prev.eventDetails,
         [field]: value
       }
     } : null);
@@ -1046,10 +1061,21 @@ export default function Chat({ onAction }: ChatProps = {}) {
       {/* Calendar Preview Modal */}
       {calendarPreview && (
         <CalendarPreviewModal
-          eventPreview={calendarPreview.eventPreview}
+          eventPreview={calendarPreview.eventDetails}
           onConfirm={handleCreateCalendarEvent}
           onModify={handleModifyCalendarEvent}
           onCancel={() => setCalendarPreview(null)}
+        />
+      )}
+
+      {/* LinkedIn Post Preview Modal */}
+      {linkedinPostPreview && (
+        <LinkedInPostPreviewModal
+          isVisible={linkedinPostPreview.isVisible}
+          postPreview={linkedinPostPreview.postPreview}
+          onConfirm={() => {}} // TODO: Implement LinkedIn post creation
+          onCancel={() => setLinkedInPostPreview(null)}
+          onEdit={() => {}} // TODO: Implement LinkedIn post editing
         />
       )}
 

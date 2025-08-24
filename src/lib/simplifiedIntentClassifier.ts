@@ -8,7 +8,7 @@ export interface SimplifiedIntent {
           'create_account' | 'update_account' | 'delete_account' |
           'create_deal' | 'update_deal' | 'delete_deal' |
           'create_activity' | 'update_activity' | 'delete_activity' |
-          'create_calendar_event' | 'query_profile' |
+          'create_calendar_event' | 'query_profile' | 'create_linkedin_post' |
           'general_conversation';
   confidence: number;
   originalMessage: string;
@@ -138,6 +138,7 @@ Available actions:
 - update_activity: User wants to update an existing activity
 - delete_activity: User wants to delete an activity
 - query_profile: User wants to know about their profile or company information
+- create_linkedin_post: User wants to create a LinkedIn post
 - general_conversation: General chat, questions, or unclear requests
 
 Examples:
@@ -150,6 +151,11 @@ Examples:
 - "tell me about myself" → action: "query_profile", entities: {"profileType": "user", "query": "details"}
 - "what's my role" → action: "query_profile", entities: {"profileType": "user", "query": "role"}
 - "what's my job title" → action: "query_profile", entities: {"profileType": "user", "query": "title"}
+- "create a linkedin post about our new product" → action: "create_linkedin_post", entities: {"content": "new product", "platform": "linkedin"}
+- "draft a linkedin post for our company announcement" → action: "create_linkedin_post", entities: {"content": "company announcement", "platform": "linkedin"}
+- "post to linkedin about our latest achievement" → action: "create_linkedin_post", entities: {"content": "latest achievement", "platform": "linkedin"}
+- "schedule a linkedin post for tomorrow about our team" → action: "create_linkedin_post", entities: {"content": "team", "platform": "linkedin", "schedule": "tomorrow"}
+- "write a linkedin post about industry trends" → action: "create_linkedin_post", entities: {"content": "industry trends", "platform": "linkedin"}
 - "how many contacts do i have" → action: "view_data", entities: {"dataType": "contacts", "query": "count"}
 - "how many contacts at shabe" → action: "view_data", entities: {"dataType": "contacts", "query": "count", "company": "shabe"}
 - "how many at shabe" → action: "view_data", entities: {"dataType": "contacts", "query": "count", "company": "shabe"}
@@ -191,6 +197,9 @@ Extract relevant entities like:
 - chartType: line, bar, pie, area, scatter
 - dataType: contacts, deals, accounts, activities
 - profileType: user, company
+- platform: linkedin, twitter, facebook
+- content: post content or topic
+- schedule: when to post (tomorrow, next week, etc.)
 - dimension: stage, status, industry, type, source, probability
 - contactName, accountName, dealName, activitySubject
 - field, value, date, amount, email, phone, company, industry, website
@@ -304,7 +313,7 @@ If the user's intent is unclear or ambiguous, set needsClarification to true and
       'create_account', 'update_account', 'delete_account',
       'create_deal', 'update_deal', 'delete_deal',
       'create_activity', 'update_activity', 'delete_activity',
-      'create_calendar_event', 'query_profile',
+      'create_calendar_event', 'query_profile', 'create_linkedin_post',
       'general_conversation'
     ];
 

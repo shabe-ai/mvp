@@ -160,6 +160,96 @@ export default defineSchema({
     .index("by_team", ["teamId"])
     .index("by_owner", ["ownerId"]),
 
+  // LinkedIn integration table
+  linkedinIntegrations: defineTable({
+    userId: v.string(),
+    teamId: v.string(),
+    
+    // LinkedIn OAuth data
+    accessToken: v.string(),
+    refreshToken: v.optional(v.string()),
+    expiresAt: v.number(),
+    
+    // LinkedIn account info
+    linkedinUserId: v.string(),
+    linkedinEmail: v.string(),
+    linkedinName: v.string(),
+    linkedinProfileUrl: v.optional(v.string()),
+    
+    // Organization info (for company posts)
+    organizationId: v.optional(v.string()),
+    organizationName: v.optional(v.string()),
+    
+    // Integration status
+    isActive: v.boolean(),
+    lastSyncAt: v.optional(v.number()),
+    
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_team", ["teamId"])
+    .index("by_linkedin_user", ["linkedinUserId"]),
+
+  // LinkedIn posts table
+  linkedinPosts: defineTable({
+    userId: v.string(),
+    teamId: v.string(),
+    linkedinIntegrationId: v.id("linkedinIntegrations"),
+    
+    // Post content
+    content: v.string(),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    linkUrl: v.optional(v.string()),
+    
+    // Post metadata
+    postType: v.union(
+      v.literal("text"),
+      v.literal("image"),
+      v.literal("link"),
+      v.literal("video")
+    ),
+    visibility: v.union(
+      v.literal("public"),
+      v.literal("connections"),
+      v.literal("group")
+    ),
+    
+    // Scheduling
+    scheduledAt: v.optional(v.number()),
+    publishedAt: v.optional(v.number()),
+    status: v.union(
+      v.literal("draft"),
+      v.literal("scheduled"),
+      v.literal("published"),
+      v.literal("failed")
+    ),
+    
+    // LinkedIn response
+    linkedinPostId: v.optional(v.string()),
+    linkedinResponse: v.optional(v.any()),
+    
+    // Analytics (basic)
+    views: v.optional(v.number()),
+    likes: v.optional(v.number()),
+    comments: v.optional(v.number()),
+    shares: v.optional(v.number()),
+    
+    // AI generation metadata
+    aiGenerated: v.boolean(),
+    prompt: v.optional(v.string()),
+    
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_team", ["teamId"])
+    .index("by_integration", ["linkedinIntegrationId"])
+    .index("by_status", ["status"])
+    .index("by_scheduled", ["scheduledAt"]),
+
   // Contacts table (leads + contacts)
   contacts: defineTable({
     teamId: v.string(),
