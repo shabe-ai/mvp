@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, action } from "./_generated/server";
+import { api } from "./_generated/api";
 
 // ===== LINKEDIN INTEGRATION FUNCTIONS =====
 
@@ -203,16 +204,20 @@ export const publishLinkedInPost = mutation({
 // ===== SCHEDULED POSTS FUNCTIONS =====
 
 export const getScheduledPosts = query({
-  args: { userId: v.string() },
+  args: { userId: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const now = Date.now();
-    const scheduledPosts = await ctx.db
+    let query = ctx.db
       .query("linkedinPosts")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
       .filter((q) => q.eq(q.field("status"), "scheduled"))
-      .filter((q) => q.lte(q.field("scheduledAt"), now))
-      .collect();
+      .filter((q) => q.lte(q.field("scheduledAt"), now));
 
+    // If userId is provided, filter by user
+    if (args.userId) {
+      query = query.filter((q) => q.eq(q.field("userId"), args.userId));
+    }
+
+    const scheduledPosts = await query.collect();
     return scheduledPosts;
   },
 });
@@ -230,5 +235,70 @@ export const scheduleLinkedInPost = mutation({
     });
 
     return { success: true };
+  },
+});
+
+export const publishScheduledPosts = action({
+  args: {},
+  handler: async (ctx) => {
+    const now = Date.now();
+    
+    // Get all scheduled posts that are due
+    const scheduledPosts = await ctx.runQuery(api.linkedin.getScheduledPosts, { 
+      userId: "system" // This will be filtered by the query
+    });
+
+    console.log(`Found ${scheduledPosts.length} scheduled posts to publish`);
+
+    for (const post of scheduledPosts) {
+      try {
+        // Get the LinkedIn integration for this post
+        const integration = await ctx.runQuery(api.linkedin.getLinkedInIntegration, { 
+          userId: post.userId 
+        });
+
+        if (!integration) {
+          console.error(`No LinkedIn integration found for user ${post.userId}`);
+          continue;
+        }
+
+        // Check if access token is expired
+        if (integration.expiresAt < now) {
+          console.error(`LinkedIn access token expired for user ${post.userId}`);
+          await ctx.runMutation(api.linkedin.updateLinkedInPost, {
+            postId: post._id,
+            updates: {
+              status: 'failed',
+              linkedinResponse: { error: 'Access token expired' },
+            },
+          });
+          continue;
+        }
+
+        // TODO: Implement actual LinkedIn API call here
+        // For now, just mark as published
+        await ctx.runMutation(api.linkedin.updateLinkedInPost, {
+          postId: post._id,
+          updates: {
+            status: 'published',
+            publishedAt: now,
+          },
+        });
+
+        console.log(`Published scheduled post ${post._id} for user ${post.userId}`);
+
+      } catch (error) {
+        console.error(`Error publishing scheduled post ${post._id}:`, error);
+        
+        // Mark post as failed
+        await ctx.runMutation(api.linkedin.updateLinkedInPost, {
+          postId: post._id,
+          updates: {
+            status: 'failed',
+            linkedinResponse: { error: error instanceof Error ? error.message : 'Unknown error' },
+          },
+        });
+      }
+    }
   },
 });

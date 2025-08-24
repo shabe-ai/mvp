@@ -18,6 +18,7 @@ import type * as crm from "../crm.js";
 import type * as crons from "../crons.js";
 import type * as documents from "../documents.js";
 import type * as emailMonitor from "../emailMonitor.js";
+import type * as linkedin from "../linkedin.js";
 import type * as monitoring from "../monitoring.js";
 import type * as profiles from "../profiles.js";
 import type * as seed from "../seed.js";
@@ -36,6 +37,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   documents: typeof documents;
   emailMonitor: typeof emailMonitor;
+  linkedin: typeof linkedin;
   monitoring: typeof monitoring;
   profiles: typeof profiles;
   seed: typeof seed;

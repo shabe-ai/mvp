@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../../convex/_generated/api";
+import { LinkedInAPI } from "../../../../lib/linkedinApi";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create LinkedIn post in database
+    // Create LinkedIn post in database first
     const postId = await convex.mutation(api.linkedin.createLinkedInPost, {
       userId: user.id,
       teamId,
@@ -67,16 +68,67 @@ export async function POST(request: NextRequest) {
 
     // If post is scheduled for now or in the past, publish it immediately
     if (!scheduledAt || new Date(scheduledAt).getTime() <= Date.now()) {
-      // TODO: Implement actual LinkedIn API call to publish post
-      // For now, just mark as published
-      await convex.mutation(api.linkedin.publishLinkedInPost, { postId });
-    }
+      try {
+        // Initialize LinkedIn API
+        const linkedinApi = new LinkedInAPI(integration.accessToken);
 
-    return NextResponse.json({
-      success: true,
-      postId,
-      message: scheduledAt ? 'Post scheduled successfully' : 'Post created successfully'
-    });
+        // Create the post on LinkedIn
+        const linkedinPostData = {
+          content,
+          title,
+          description,
+          imageUrl,
+          linkUrl,
+          visibility: visibility || 'public',
+        };
+
+        const linkedinResponse = await linkedinApi.createPost(linkedinPostData);
+
+        // Update the post with LinkedIn response
+        await convex.mutation(api.linkedin.updateLinkedInPost, {
+          postId,
+          updates: {
+            status: 'published',
+            publishedAt: Date.now(),
+            linkedinPostId: linkedinResponse.postId,
+            linkedinResponse: linkedinResponse.response,
+          },
+        });
+
+        return NextResponse.json({
+          success: true,
+          postId,
+          linkedinPostId: linkedinResponse.postId,
+          message: 'Post published successfully on LinkedIn'
+        });
+
+      } catch (linkedinError) {
+        // Update post status to failed
+        await convex.mutation(api.linkedin.updateLinkedInPost, {
+          postId,
+          updates: {
+            status: 'failed',
+            linkedinResponse: { error: linkedinError instanceof Error ? linkedinError.message : 'Unknown error' },
+          },
+        });
+
+        console.error('LinkedIn API error:', linkedinError);
+        return NextResponse.json(
+          { 
+            error: 'Failed to publish post on LinkedIn. Please try again.',
+            details: linkedinError instanceof Error ? linkedinError.message : 'Unknown error'
+          },
+          { status: 500 }
+        );
+      }
+    } else {
+      // Post is scheduled for future
+      return NextResponse.json({
+        success: true,
+        postId,
+        message: 'Post scheduled successfully'
+      });
+    }
 
   } catch (error) {
     console.error('LinkedIn post creation error:', error);

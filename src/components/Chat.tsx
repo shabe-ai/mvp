@@ -891,6 +891,71 @@ export default function Chat({ onAction }: ChatProps = {}) {
     }
   };
 
+  const handleCreateLinkedInPost = async (postData: any) => {
+    setLinkedInPostPreview(null);
+    setSendingEmail(true); // Changed from setSendingMessage to setSendingEmail
+
+    try {
+      const response = await fetch('/api/linkedin/create-post', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: postData.content,
+          visibility: postData.visibility,
+          scheduledAt: postData.scheduledAt,
+          prompt: postData.prompt,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        const successMessage: Message = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `✅ LinkedIn post ${postData.scheduledAt ? 'scheduled' : 'published'} successfully!${
+            result.linkedinPostId ? `\n\nPost ID: ${result.linkedinPostId}` : ''
+          }`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, successMessage]);
+      } else {
+        const errorMessage: Message = {
+          id: Date.now().toString(),
+          role: 'assistant',
+          content: `❌ Failed to ${postData.scheduledAt ? 'schedule' : 'publish'} LinkedIn post: ${result.error}`,
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      }
+    } catch (error) {
+      console.error('Error creating LinkedIn post:', error);
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: '❌ An error occurred while creating the LinkedIn post. Please try again.',
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setSendingEmail(false); // Changed from setSendingMessage to setSendingEmail
+    }
+  };
+
+  const handleEditLinkedInPost = (content: string) => {
+    if (linkedinPostPreview) {
+      setLinkedInPostPreview({
+        ...linkedinPostPreview,
+        postPreview: {
+          ...linkedinPostPreview.postPreview,
+          content,
+        },
+      });
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Messages Container */}
@@ -1073,9 +1138,9 @@ export default function Chat({ onAction }: ChatProps = {}) {
         <LinkedInPostPreviewModal
           isVisible={linkedinPostPreview.isVisible}
           postPreview={linkedinPostPreview.postPreview}
-          onConfirm={() => {}} // TODO: Implement LinkedIn post creation
+          onConfirm={handleCreateLinkedInPost}
           onCancel={() => setLinkedInPostPreview(null)}
-          onEdit={() => {}} // TODO: Implement LinkedIn post editing
+          onEdit={handleEditLinkedInPost}
         />
       )}
 
