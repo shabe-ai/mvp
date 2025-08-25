@@ -30,10 +30,10 @@ export class LinkedInAPI {
    */
   async getProfile(): Promise<LinkedInProfile> {
     try {
-      const response = await fetch(`${this.baseUrl}/me`, {
+      // Use the userinfo endpoint which works with our current scopes
+      const response = await fetch(`${this.baseUrl}/userinfo`, {
         headers: {
           'Authorization': `Bearer ${this.accessToken}`,
-          'X-Restli-Protocol-Version': '2.0.0',
         },
       });
 
@@ -43,26 +43,12 @@ export class LinkedInAPI {
 
       const profile = await response.json();
       
-      // Get email address
-      const emailResponse = await fetch(`${this.baseUrl}/emailAddress?q=members&projection=(elements*(handle~))`, {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-          'X-Restli-Protocol-Version': '2.0.0',
-        },
-      });
-
-      let email = '';
-      if (emailResponse.ok) {
-        const emailData = await emailResponse.json();
-        email = emailData.elements?.[0]?.['handle~']?.emailAddress || '';
-      }
-
       return {
-        id: profile.id,
-        firstName: profile.localizedFirstName,
-        lastName: profile.localizedLastName,
-        email,
-        profileUrl: `https://www.linkedin.com/in/${profile.id}`,
+        id: profile.sub, // LinkedIn user ID
+        firstName: profile.given_name || '',
+        lastName: profile.family_name || '',
+        email: profile.email || '',
+        profileUrl: `https://www.linkedin.com/in/${profile.sub}`,
       };
     } catch (error) {
       logger.error('LinkedIn API - Get profile error:', error as Error);
