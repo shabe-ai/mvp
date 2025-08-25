@@ -745,21 +745,30 @@ Analyze this user message and extract structured information for CRM actions.
       });
 
       // Merge all phases and enhance response with conversational elements
-      // Use response.content if available (from DataIntentHandler), otherwise use adaptiveResponse.message
-      const responseMessage = response.content || adaptiveResponse.message;
-      
-      logger.info('Final response message determined', {
-        responseMessage,
-        source: response.content ? 'response.content' : 'adaptiveResponse.message',
-        userId: context.userId
-      });
+      // For LinkedIn post preview, don't enhance the message since it's an object
+      let finalMessage;
+      if (response.type === 'linkedin_post_preview') {
+        // For LinkedIn posts, use a simple message and keep the content object separate
+        finalMessage = "I've created a LinkedIn post for you. Here's the preview:";
+      } else {
+        // Use response.content if available (from DataIntentHandler), otherwise use adaptiveResponse.message
+        const responseMessage = response.content || adaptiveResponse.message;
+        
+        logger.info('Final response message determined', {
+          responseMessage,
+          source: response.content ? 'response.content' : 'adaptiveResponse.message',
+          userId: context.userId
+        });
+        
+        finalMessage = this.enhanceResponseMessage(responseMessage, understanding);
+      }
       
       const finalResponse = {
         ...response,
         type: response.type, // Preserve the response type
         emailDraft: response.emailDraft, // Preserve email draft data
         conversationContext: response.conversationContext, // Preserve conversation context from response
-        message: this.enhanceResponseMessage(responseMessage, understanding),
+        message: finalMessage,
         suggestions: adaptiveResponse.suggestions || understanding.suggestedActions || response.suggestions,
         ragInsights: ragEnhancedResponse.ragInsights,
         personalizationApplied: adaptiveResponse.personalizationApplied,
