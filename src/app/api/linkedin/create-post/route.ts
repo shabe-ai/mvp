@@ -113,9 +113,22 @@ export async function POST(request: NextRequest) {
         });
 
         console.error('LinkedIn API error:', linkedinError);
+        
+        // Provide more specific error messages
+        let errorMessage = 'Failed to publish post on LinkedIn. Please try again.';
+        if (linkedinError instanceof Error) {
+          if (linkedinError.message.includes('No company pages found')) {
+            errorMessage = 'LinkedIn company page posting failed: You must be an admin of a company page to post. Please check your LinkedIn permissions.';
+          } else if (linkedinError.message.includes('Forbidden')) {
+            errorMessage = 'LinkedIn posting failed: Access denied. Please ensure you have the correct permissions for company page posting.';
+          } else {
+            errorMessage = `LinkedIn posting failed: ${linkedinError.message}`;
+          }
+        }
+        
         return NextResponse.json(
           { 
-            error: 'Failed to publish post on LinkedIn. Please try again.',
+            error: errorMessage,
             details: linkedinError instanceof Error ? linkedinError.message : 'Unknown error'
           },
           { status: 500 }

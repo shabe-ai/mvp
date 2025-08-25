@@ -92,6 +92,8 @@ export async function GET(request: NextRequest) {
     let linkedinOrganizationId = '';
     let linkedinOrganizationName = '';
     try {
+      console.log('Fetching LinkedIn organizations with token:', access_token.substring(0, 20) + '...');
+      
       const orgResponse = await fetch('https://api.linkedin.com/v2/organizationalEntityAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organizationalTarget~(id,name)))', {
         headers: {
           'Authorization': `Bearer ${access_token}`,
@@ -99,17 +101,26 @@ export async function GET(request: NextRequest) {
         },
       });
       
+      console.log('Organization response status:', orgResponse.status);
+      
       if (orgResponse.ok) {
         const orgData = await orgResponse.json();
+        console.log('Organization data:', JSON.stringify(orgData, null, 2));
+        
         if (orgData.elements && orgData.elements.length > 0) {
           const firstOrg = orgData.elements[0]['organizationalTarget~'];
           linkedinOrganizationId = firstOrg.id;
           linkedinOrganizationName = firstOrg.name;
-          console.log('LinkedIn organization:', { id: linkedinOrganizationId, name: linkedinOrganizationName });
+          console.log('LinkedIn organization found:', { id: linkedinOrganizationId, name: linkedinOrganizationName });
+        } else {
+          console.log('No organizations found in response');
         }
+      } else {
+        const errorText = await orgResponse.text();
+        console.error('Organization fetch failed:', orgResponse.status, errorText);
       }
     } catch (error) {
-      console.log('Could not fetch LinkedIn organizations:', error);
+      console.error('Could not fetch LinkedIn organizations:', error);
     }
 
     // Get user's teams to find the team ID

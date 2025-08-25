@@ -228,13 +228,13 @@ export class LinkedInAPI {
       // Fallback: try to fetch organizations from LinkedIn API
       const organizations = await this.getOrganizations();
       if (organizations.length === 0) {
-        throw new Error('No company pages found. You must be an admin of at least one company page to post.');
+        throw new Error('No company pages found. You must be an admin of at least one company page to post on LinkedIn.');
       }
       return organizations[0].id; // Use the first available organization
     } catch (error) {
-      // If organization fetching fails, throw error - we'll handle fallback in createPost
-      logger.warn('LinkedIn API - Organization fetching failed:', error as Error);
-      throw error;
+      // If organization fetching fails, throw error - no personal fallback
+      logger.error('LinkedIn API - Organization fetching failed:', error as Error);
+      throw new Error(`LinkedIn company page posting failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please ensure you have admin access to a company page.`);
     }
   }
 
@@ -291,33 +291,15 @@ export class LinkedInAPI {
    */
   async createPost(postData: LinkedInPostData): Promise<{ postId: string; response: any }> {
     try {
-            // Try to get organization ID for company page posting first
-      let authorUrn: string;
-      let postType: 'company' | 'personal';
+            // Get organization ID for company page posting - no fallback to personal
+      const organizationId = await this.getOrganizationId();
+      const authorUrn = `urn:li:organization:${organizationId}`;
       
-      try {
-        const organizationId = await this.getOrganizationId();
-        authorUrn = `urn:li:organization:${organizationId}`;
-        postType = 'company';
-        
-        logger.info('LinkedIn API - Creating company page post with author:', { 
-          authorUrn, 
-          organizationId,
-          postType
-        });
-      } catch (error) {
-        // Fall back to personal posting
-        logger.warn('LinkedIn API - Falling back to personal posting:', error as Error);
-        const personId = await this.getPersonId();
-        authorUrn = `urn:li:member:${personId}`;
-        postType = 'personal';
-        
-        logger.info('LinkedIn API - Creating personal post with author:', { 
-          authorUrn, 
-          personId,
-          postType
-        });
-      }
+      logger.info('LinkedIn API - Creating company page post with author:', { 
+        authorUrn, 
+        organizationId,
+        postType: 'company'
+      });
       
       // Prepare the post payload
       const payload = {
