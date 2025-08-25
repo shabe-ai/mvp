@@ -2565,7 +2565,11 @@ Please make it:
 
 Format the response as just the post content, no additional text.`;
 
-    const response = await fetch('/api/chat', {
+    // Fix: Use proper URL construction for server-side requests
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.shabe.ai';
+    const apiUrl = `${baseUrl}/api/chat`;
+
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
