@@ -37,30 +37,7 @@ export class LinkedInAPI {
    */
   async getProfile(): Promise<LinkedInProfile> {
     try {
-      // Try the /me endpoint first (requires r_liteprofile scope)
-      try {
-        const response = await fetch(`${this.baseUrl}/me`, {
-          headers: {
-            'Authorization': `Bearer ${this.accessToken}`,
-            'X-Restli-Protocol-Version': '2.0.0',
-          },
-        });
-
-        if (response.ok) {
-          const profile = await response.json();
-          return {
-            id: profile.id, // This is the correct LinkedIn person ID
-            firstName: profile.localizedFirstName || '',
-            lastName: profile.localizedLastName || '',
-            email: '', // Email not available from /me endpoint
-            profileUrl: `https://www.linkedin.com/in/${profile.id}`,
-          };
-        }
-      } catch (meError) {
-        logger.warn('LinkedIn API - /me endpoint failed, trying userinfo:', meError as Error);
-      }
-
-      // Fallback to userinfo endpoint
+      // Use the userinfo endpoint which works with our current scopes
       const response = await fetch(`${this.baseUrl}/userinfo`, {
         headers: {
           'Authorization': `Bearer ${this.accessToken}`,
@@ -73,9 +50,27 @@ export class LinkedInAPI {
 
       const profile = await response.json();
       
-      // For userinfo, we need to extract the numeric ID from the sub field
+      // Extract the numeric ID from the sub field
       // sub format is typically like "urn:li:person:123456789"
-      const personId = profile.sub?.replace('urn:li:person:', '') || profile.sub;
+      let personId = profile.sub;
+      
+      // If it's a URN format, extract the numeric ID
+      if (personId && personId.startsWith('urn:li:person:')) {
+        personId = personId.replace('urn:li:person:', '');
+      }
+      
+      // If we still don't have a valid numeric ID, try to extract from the sub field
+      if (!personId || isNaN(Number(personId))) {
+        // Try to find a numeric ID in the sub field
+        const numericMatch = profile.sub?.match(/\d+/);
+        personId = numericMatch ? numericMatch[0] : profile.sub;
+      }
+      
+      logger.info('LinkedIn API - Extracted person ID:', { 
+        originalSub: profile.sub, 
+        extractedId: personId,
+        isNumeric: !isNaN(Number(personId))
+      });
       
       return {
         id: personId,
