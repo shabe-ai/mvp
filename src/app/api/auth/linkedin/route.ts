@@ -21,7 +21,8 @@ export async function GET(request: NextRequest) {
     const scopes = [
       'openid',
       'profile', 
-      'w_member_social', // For personal posting (more reliable with current setup)
+      'w_member_social', // For personal posting
+      'r_liteprofile',   // For getting LinkedIn person ID
       'email'
     ];
 

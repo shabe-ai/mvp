@@ -80,7 +80,7 @@ export class LinkedInAPI {
 
       const profile = await response.json();
       
-      // For userinfo, we need to extract the numeric ID from the sub field
+      // For userinfo, we need to extract the LinkedIn person ID from the sub field
       // The sub field might contain a URN or just an ID
       let personId = profile.sub;
       
@@ -89,13 +89,11 @@ export class LinkedInAPI {
         personId = personId.replace('urn:li:person:', '');
       }
       
-      // Try to extract a numeric ID if the current ID is not numeric
+      // For LinkedIn API, we need a numeric person ID
+      // If the current ID is not numeric, we need to get it from a different source
       if (personId && isNaN(Number(personId))) {
-        // Look for numeric patterns in the ID
-        const numericMatch = personId.match(/\d+/);
-        if (numericMatch) {
-          personId = numericMatch[0];
-        }
+        logger.warn('LinkedIn API - Non-numeric person ID from userinfo, cannot use for posting:', { personId });
+        throw new Error('Unable to get valid LinkedIn person ID for posting. Please reconnect your LinkedIn account.');
       }
       
       logger.info('LinkedIn API - Extracted person ID from userinfo:', { 
@@ -187,21 +185,17 @@ export class LinkedInAPI {
   }
 
   /**
-   * Create a LinkedIn post (company page or personal profile)
+   * Create a LinkedIn post (personal profile only)
    */
   async createPost(postData: LinkedInPostData): Promise<{ postId: string; response: any }> {
     try {
-      // Get organization ID for posting (with fallback to personal)
-      const organizationId = await this.getOrganizationId();
+      // Get person ID for personal posting
+      const personId = await this.getPersonId();
+      const authorUrn = `urn:li:person:${personId}`;
       
-      // Determine if this is a company page or personal profile
-      const isCompanyPage = organizationId.length > 10; // Company IDs are typically longer
-      const authorUrn = isCompanyPage ? `urn:li:organization:${organizationId}` : `urn:li:person:${organizationId}`;
-      
-      logger.info('LinkedIn API - Creating post with author:', { 
+      logger.info('LinkedIn API - Creating personal post with author:', { 
         authorUrn, 
-        isCompanyPage, 
-        organizationId: organizationId.substring(0, 10) + '...' 
+        personId
       });
       
       // Prepare the post payload
