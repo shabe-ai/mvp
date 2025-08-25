@@ -9,6 +9,46 @@ import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import RAGEvaluationDashboard from '@/components/RAGEvaluationDashboard';
 import TeamManagement from '@/components/TeamManagement';
 import ConvexProviderWrapper from '@/components/ConvexProvider';
+import ErrorBoundary from '@/components/ErrorBoundary';
+
+// LinkedIn Integration Fallback Component
+function LinkedInIntegrationFallback({ error, resetError }: { error?: Error; resetError: () => void }) {
+  return (
+    <div className="bg-neutral-primary rounded-lg shadow-sm border border-neutral-secondary p-6">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Integration</h3>
+          <p className="text-sm text-text-secondary mt-1 font-body">
+            Connect your LinkedIn account to create and schedule posts
+          </p>
+        </div>
+        <span className="px-2 py-1 text-xs bg-neutral-secondary text-text-secondary rounded">Not Connected</span>
+      </div>
+      <div className="space-y-4">
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-sm text-blue-800 font-body">
+            Connect your LinkedIn account to enable AI-powered post creation and scheduling.
+          </p>
+        </div>
+        <button
+          onClick={() => window.location.href = '/api/auth/linkedin'}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+        >
+          Connect LinkedIn Account
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// LinkedIn Integration with Error Boundary
+function LinkedInIntegrationWithErrorBoundary() {
+  return (
+    <ErrorBoundary fallback={LinkedInIntegrationFallback}>
+      <LinkedInIntegrationSection />
+    </ErrorBoundary>
+  );
+}
 
 function AdminPageContent() {
   const { user } = useUser();
@@ -40,7 +80,7 @@ function AdminPageContent() {
         {/* Integration Sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <GoogleWorkspaceIntegrationSection />
-          <LinkedInIntegrationSection />
+          <LinkedInIntegrationWithErrorBoundary />
         </div>
 
         {/* Monitoring and Analytics Sections */}

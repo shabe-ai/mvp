@@ -12,13 +12,14 @@ export default function LinkedInIntegrationSection() {
   const { user } = useUser();
   const [isConnecting, setIsConnecting] = useState(false);
   const [hasError, setHasError] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Get LinkedIn integration status with error handling
+  // Get LinkedIn integration status with defensive error handling
   const linkedInIntegration = useQuery(api.linkedin.getLinkedInIntegration, 
     user?.id ? { userId: user.id } : 'skip'
   );
 
-  // Get LinkedIn posts with error handling
+  // Get LinkedIn posts with defensive error handling
   const linkedInPosts = useQuery(api.linkedin.getLinkedInPosts, 
     user?.id ? { userId: user.id } : 'skip'
   );
@@ -26,13 +27,86 @@ export default function LinkedInIntegrationSection() {
   // Mutations
   const deactivateLinkedInIntegration = useMutation(api.linkedin.deactivateLinkedInIntegration);
 
-  // Handle Convex errors
+  // Handle Convex errors and loading states
   useEffect(() => {
-    if (linkedInIntegration === undefined && user?.id) {
-      // This might indicate a Convex error
-      setHasError(true);
+    if (user?.id) {
+      // Set loading to false after a reasonable timeout
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 2000);
+
+      // Check for errors
+      if (linkedInIntegration === undefined && !isLoading) {
+        setHasError(true);
+      }
+
+      return () => clearTimeout(timer);
     }
-  }, [linkedInIntegration, user?.id]);
+  }, [linkedInIntegration, user?.id, isLoading]);
+
+  // If there's an error, show a simplified version that doesn't break the page
+  if (hasError) {
+    return (
+      <div className="bg-neutral-primary rounded-lg shadow-sm border border-neutral-secondary p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Integration</h3>
+            <p className="text-sm text-text-secondary mt-1 font-body">
+              Connect your LinkedIn account to create and schedule posts
+            </p>
+          </div>
+          <Badge variant="secondary">Not Connected</Badge>
+        </div>
+
+        <div className="space-y-4">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-sm text-blue-800 font-body">
+              Connect your LinkedIn account to enable AI-powered post creation and scheduling.
+            </p>
+          </div>
+          <Button
+            onClick={() => window.location.href = '/api/auth/linkedin'}
+            className="bg-blue-600 hover:bg-blue-700 text-white font-button"
+          >
+            <ExternalLink className="w-4 h-4 mr-2" />
+            Connect LinkedIn Account
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="bg-neutral-primary rounded-lg shadow-sm border border-neutral-secondary p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Integration</h3>
+            <p className="text-sm text-text-secondary mt-1 font-body">
+              Connect your LinkedIn account to create and schedule posts
+            </p>
+          </div>
+          <Badge variant="secondary">Loading...</Badge>
+        </div>
+
+        <div className="space-y-4">
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
+            <p className="text-sm text-blue-800 font-body">
+              Loading LinkedIn integration status...
+            </p>
+          </div>
+          <Button
+            disabled
+            className="bg-blue-600 hover:bg-blue-700 text-white font-button opacity-50"
+          >
+            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+            Loading...
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   const handleConnectLinkedIn = async () => {
     setIsConnecting(true);
@@ -56,10 +130,6 @@ export default function LinkedInIntegrationSection() {
   };
 
   const getStatusBadge = () => {
-    if (hasError) {
-      return <Badge variant="destructive">Error</Badge>;
-    }
-    
     if (!linkedInIntegration) {
       return <Badge variant="secondary">Not Connected</Badge>;
     }
@@ -86,48 +156,6 @@ export default function LinkedInIntegrationSection() {
     const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.draft;
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
-
-  // Show error state if there's a Convex error
-  if (hasError) {
-    return (
-      <div className="bg-neutral-primary rounded-lg shadow-sm border border-neutral-secondary p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Integration</h3>
-            <p className="text-sm text-text-secondary mt-1 font-body">
-              Connect your LinkedIn account to create and schedule posts
-            </p>
-          </div>
-          {getStatusBadge()}
-        </div>
-
-        <div className="space-y-4">
-          <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-800 font-body">
-              There was an error loading the LinkedIn integration status. Please try refreshing the page.
-            </p>
-          </div>
-          <Button
-            onClick={handleConnectLinkedIn}
-            disabled={isConnecting}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-button"
-          >
-            {isConnecting ? (
-              <>
-                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                Connecting...
-              </>
-            ) : (
-              <>
-                <ExternalLink className="w-4 h-4 mr-2" />
-                Connect LinkedIn Account
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="bg-neutral-primary rounded-lg shadow-sm border border-neutral-secondary p-6">
