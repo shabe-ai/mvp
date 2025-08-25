@@ -309,7 +309,7 @@ export class LinkedInAPI {
         // Fall back to personal posting
         logger.warn('LinkedIn API - Falling back to personal posting:', error as Error);
         const personId = await this.getPersonId();
-        authorUrn = `urn:li:person:${personId}`;
+        authorUrn = `urn:li:member:${personId}`;
         postType = 'personal';
         
         logger.info('LinkedIn API - Creating personal post with author:', { 
