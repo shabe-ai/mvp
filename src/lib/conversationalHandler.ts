@@ -717,9 +717,11 @@ Analyze this user message and extract structured information for CRM actions.
       });
 
       // Use existing intent router with timeout
+      // Increase timeout for LinkedIn post generation which may take longer
+      const timeoutMs = structuredIntent.action === 'create_linkedin_post' ? 15000 : 5000;
       const response = await this.withTimeout(
         intentRouter.routeIntent(structuredIntent, { ...context, conversationManager }),
-        5000 // 5 second timeout
+        timeoutMs // Increased timeout for LinkedIn posts
       );
 
       logger.info('Intent router call completed', {

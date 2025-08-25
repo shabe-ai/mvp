@@ -22,14 +22,14 @@ Format the response as just the post content, no additional text.`;
       messages: [
         {
           role: 'system',
-          content: 'You are a professional LinkedIn content creator. Create engaging, professional posts that add value to the reader.'
+          content: 'You are a professional LinkedIn content creator. Create engaging, professional posts that add value to the reader. Keep responses concise and impactful.'
         },
         {
           role: 'user',
           content: prompt
         }
       ],
-      max_tokens: 500,
+      max_tokens: 300, // Reduced from 500 for faster generation
       temperature: 0.7,
     }, {
       userId: userId,
