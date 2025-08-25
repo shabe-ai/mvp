@@ -342,7 +342,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
       const assistantMessage: Message = {
               id: (Date.now() + 1).toString(),
               role: "assistant",
-              content: data.content || data.message,
+              content: data.type === 'linkedin_post_preview' ? data.message : (data.content || data.message),
               timestamp: new Date(),
               action: data.action,
               data: data.data,
