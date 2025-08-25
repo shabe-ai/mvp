@@ -176,6 +176,39 @@ export class LinkedInAPI {
    */
   async getOrganizations(): Promise<LinkedInOrganization[]> {
     try {
+      // Try the Advertising API endpoint first (if available)
+      try {
+        const response = await fetch(`${this.advertisingApiUrl}/organizations`, {
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'X-Restli-Protocol-Version': '2.0.0',
+            'LinkedIn-Version': '202505',
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const organizations: LinkedInOrganization[] = [];
+
+          if (data.elements) {
+            for (const org of data.elements) {
+              organizations.push({
+                id: org.id,
+                name: org.name,
+                logoUrl: org.logoUrl,
+                websiteUrl: `https://www.linkedin.com/company/${org.id}`,
+              });
+            }
+          }
+
+          logger.info('LinkedIn API - Found organizations via Advertising API:', organizations);
+          return organizations;
+        }
+      } catch (advertisingError) {
+        logger.warn('LinkedIn API - Advertising API organizations endpoint not available, trying legacy endpoint');
+      }
+
+      // Fallback to legacy endpoint
       const response = await fetch(`${this.baseUrl}/organizationalEntityAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organizationalTarget~(id,name,logoV2(original~:playableStreams))))`, {
         headers: {
           'Authorization': `Bearer ${this.accessToken}`,

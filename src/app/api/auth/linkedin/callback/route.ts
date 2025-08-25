@@ -94,30 +94,64 @@ export async function GET(request: NextRequest) {
     try {
       console.log('Fetching LinkedIn organizations with token:', access_token.substring(0, 20) + '...');
       
-      const orgResponse = await fetch('https://api.linkedin.com/v2/organizationalEntityAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organizationalTarget~(id,name)))', {
-        headers: {
-          'Authorization': `Bearer ${access_token}`,
-          'X-Restli-Protocol-Version': '2.0.0',
-        },
-      });
-      
-      console.log('Organization response status:', orgResponse.status);
-      
-      if (orgResponse.ok) {
-        const orgData = await orgResponse.json();
-        console.log('Organization data:', JSON.stringify(orgData, null, 2));
+      // Try Advertising API endpoint first
+      let orgResponse;
+      try {
+        orgResponse = await fetch('https://api.linkedin.com/rest/organizations', {
+          headers: {
+            'Authorization': `Bearer ${access_token}`,
+            'X-Restli-Protocol-Version': '2.0.0',
+            'LinkedIn-Version': '202505',
+          },
+        });
         
-        if (orgData.elements && orgData.elements.length > 0) {
-          const firstOrg = orgData.elements[0]['organizationalTarget~'];
-          linkedinOrganizationId = firstOrg.id;
-          linkedinOrganizationName = firstOrg.name;
-          console.log('LinkedIn organization found:', { id: linkedinOrganizationId, name: linkedinOrganizationName });
+        console.log('Advertising API organization response status:', orgResponse.status);
+        
+        if (orgResponse.ok) {
+          const orgData = await orgResponse.json();
+          console.log('Advertising API organization data:', JSON.stringify(orgData, null, 2));
+          
+          if (orgData.elements && orgData.elements.length > 0) {
+            const firstOrg = orgData.elements[0];
+            linkedinOrganizationId = firstOrg.id;
+            linkedinOrganizationName = firstOrg.name;
+            console.log('LinkedIn organization found via Advertising API:', { id: linkedinOrganizationId, name: linkedinOrganizationName });
+          } else {
+            console.log('No organizations found in Advertising API response');
+          }
         } else {
-          console.log('No organizations found in response');
+          console.log('Advertising API organization fetch failed, trying legacy endpoint');
+          throw new Error('Advertising API not available');
         }
-      } else {
-        const errorText = await orgResponse.text();
-        console.error('Organization fetch failed:', orgResponse.status, errorText);
+      } catch (advertisingError) {
+        console.log('Trying legacy organization endpoint...');
+        
+        // Fallback to legacy endpoint
+        orgResponse = await fetch('https://api.linkedin.com/v2/organizationalEntityAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organizationalTarget~(id,name)))', {
+          headers: {
+            'Authorization': `Bearer ${access_token}`,
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        });
+        
+        console.log('Legacy organization response status:', orgResponse.status);
+        
+        if (orgResponse.ok) {
+          const orgData = await orgResponse.json();
+          console.log('Legacy organization data:', JSON.stringify(orgData, null, 2));
+          
+          if (orgData.elements && orgData.elements.length > 0) {
+            const firstOrg = orgData.elements[0]['organizationalTarget~'];
+            linkedinOrganizationId = firstOrg.id;
+            linkedinOrganizationName = firstOrg.name;
+            console.log('LinkedIn organization found via legacy API:', { id: linkedinOrganizationId, name: linkedinOrganizationName });
+          } else {
+            console.log('No organizations found in legacy response');
+          }
+        } else {
+          const errorText = await orgResponse.text();
+          console.error('Legacy organization fetch failed:', orgResponse.status, errorText);
+        }
       }
     } catch (error) {
       console.error('Could not fetch LinkedIn organizations:', error);
