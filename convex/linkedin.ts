@@ -19,38 +19,62 @@ export const createLinkedInIntegration = mutation({
     organizationName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const integrationId = await ctx.db.insert("linkedinIntegrations", {
-      userId: args.userId,
-      teamId: args.teamId,
-      accessToken: args.accessToken,
-      refreshToken: args.refreshToken,
-      expiresAt: args.expiresAt,
-      linkedinUserId: args.linkedinUserId,
-      linkedinEmail: args.linkedinEmail,
-      linkedinName: args.linkedinName,
-      linkedinProfileUrl: args.linkedinProfileUrl,
-      organizationId: args.organizationId,
-      organizationName: args.organizationName,
-      isActive: true,
-      lastSyncAt: Date.now(),
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
+    try {
+      // Deactivate any existing integrations for this user
+      const existingIntegrations = await ctx.db
+        .query("linkedinIntegrations")
+        .filter((q) => q.eq(q.field("userId"), args.userId))
+        .filter((q) => q.eq(q.field("isActive"), true))
+        .collect();
 
-    return integrationId;
+      for (const integration of existingIntegrations) {
+        await ctx.db.patch(integration._id, {
+          isActive: false,
+          updatedAt: Date.now(),
+        });
+      }
+
+      // Create new integration
+      const integrationId = await ctx.db.insert("linkedinIntegrations", {
+        userId: args.userId,
+        teamId: args.teamId,
+        accessToken: args.accessToken,
+        refreshToken: args.refreshToken,
+        expiresAt: args.expiresAt,
+        linkedinUserId: args.linkedinUserId,
+        linkedinEmail: args.linkedinEmail,
+        linkedinName: args.linkedinName,
+        linkedinProfileUrl: args.linkedinProfileUrl,
+        organizationId: args.organizationId,
+        organizationName: args.organizationName,
+        isActive: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+      });
+
+      return integrationId;
+    } catch (error) {
+      console.error("Error creating LinkedIn integration:", error);
+      throw new Error("Failed to create LinkedIn integration");
+    }
   },
 });
 
 export const getLinkedInIntegration = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    const integration = await ctx.db
-      .query("linkedinIntegrations")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
-      .filter((q) => q.eq(q.field("isActive"), true))
-      .first();
+    try {
+      const integration = await ctx.db
+        .query("linkedinIntegrations")
+        .filter((q) => q.eq(q.field("userId"), args.userId))
+        .filter((q) => q.eq(q.field("isActive"), true))
+        .first();
 
-    return integration;
+      return integration;
+    } catch (error) {
+      console.error("Error fetching LinkedIn integration:", error);
+      return null;
+    }
   },
 });
 
@@ -141,26 +165,20 @@ export const createLinkedInPost = mutation({
 });
 
 export const getLinkedInPosts = query({
-  args: { 
-    userId: v.string(),
-    status: v.optional(v.union(
-      v.literal("draft"),
-      v.literal("scheduled"),
-      v.literal("published"),
-      v.literal("failed")
-    )),
-  },
+  args: { userId: v.string() },
   handler: async (ctx, args) => {
-    let query = ctx.db
-      .query("linkedinPosts")
-      .filter((q) => q.eq(q.field("userId"), args.userId));
+    try {
+      const posts = await ctx.db
+        .query("linkedinPosts")
+        .filter((q) => q.eq(q.field("userId"), args.userId))
+        .order("desc")
+        .collect();
 
-    if (args.status) {
-      query = query.filter((q) => q.eq(q.field("status"), args.status));
+      return posts;
+    } catch (error) {
+      console.error("Error fetching LinkedIn posts:", error);
+      return [];
     }
-
-    const posts = await query.order("desc").collect();
-    return posts;
   },
 });
 

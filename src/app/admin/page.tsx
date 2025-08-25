@@ -40,8 +40,7 @@ function AdminPageContent() {
         {/* Integration Sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <GoogleWorkspaceIntegrationSection />
-          {/* Temporarily disabled due to Convex error */}
-          {/* <LinkedInIntegrationSection /> */}
+          <LinkedInIntegrationSection />
         </div>
 
         {/* Monitoring and Analytics Sections */}
