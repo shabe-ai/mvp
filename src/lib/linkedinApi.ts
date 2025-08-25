@@ -50,26 +50,22 @@ export class LinkedInAPI {
 
       const profile = await response.json();
       
-      // Extract the numeric ID from the sub field
-      // sub format is typically like "urn:li:person:123456789"
+      // Extract the person ID from the sub field
+      // sub format can be either "urn:li:person:123456789" or just "123456789"
       let personId = profile.sub;
       
-      // If it's a URN format, extract the numeric ID
+      // If it's a URN format, extract the ID part
       if (personId && personId.startsWith('urn:li:person:')) {
         personId = personId.replace('urn:li:person:', '');
       }
       
-      // If we still don't have a valid numeric ID, try to extract from the sub field
-      if (!personId || isNaN(Number(personId))) {
-        // Try to find a numeric ID in the sub field
-        const numericMatch = profile.sub?.match(/\d+/);
-        personId = numericMatch ? numericMatch[0] : profile.sub;
-      }
+      // For LinkedIn, we need the full ID, not just numeric parts
+      // The ID can contain letters and numbers (like 'EXg9rnl28H')
+      // Don't try to extract only numeric parts
       
       logger.info('LinkedIn API - Extracted person ID:', { 
         originalSub: profile.sub, 
-        extractedId: personId,
-        isNumeric: !isNaN(Number(personId))
+        extractedId: personId
       });
       
       return {
