@@ -37,7 +37,37 @@ export class LinkedInAPI {
    */
   async getProfile(): Promise<LinkedInProfile> {
     try {
-      // Use the userinfo endpoint which works with our current scopes
+      // Try to get the actual LinkedIn person ID using the /me endpoint
+      // This requires r_liteprofile scope, but let's try it first
+      try {
+        const meResponse = await fetch(`${this.baseUrl}/me`, {
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        });
+
+        if (meResponse.ok) {
+          const meProfile = await meResponse.json();
+          logger.info('LinkedIn API - Got profile from /me endpoint:', { 
+            personId: meProfile.id,
+            firstName: meProfile.localizedFirstName,
+            lastName: meProfile.localizedLastName
+          });
+          
+          return {
+            id: meProfile.id, // This is the actual LinkedIn person ID
+            firstName: meProfile.localizedFirstName || '',
+            lastName: meProfile.localizedLastName || '',
+            email: '', // Email not available from /me endpoint
+            profileUrl: `https://www.linkedin.com/in/${meProfile.id}`,
+          };
+        }
+      } catch (meError) {
+        logger.warn('LinkedIn API - /me endpoint failed, falling back to userinfo:', meError as Error);
+      }
+
+      // Fallback to userinfo endpoint
       const response = await fetch(`${this.baseUrl}/userinfo`, {
         headers: {
           'Authorization': `Bearer ${this.accessToken}`,
@@ -50,8 +80,8 @@ export class LinkedInAPI {
 
       const profile = await response.json();
       
-      // Extract the person ID from the sub field
-      // sub format can be either "urn:li:person:123456789" or just "123456789"
+      // For userinfo, we need to extract the numeric ID from the sub field
+      // The sub field might contain a URN or just an ID
       let personId = profile.sub;
       
       // If it's a URN format, extract the ID part
@@ -59,13 +89,19 @@ export class LinkedInAPI {
         personId = personId.replace('urn:li:person:', '');
       }
       
-      // For LinkedIn, we need the full ID, not just numeric parts
-      // The ID can contain letters and numbers (like 'EXg9rnl28H')
-      // Don't try to extract only numeric parts
+      // Try to extract a numeric ID if the current ID is not numeric
+      if (personId && isNaN(Number(personId))) {
+        // Look for numeric patterns in the ID
+        const numericMatch = personId.match(/\d+/);
+        if (numericMatch) {
+          personId = numericMatch[0];
+        }
+      }
       
-      logger.info('LinkedIn API - Extracted person ID:', { 
+      logger.info('LinkedIn API - Extracted person ID from userinfo:', { 
         originalSub: profile.sub, 
-        extractedId: personId
+        extractedId: personId,
+        isNumeric: !isNaN(Number(personId))
       });
       
       return {
