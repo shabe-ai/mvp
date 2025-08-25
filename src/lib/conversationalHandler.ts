@@ -769,6 +769,8 @@ Analyze this user message and extract structured information for CRM actions.
         emailDraft: response.emailDraft, // Preserve email draft data
         conversationContext: response.conversationContext, // Preserve conversation context from response
         message: finalMessage,
+        // For LinkedIn post preview, preserve the content object
+        content: response.type === 'linkedin_post_preview' ? response.content : response.content,
         suggestions: adaptiveResponse.suggestions || understanding.suggestedActions || response.suggestions,
         ragInsights: ragEnhancedResponse.ragInsights,
         personalizationApplied: adaptiveResponse.personalizationApplied,
@@ -779,6 +781,8 @@ Analyze this user message and extract structured information for CRM actions.
         finalMessage: finalResponse.message,
         hasMessage: !!finalResponse.message,
         finalType: finalResponse.type,
+        hasContent: !!finalResponse.content,
+        contentKeys: finalResponse.content ? Object.keys(finalResponse.content) : [],
         hasEmailDraft: !!finalResponse.emailDraft,
         emailDraftTo: finalResponse.emailDraft?.to,
         emailDraftSubject: finalResponse.emailDraft?.subject,
