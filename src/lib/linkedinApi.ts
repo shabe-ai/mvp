@@ -342,53 +342,39 @@ export class LinkedInAPI {
         postType: 'personal'
       });
       
-      // Prepare the post payload for UGC API (personal posting)
+      // Prepare the post payload for /rest/posts API (personal posting)
       const payload = {
         author: authorUrn,
-        lifecycleState: 'PUBLISHED',
-        specificContent: {
-          'com.linkedin.ugc.ShareContent': {
-            shareCommentary: {
-              text: postData.content
-            },
-            shareMediaCategory: postData.imageUrl ? 'IMAGE' : 'NONE',
-            ...(postData.imageUrl && {
-              media: [{
-                status: 'READY',
-                description: {
-                  text: postData.description || ''
-                },
-                media: postData.imageUrl,
-                title: {
-                  text: postData.title || ''
-                }
-              }]
-            }),
-            ...(postData.linkUrl && {
-              shareMediaCategory: 'ARTICLE',
-              media: [{
-                status: 'READY',
-                originalUrl: postData.linkUrl,
-                title: {
-                  text: postData.title || ''
-                }
-              }]
-            })
+        commentary: postData.content,
+        visibility: postData.visibility.toUpperCase(),
+        ...(postData.imageUrl && {
+          media: [{
+            status: 'READY',
+            description: postData.description || '',
+            media: postData.imageUrl,
+            title: postData.title || ''
+          }]
+        }),
+        ...(postData.linkUrl && {
+          content: {
+            contentEntities: [{
+              entityLocation: postData.linkUrl,
+              thumbnails: []
+            }],
+            title: postData.title || ''
           }
-        },
-        visibility: {
-          'com.linkedin.ugc.MemberNetworkVisibility': postData.visibility.toUpperCase()
-        }
+        })
       };
 
       logger.info('LinkedIn API - Post payload:', payload);
 
-      const response = await fetch(`${this.baseUrl}/ugcPosts`, {
+      const response = await fetch(`${this.advertisingApiUrl}/posts`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.accessToken}`,
           'Content-Type': 'application/json',
           'X-Restli-Protocol-Version': '2.0.0',
+          'LinkedIn-Version': '202505',
         },
         body: JSON.stringify(payload),
       });
