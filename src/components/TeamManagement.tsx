@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { AlertCircle } from 'lucide-react'; // Added import for AlertCircle
 
 interface Team {
   _id: string;
@@ -98,18 +99,34 @@ export default function TeamManagement() {
       if (data.error) {
         setError(data.error);
       } else {
-        setTeams(prev => prev.filter(team => team._id !== teamId));
-        if (selectedTeam?._id === teamId) {
-          setSelectedTeam(teams.find(team => team._id !== teamId) || null);
-        }
+        await loadTeams();
+        setSelectedTeam(null);
+        setTeamStats(null);
       }
     } catch (error) {
-      console.error('Error deleting team:', error);
       setError("Failed to delete team");
+      console.error('❌ Failed to delete team:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  // Check for duplicate teams
+  const hasDuplicateTeams = teams.length > 1;
+  const duplicateTeamsWarning = hasDuplicateTeams ? (
+    <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+      <div className="flex items-center">
+        <AlertCircle className="w-5 h-5 text-yellow-600 mr-2" />
+        <div>
+          <h4 className="text-sm font-medium text-yellow-800">Duplicate Teams Detected</h4>
+          <p className="text-sm text-yellow-700 mt-1">
+            You have {teams.length} teams. Consider keeping only one team to avoid confusion. 
+            You can delete the older team if it's not being used.
+          </p>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   const createTeam = async () => {
     if (!user) return;
@@ -176,6 +193,8 @@ export default function TeamManagement() {
             </div>
           </div>
         )}
+
+        {duplicateTeamsWarning} {/* Added duplicate teams warning */}
 
         <div className="space-y-3">
           {teams.map((team) => (

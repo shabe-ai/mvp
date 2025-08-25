@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { useUser } from '@clerk/nextjs';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -52,10 +53,19 @@ interface RAGEvaluation {
 }
 
 export default function RAGEvaluationDashboard() {
+  const { user } = useUser();
   const [overview, setOverview] = useState<RAGOverview | null>(null);
   const [evaluation, setEvaluation] = useState<RAGEvaluation | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'evaluation' | 'details'>('overview');
+
+  // Access control - only show to specific user
+  const AUTHORIZED_USER_ID = 'user_30yNzzaqY36tW07nKprV52twdEQ'; // Your user ID
+  
+  // If not authorized user, don't render anything
+  if (!user || user.id !== AUTHORIZED_USER_ID) {
+    return null;
+  }
 
   useEffect(() => {
     fetchRAGData();
