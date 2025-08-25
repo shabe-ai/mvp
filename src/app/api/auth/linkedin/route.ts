@@ -22,7 +22,6 @@ export async function GET(request: NextRequest) {
       'openid',
       'profile', 
       'w_member_social', // For personal posting
-      'r_liteprofile',   // For getting LinkedIn person ID
       'email'
     ];
 
