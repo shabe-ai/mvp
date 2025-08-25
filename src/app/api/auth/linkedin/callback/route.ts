@@ -132,20 +132,28 @@ export async function GET(request: NextRequest) {
     }
 
     // Create LinkedIn integration in database
-    await convex.mutation(api.linkedin.createLinkedInIntegration, {
-      userId: state,
-      teamId,
-      accessToken: access_token,
-      refreshToken: refresh_token,
-      expiresAt: Date.now() + (expires_in * 1000),
-      linkedinUserId: linkedinUserId,
-      linkedinPersonId: linkedinPersonId,
-      linkedinOrganizationId: linkedinOrganizationId,
-      linkedinOrganizationName: linkedinOrganizationName,
-      linkedinEmail,
-      linkedinName,
-      linkedinProfileUrl: `https://www.linkedin.com/in/${linkedinUserId}`,
-    });
+    try {
+      await convex.mutation(api.linkedin.createLinkedInIntegration, {
+        userId: state,
+        teamId,
+        accessToken: access_token,
+        refreshToken: refresh_token,
+        expiresAt: Date.now() + (expires_in * 1000),
+        linkedinUserId: linkedinUserId,
+        linkedinPersonId: linkedinPersonId,
+        linkedinOrganizationId: linkedinOrganizationId,
+        linkedinOrganizationName: linkedinOrganizationName,
+        linkedinEmail,
+        linkedinName,
+        linkedinProfileUrl: `https://www.linkedin.com/in/${linkedinUserId}`,
+      });
+      
+      console.log('LinkedIn integration created successfully');
+    } catch (convexError) {
+      console.error('Failed to create LinkedIn integration in database:', convexError);
+      // Still redirect to admin page but with error
+      return NextResponse.redirect('https://app.shabe.ai/admin?error=integration_creation_failed');
+    }
 
     return NextResponse.redirect('https://app.shabe.ai/admin?success=linkedin_connected');
 
