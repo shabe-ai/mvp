@@ -66,7 +66,7 @@ export default function LinkedInPostPreviewModal({
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                 <span className="text-white font-bold text-sm">in</span>
               </div>
-              <CardTitle className="text-lg">LinkedIn Post Preview</CardTitle>
+              <CardTitle className="text-lg">LinkedIn Company Page Post Preview</CardTitle>
             </div>
             <Button
               variant="ghost"

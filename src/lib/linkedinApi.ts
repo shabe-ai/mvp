@@ -123,16 +123,16 @@ export class LinkedInAPI {
   }
 
   /**
-   * Create a LinkedIn post (personal profile for now)
+   * Create a LinkedIn post on behalf of a company page
    */
   async createPost(postData: LinkedInPostData): Promise<{ postId: string; response: any }> {
     try {
-      // Get person ID for posting (temporary until org scope is approved)
-      const personId = await this.getPersonId();
+      // Get organization ID for posting
+      const organizationId = await this.getOrganizationId();
       
-      // Prepare the post payload for personal profile
+      // Prepare the post payload for organization
       const payload = {
-        author: `urn:li:person:${personId}`,
+        author: `urn:li:organization:${organizationId}`,
         lifecycleState: 'PUBLISHED',
         specificContent: {
           'com.linkedin.ugc.ShareContent': {
