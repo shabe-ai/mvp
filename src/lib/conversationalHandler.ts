@@ -770,7 +770,7 @@ Analyze this user message and extract structured information for CRM actions.
         conversationContext: response.conversationContext, // Preserve conversation context from response
         message: finalMessage,
         // For LinkedIn post preview, preserve the content object
-        content: response.type === 'linkedin_post_preview' ? response.content : response.content,
+        content: response.content, // Always preserve the original content
         suggestions: adaptiveResponse.suggestions || understanding.suggestedActions || response.suggestions,
         ragInsights: ragEnhancedResponse.ragInsights,
         personalizationApplied: adaptiveResponse.personalizationApplied,
