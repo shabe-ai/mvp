@@ -1,10 +1,9 @@
 "use client";
 
 import { useUser } from '@clerk/nextjs';
-import { useQuery, useMutation } from 'convex/react';
-import { api } from '../../../convex/_generated/api';
 import ProfileManagement from '@/components/ProfileManagement';
-// import LinkedInIntegrationSection from '@/components/LinkedInIntegrationSection';
+import LinkedInIntegrationSection from '@/components/LinkedInIntegrationSection';
+import GoogleWorkspaceIntegrationSection from '@/components/GoogleWorkspaceIntegrationSection';
 import ConvexProviderWrapper from '@/components/ConvexProvider';
 
 function AdminPageContent() {
@@ -36,18 +35,19 @@ function AdminPageContent() {
 
         {/* Integration Sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          {/* <LinkedInIntegrationSection /> */}
+          <GoogleWorkspaceIntegrationSection />
+          <LinkedInIntegrationSection />
         </div>
 
         {/* Regular User Message */}
         <div className="mt-8 p-6 bg-neutral-secondary/10 rounded-lg">
           <h3 className="text-lg font-medium text-text-primary mb-2 font-heading">Workspace Management</h3>
           <p className="text-text-secondary mb-4 font-body">
-            Use the sections above to manage your profile, company settings, and LinkedIn integration.
+            Use the sections above to manage your profile, company settings, and integrations.
           </p>
           <div className="bg-accent-primary/10 border border-accent-primary/20 rounded-lg p-4">
             <p className="text-sm text-text-primary font-body">
-              💡 <strong>Tip:</strong> Connect your LinkedIn account to enable AI-powered post creation and scheduling.
+              💡 <strong>Tip:</strong> Connect your Google Workspace and LinkedIn accounts to enable calendar events, email sending, and AI-powered post creation.
             </p>
           </div>
         </div>
