@@ -113,30 +113,42 @@ export class LinkedInAPI {
       // If we don't have a numeric ID, we need to get it differently
       // Let's try to extract numeric parts from the alphanumeric ID
       if (personId && isNaN(Number(personId))) {
-        // Look for numeric patterns in the ID
-        const numericMatch = personId.match(/\d+/);
-        if (numericMatch) {
-          const numericId = numericMatch[0];
+        // Look for numeric patterns in the ID - get ALL digits, not just the first one
+        const numericMatch = personId.match(/\d+/g);
+        if (numericMatch && numericMatch.length > 0) {
+          // Join all numeric parts together
+          const numericId = numericMatch.join('');
           logger.info('LinkedIn API - Extracted numeric ID from alphanumeric:', { 
             originalId: personId, 
-            extractedId: numericId 
+            extractedId: numericId,
+            allNumericParts: numericMatch
           });
           return numericId;
         }
       }
       
       // If we still don't have a numeric ID, we need to get it from a different source
-      // For now, let's try to use the user's profile picture URL to extract the ID
+      // Let's try to use the user's profile picture URL to extract the ID
       if (userinfo.picture) {
         // LinkedIn profile pictures often contain the user ID
-        const pictureMatch = userinfo.picture.match(/\/(\d+)\?/);
-        if (pictureMatch) {
-          const pictureId = pictureMatch[1];
-          logger.info('LinkedIn API - Extracted ID from profile picture:', { 
-            pictureUrl: userinfo.picture, 
-            extractedId: pictureId 
-          });
-          return pictureId;
+        // Try different patterns to extract the ID from the URL
+        const picturePatterns = [
+          /\/(\d+)\?/,  // Pattern: /123456789?
+          /\/(\d+)$/,   // Pattern: /123456789 (end of URL)
+          /profile-displayphoto-shrink_100_100\/0\/(\d+)/, // Specific LinkedIn pattern
+        ];
+        
+        for (const pattern of picturePatterns) {
+          const pictureMatch = userinfo.picture.match(pattern);
+          if (pictureMatch) {
+            const pictureId = pictureMatch[1];
+            logger.info('LinkedIn API - Extracted ID from profile picture:', { 
+              pictureUrl: userinfo.picture, 
+              extractedId: pictureId,
+              pattern: pattern.toString()
+            });
+            return pictureId;
+          }
         }
       }
       
