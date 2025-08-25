@@ -289,21 +289,21 @@ export class LinkedInAPI {
         }
         return organizations[0].id; // Use the first available organization
       } catch (orgError) {
-        // If organization API fails due to permissions, provide helpful error
-        if (orgError instanceof Error && orgError.message.includes('Forbidden')) {
-          logger.warn('LinkedIn API - Organization access denied, using fallback organization ID for testing');
-          // For testing purposes, use a fallback organization ID
-          // In production, you would want to get this from your LinkedIn app settings
-          const fallbackOrgId = process.env.LINKEDIN_FALLBACK_ORG_ID || '123456789';
-          logger.info('LinkedIn API - Using fallback organization ID:', { fallbackOrgId });
-          return fallbackOrgId;
+        logger.warn('LinkedIn API - Organization fetching failed, attempting personal posting fallback');
+        
+        // Try to get person ID for personal posting as fallback
+        try {
+          const personId = await this.getPersonId();
+          logger.info('LinkedIn API - Using personal posting fallback with person ID:', { personId });
+          return personId; // Return person ID for personal posting
+        } catch (personError) {
+          logger.error('LinkedIn API - Both organization and personal ID fetching failed:', personError as Error);
+          throw new Error(`LinkedIn posting failed: Unable to get organization or personal ID. Please ensure you have the correct LinkedIn API permissions.`);
         }
-        throw orgError;
       }
     } catch (error) {
-      // If organization fetching fails, throw error - no personal fallback
       logger.error('LinkedIn API - Organization fetching failed:', error as Error);
-      throw new Error(`LinkedIn company page posting failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please ensure you have admin access to a company page.`);
+      throw new Error(`LinkedIn posting failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please ensure you have the correct LinkedIn API permissions.`);
     }
   }
 
@@ -356,18 +356,26 @@ export class LinkedInAPI {
 
 
   /**
-   * Create a LinkedIn post (personal profile only)
+   * Create a LinkedIn post (company page or personal profile)
    */
   async createPost(postData: LinkedInPostData): Promise<{ postId: string; response: any }> {
     try {
-            // Get organization ID for company page posting - no fallback to personal
+      // Get organization ID for company page posting - no fallback to personal
       const organizationId = await this.getOrganizationId();
-      const authorUrn = `urn:li:organization:${organizationId}`;
       
-      logger.info('LinkedIn API - Creating company page post with author:', { 
+      // Determine if this is a company ID or person ID based on the format
+      const isCompanyId = /^\d+$/.test(organizationId) && organizationId.length > 6; // Company IDs are typically longer
+      const authorUrn = isCompanyId 
+        ? `urn:li:organization:${organizationId}`
+        : `urn:li:person:${organizationId}`;
+      
+      const postType = isCompanyId ? 'company' : 'personal';
+      
+      logger.info('LinkedIn API - Creating post with author:', { 
         authorUrn, 
         organizationId,
-        postType: 'company'
+        postType,
+        isCompanyId
       });
       
       // Prepare the post payload for Advertising API
