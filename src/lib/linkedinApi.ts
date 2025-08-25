@@ -17,6 +17,13 @@ export interface LinkedInProfile {
   profileUrl?: string;
 }
 
+export interface LinkedInOrganization {
+  id: string;
+  name: string;
+  logoUrl?: string;
+  websiteUrl?: string;
+}
+
 export class LinkedInAPI {
   private accessToken: string;
   private baseUrl = 'https://api.linkedin.com/v2';
@@ -57,13 +64,67 @@ export class LinkedInAPI {
   }
 
   /**
-   * Create a LinkedIn post
+   * Get user's LinkedIn organizations (company pages they can post to)
+   */
+  async getOrganizations(): Promise<LinkedInOrganization[]> {
+    try {
+      const response = await fetch(`${this.baseUrl}/organizationalEntityAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organizationalTarget~(id,name,logoV2(original~:playableStreams))))`, {
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch organizations: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const organizations: LinkedInOrganization[] = [];
+
+      if (data.elements) {
+        for (const element of data.elements) {
+          const org = element['organizationalTarget~'];
+          if (org) {
+            organizations.push({
+              id: org.id,
+              name: org.name,
+              logoUrl: org.logoV2?.['original~']?.elements?.[0]?.identifiers?.[0]?.identifier,
+              websiteUrl: `https://www.linkedin.com/company/${org.id}`,
+            });
+          }
+        }
+      }
+
+      return organizations;
+    } catch (error) {
+      logger.error('LinkedIn API - Get organizations error:', error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get the first available organization ID for posting
+   */
+  async getOrganizationId(): Promise<string> {
+    const organizations = await this.getOrganizations();
+    if (organizations.length === 0) {
+      throw new Error('No company pages found. You must be an admin of at least one company page to post.');
+    }
+    return organizations[0].id; // Use the first available organization
+  }
+
+  /**
+   * Create a LinkedIn post on behalf of a company page
    */
   async createPost(postData: LinkedInPostData): Promise<{ postId: string; response: any }> {
     try {
-      // Prepare the post payload
+      // Get organization ID for posting
+      const organizationId = await this.getOrganizationId();
+      
+      // Prepare the post payload for organization
       const payload = {
-        author: `urn:li:person:${await this.getPersonId()}`,
+        author: `urn:li:organization:${organizationId}`,
         lifecycleState: 'PUBLISHED',
         specificContent: {
           'com.linkedin.ugc.ShareContent': {
@@ -119,13 +180,7 @@ export class LinkedInAPI {
     }
   }
 
-  /**
-   * Get the current user's person ID
-   */
-  private async getPersonId(): Promise<string> {
-    const profile = await this.getProfile();
-    return profile.id;
-  }
+
 
   /**
    * Refresh access token using refresh token

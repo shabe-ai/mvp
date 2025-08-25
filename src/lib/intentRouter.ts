@@ -2528,7 +2528,8 @@ class LinkedInPostIntentHandler implements IntentHandler {
         platform: 'linkedin',
         scheduledAt: schedule ? this.parseScheduleTime(schedule) : undefined,
         visibility: 'public',
-        postType: 'text'
+        postType: 'text',
+        isCompanyPost: true // Indicate this is a company page post
       };
 
       const response = {

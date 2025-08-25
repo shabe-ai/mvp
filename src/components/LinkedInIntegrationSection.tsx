@@ -50,9 +50,9 @@ export default function LinkedInIntegrationSection() {
       <div className="bg-neutral-primary rounded-lg shadow-sm border border-neutral-secondary p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Integration</h3>
+            <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Company Page Integration</h3>
             <p className="text-sm text-text-secondary mt-1 font-body">
-              Connect your LinkedIn account to create and schedule posts
+              Connect your LinkedIn account to post on behalf of your company page
             </p>
           </div>
           <Badge variant="secondary">Not Connected</Badge>
@@ -61,7 +61,7 @@ export default function LinkedInIntegrationSection() {
         <div className="space-y-4">
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-sm text-blue-800 font-body">
-              Connect your LinkedIn account to enable AI-powered post creation and scheduling.
+              Connect your LinkedIn account to enable AI-powered company page post creation and scheduling.
             </p>
           </div>
           <Button
@@ -82,9 +82,9 @@ export default function LinkedInIntegrationSection() {
       <div className="bg-neutral-primary rounded-lg shadow-sm border border-neutral-secondary p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Integration</h3>
+            <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Company Page Integration</h3>
             <p className="text-sm text-text-secondary mt-1 font-body">
-              Connect your LinkedIn account to create and schedule posts
+              Connect your LinkedIn account to post on behalf of your company page
             </p>
           </div>
           <Badge variant="secondary">Loading...</Badge>
@@ -93,7 +93,7 @@ export default function LinkedInIntegrationSection() {
         <div className="space-y-4">
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-sm text-blue-800 font-body">
-              Loading LinkedIn integration status...
+              Loading LinkedIn company page integration status...
             </p>
           </div>
           <Button
@@ -161,9 +161,9 @@ export default function LinkedInIntegrationSection() {
     <div className="bg-neutral-primary rounded-lg shadow-sm border border-neutral-secondary p-6">
       <div className="flex items-center justify-between mb-4">
         <div>
-          <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Integration</h3>
+          <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Company Page Integration</h3>
           <p className="text-sm text-text-secondary mt-1 font-body">
-            Connect your LinkedIn account to create and schedule posts
+            Connect your LinkedIn account to post on behalf of your company page
           </p>
         </div>
         {getStatusBadge()}
@@ -173,7 +173,7 @@ export default function LinkedInIntegrationSection() {
         <div className="space-y-4">
           <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
             <p className="text-sm text-blue-800 font-body">
-              Connect your LinkedIn account to enable AI-powered post creation and scheduling.
+              Connect your LinkedIn account to enable AI-powered company page post creation and scheduling.
             </p>
           </div>
           <Button
@@ -198,7 +198,7 @@ export default function LinkedInIntegrationSection() {
         <div className="space-y-4">
           <div className="p-4 bg-green-50 border border-green-200 rounded-md">
             <p className="text-sm text-green-800 font-body">
-              Your LinkedIn account is connected. You can now create and schedule posts.
+              Your LinkedIn account is connected. You can now create and schedule posts on behalf of your company page.
             </p>
           </div>
           
