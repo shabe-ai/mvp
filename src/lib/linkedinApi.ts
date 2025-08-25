@@ -232,11 +232,30 @@ export class LinkedInAPI {
       }
       return organizations[0].id; // Use the first available organization
     } catch (error) {
-      // If organization fetching fails, fall back to personal posting
-      logger.warn('LinkedIn API - Organization fetching failed, falling back to personal posting:', error as Error);
+      // If organization fetching fails, throw error - we'll handle fallback in createPost
+      logger.warn('LinkedIn API - Organization fetching failed:', error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get person ID for personal posting
+   */
+  async getPersonId(): Promise<string> {
+    try {
+      // First, try to get person ID from the stored integration data
+      const integration = await this.getLinkedInIntegration();
+      if (integration?.linkedinPersonId) {
+        logger.info('LinkedIn API - Using stored person ID:', { personId: integration.linkedinPersonId });
+        return integration.linkedinPersonId;
+      }
+      
+      // Fallback: get from profile
       const profile = await this.getProfile();
-      logger.info('LinkedIn API - Falling back to personal posting with user ID:', { userId: profile.id });
-      return profile.id; // Return personal ID as fallback
+      return profile.id;
+    } catch (error) {
+      logger.error('LinkedIn API - Get person ID error:', error as Error);
+      throw error;
     }
   }
 
@@ -245,7 +264,8 @@ export class LinkedInAPI {
    */
   private async getLinkedInIntegration() {
     try {
-      const response = await fetch('/api/linkedin/integration', {
+      const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.shabe.ai';
+      const response = await fetch(`${baseUrl}/api/linkedin/integration`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -264,35 +284,40 @@ export class LinkedInAPI {
     }
   }
 
-  /**
-   * Get person ID for posting (temporary until org scope is approved)
-   */
-  private async getPersonId(): Promise<string> {
-    // First, try to get person ID from the stored integration data
-    const integration = await this.getLinkedInIntegration();
-    if (integration?.linkedinPersonId) {
-      logger.info('LinkedIn API - Using stored person ID:', { personId: integration.linkedinPersonId });
-      return integration.linkedinPersonId;
-    }
-    
-    // Fallback: get from profile
-    const profile = await this.getProfile();
-    return profile.id;
-  }
+
 
   /**
    * Create a LinkedIn post (personal profile only)
    */
   async createPost(postData: LinkedInPostData): Promise<{ postId: string; response: any }> {
     try {
-            // Get organization ID for company page posting
-      const organizationId = await this.getOrganizationId();
-      const authorUrn = `urn:li:organization:${organizationId}`;
-
-      logger.info('LinkedIn API - Creating company page post with author:', { 
-        authorUrn, 
-        organizationId
-      });
+            // Try to get organization ID for company page posting first
+      let authorUrn: string;
+      let postType: 'company' | 'personal';
+      
+      try {
+        const organizationId = await this.getOrganizationId();
+        authorUrn = `urn:li:organization:${organizationId}`;
+        postType = 'company';
+        
+        logger.info('LinkedIn API - Creating company page post with author:', { 
+          authorUrn, 
+          organizationId,
+          postType
+        });
+      } catch (error) {
+        // Fall back to personal posting
+        logger.warn('LinkedIn API - Falling back to personal posting:', error as Error);
+        const personId = await this.getPersonId();
+        authorUrn = `urn:li:person:${personId}`;
+        postType = 'personal';
+        
+        logger.info('LinkedIn API - Creating personal post with author:', { 
+          authorUrn, 
+          personId,
+          postType
+        });
+      }
       
       // Prepare the post payload
       const payload = {
