@@ -4,6 +4,10 @@ import { useUser } from '@clerk/nextjs';
 import ProfileManagement from '@/components/ProfileManagement';
 import LinkedInIntegrationSection from '@/components/LinkedInIntegrationSection';
 import GoogleWorkspaceIntegrationSection from '@/components/GoogleWorkspaceIntegrationSection';
+import MonitoringDashboard from '@/components/MonitoringDashboard';
+import AnalyticsDashboard from '@/components/AnalyticsDashboard';
+import RAGEvaluationDashboard from '@/components/RAGEvaluationDashboard';
+import TeamManagement from '@/components/TeamManagement';
 import ConvexProviderWrapper from '@/components/ConvexProvider';
 
 function AdminPageContent() {
@@ -40,15 +44,31 @@ function AdminPageContent() {
           {/* <LinkedInIntegrationSection /> */}
         </div>
 
+        {/* Monitoring and Analytics Sections */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+          <MonitoringDashboard />
+          <AnalyticsDashboard />
+        </div>
+
+        {/* RAG Evaluation Section */}
+        <div className="mb-8">
+          <RAGEvaluationDashboard />
+        </div>
+
+        {/* Team Management Section */}
+        <div className="mb-8">
+          <TeamManagement />
+        </div>
+
         {/* Regular User Message */}
         <div className="mt-8 p-6 bg-neutral-secondary/10 rounded-lg">
           <h3 className="text-lg font-medium text-text-primary mb-2 font-heading">Workspace Management</h3>
           <p className="text-text-secondary mb-4 font-body">
-            Use the sections above to manage your profile, company settings, and integrations.
+            Use the sections above to manage your profile, company settings, integrations, and monitor your platform usage.
           </p>
           <div className="bg-accent-primary/10 border border-accent-primary/20 rounded-lg p-4">
             <p className="text-sm text-text-primary font-body">
-              💡 <strong>Tip:</strong> Connect your Google Workspace and LinkedIn accounts to enable calendar events, email sending, and AI-powered post creation.
+              💡 <strong>Tip:</strong> Connect your Google Workspace and LinkedIn accounts to enable calendar events, email sending, and AI-powered post creation. Monitor your usage and costs in the analytics sections above.
             </p>
           </div>
         </div>
