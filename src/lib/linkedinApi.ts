@@ -267,66 +267,32 @@ export class LinkedInAPI {
   }
 
   /**
-   * Get the first available organization ID for posting
-   */
-  async getOrganizationId(): Promise<string> {
-    try {
-      // First, try to get organization ID from the stored integration data
-      const integration = await this.getLinkedInIntegration();
-      if (integration?.linkedinOrganizationId) {
-        logger.info('LinkedIn API - Using stored organization ID:', { 
-          organizationId: integration.linkedinOrganizationId,
-          organizationName: integration.linkedinOrganizationName
-        });
-        return integration.linkedinOrganizationId;
-      }
-      
-      // If no stored organization ID, try to fetch from LinkedIn API
-      try {
-        const organizations = await this.getOrganizations();
-        if (organizations.length === 0) {
-          throw new Error('No company pages found. You must be an admin of at least one company page to post on LinkedIn.');
-        }
-        return organizations[0].id; // Use the first available organization
-      } catch (orgError) {
-        logger.warn('LinkedIn API - Organization fetching failed, attempting personal posting fallback');
-        
-        // Try to get person ID for personal posting as fallback
-        try {
-          const personId = await this.getPersonId();
-          logger.info('LinkedIn API - Using personal posting fallback with person ID:', { personId });
-          return personId; // Return person ID for personal posting
-        } catch (personError) {
-          logger.error('LinkedIn API - Both organization and personal ID fetching failed:', personError as Error);
-          throw new Error(`LinkedIn posting failed: Unable to get organization or personal ID. Please ensure you have the correct LinkedIn API permissions.`);
-        }
-      }
-    } catch (error) {
-      logger.error('LinkedIn API - Organization fetching failed:', error as Error);
-      throw new Error(`LinkedIn posting failed: ${error instanceof Error ? error.message : 'Unknown error'}. Please ensure you have the correct LinkedIn API permissions.`);
-    }
-  }
-
-  /**
-   * Get person ID for personal posting
+   * Get the person ID for personal profile posting
    */
   async getPersonId(): Promise<string> {
     try {
       // First, try to get person ID from the stored integration data
       const integration = await this.getLinkedInIntegration();
       if (integration?.linkedinPersonId) {
-        logger.info('LinkedIn API - Using stored person ID:', { personId: integration.linkedinPersonId });
+        logger.info('LinkedIn API - Using stored person ID:', { 
+          personId: integration.linkedinPersonId
+        });
         return integration.linkedinPersonId;
       }
       
-      // Fallback: get from profile
+      // If no stored person ID, fetch from LinkedIn API
       const profile = await this.getProfile();
-      return profile.id;
+      const personId = profile.id;
+      
+      logger.info('LinkedIn API - Using fetched person ID:', { personId });
+      return personId;
     } catch (error) {
-      logger.error('LinkedIn API - Get person ID error:', error as Error);
-      throw error;
+      logger.error('LinkedIn API - Failed to get person ID:', error as Error);
+      throw new Error(`LinkedIn posting failed: Unable to get person ID. Please ensure you have the correct LinkedIn API permissions.`);
     }
   }
+
+
 
   /**
    * Get LinkedIn integration data from Convex
@@ -356,26 +322,18 @@ export class LinkedInAPI {
 
 
   /**
-   * Create a LinkedIn post (company page or personal profile)
+   * Create a LinkedIn post (personal profile only)
    */
   async createPost(postData: LinkedInPostData): Promise<{ postId: string; response: any }> {
     try {
-      // Get organization ID for company page posting - no fallback to personal
-      const organizationId = await this.getOrganizationId();
+      // Get person ID for personal profile posting
+      const personId = await this.getPersonId();
+      const authorUrn = `urn:li:person:${personId}`;
       
-      // Determine if this is a company ID or person ID based on the format
-      const isCompanyId = /^\d+$/.test(organizationId) && organizationId.length > 6; // Company IDs are typically longer
-      const authorUrn = isCompanyId 
-        ? `urn:li:organization:${organizationId}`
-        : `urn:li:person:${organizationId}`;
-      
-      const postType = isCompanyId ? 'company' : 'personal';
-      
-      logger.info('LinkedIn API - Creating post with author:', { 
+      logger.info('LinkedIn API - Creating personal post with author:', { 
         authorUrn, 
-        organizationId,
-        postType,
-        isCompanyId
+        personId,
+        postType: 'personal'
       });
       
       // Prepare the post payload for Advertising API

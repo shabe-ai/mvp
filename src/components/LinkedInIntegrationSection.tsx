@@ -50,9 +50,9 @@ export default function LinkedInIntegrationSection() {
       <div className="bg-neutral-primary rounded-lg shadow-sm border border-neutral-secondary p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Company Page Integration</h3>
+            <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Personal Profile Integration</h3>
             <p className="text-sm text-text-secondary mt-1 font-body">
-              Connect your LinkedIn account to post on behalf of your company page
+              Connect your LinkedIn account to post on your personal profile
             </p>
           </div>
           <Badge variant="secondary">Not Connected</Badge>
@@ -82,9 +82,9 @@ export default function LinkedInIntegrationSection() {
       <div className="bg-neutral-primary rounded-lg shadow-sm border border-neutral-secondary p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Company Page Integration</h3>
+            <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Personal Profile Integration</h3>
             <p className="text-sm text-text-secondary mt-1 font-body">
-              Connect your LinkedIn account to post on behalf of your company page
+              Connect your LinkedIn account to post on your personal profile
             </p>
           </div>
           <Badge variant="secondary">Loading...</Badge>

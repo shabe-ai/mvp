@@ -18,10 +18,10 @@ export async function GET(request: NextRequest) {
     }
 
     // LinkedIn OAuth scopes - must match exactly what's configured in LinkedIn app
-    const scopes = [
+        const scopes = [
       'openid',
-      'profile', 
-      'w_organization_social', // For company page posting
+      'profile',
+      'w_member_social', // For personal profile posting
       'email'
     ];
 

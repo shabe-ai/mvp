@@ -88,87 +88,9 @@ export async function GET(request: NextRequest) {
       linkedinPersonId = linkedinUserId;
     }
     
-    // Get user's organizations (company pages they can post to)
-    let linkedinOrganizationId = '';
-    let linkedinOrganizationName = '';
-    try {
-      console.log('Fetching LinkedIn organizations with token:', access_token.substring(0, 20) + '...');
-      
-      // Try multiple endpoints to find organizations
-      const endpoints = [
-        {
-          url: 'https://api.linkedin.com/rest/organizations',
-          headers: {
-            'Authorization': `Bearer ${access_token}`,
-            'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202505',
-          },
-          name: 'Advertising API organizations'
-        },
-        {
-          url: 'https://api.linkedin.com/rest/adAccounts',
-          headers: {
-            'Authorization': `Bearer ${access_token}`,
-            'X-Restli-Protocol-Version': '2.0.0',
-            'LinkedIn-Version': '202505',
-          },
-          name: 'Advertising API ad accounts'
-        },
-        {
-          url: 'https://api.linkedin.com/v2/organizationalEntityAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organizationalTarget~(id,name)))',
-          headers: {
-            'Authorization': `Bearer ${access_token}`,
-            'X-Restli-Protocol-Version': '2.0.0',
-          },
-          name: 'Legacy organizationalEntityAcls'
-        }
-      ];
-
-      for (const endpoint of endpoints) {
-        try {
-          console.log(`Trying ${endpoint.name} endpoint...`);
-          
-          const response = await fetch(endpoint.url, {
-            headers: endpoint.headers as Record<string, string>,
-          });
-          
-          console.log(`${endpoint.name} response status:`, response.status);
-          
-          if (response.ok) {
-            const data = await response.json();
-            console.log(`${endpoint.name} data:`, JSON.stringify(data, null, 2));
-            
-            if (data.elements && data.elements.length > 0) {
-              let firstOrg;
-              
-              if (endpoint.name.includes('Advertising API')) {
-                // Advertising API format
-                firstOrg = data.elements[0];
-              } else {
-                // Legacy API format
-                firstOrg = data.elements[0]['organizationalTarget~'];
-              }
-              
-              if (firstOrg && firstOrg.id) {
-                linkedinOrganizationId = firstOrg.id;
-                linkedinOrganizationName = firstOrg.name || firstOrg.displayName || 'Unknown Organization';
-                console.log(`LinkedIn organization found via ${endpoint.name}:`, { id: linkedinOrganizationId, name: linkedinOrganizationName });
-                break; // Found an organization, stop trying other endpoints
-              }
-            } else {
-              console.log(`No organizations found in ${endpoint.name} response`);
-            }
-          } else {
-            const errorText = await response.text();
-            console.log(`${endpoint.name} failed:`, response.status, errorText);
-          }
-        } catch (endpointError) {
-          console.log(`${endpoint.name} error:`, endpointError);
-        }
-      }
-    } catch (error) {
-      console.error('Could not fetch LinkedIn organizations:', error);
-    }
+    // For personal posting only, we don't need to fetch organizations
+    const linkedinOrganizationId = undefined;
+    const linkedinOrganizationName = undefined;
 
     // Get user's teams to find the team ID
     const teams = await convex.query(api.crm.getTeamsByUser, { userId: state });
