@@ -502,6 +502,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           message: response.message,
           type: response.type,
+          content: (response as any).content, // Add content for LinkedIn post previews
           eventPreview: (response as any).eventPreview, // Add eventPreview for calendar events
           emailDraft: response.emailDraft,
           chartSpec: response.chartSpec,
