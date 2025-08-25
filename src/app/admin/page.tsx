@@ -51,6 +51,16 @@ function LinkedInIntegrationWithErrorBoundary() {
   );
 }
 
+// Debug Dashboard Fallback Component
+function DebugDashboardFallback({ error, resetError }: { error?: Error; resetError: () => void }) {
+  return (
+    <div className="p-4 bg-red-50 border border-red-200 rounded-md">
+      <p className="text-sm text-red-800 font-body">❌ Debug Dashboard failed to load</p>
+      {error && <p className="text-xs text-red-600 mt-1">Error: {error.message}</p>}
+    </div>
+  );
+}
+
 function AdminPageContent() {
   const { user } = useUser();
 
@@ -107,7 +117,9 @@ function AdminPageContent() {
               🔍 Debug: Debug Dashboard should appear below this message
             </p>
           </div>
-          <DebugDashboard />
+          <ErrorBoundary fallback={DebugDashboardFallback}>
+            <DebugDashboard />
+          </ErrorBoundary>
         </div>
 
         {/* Regular User Message */}

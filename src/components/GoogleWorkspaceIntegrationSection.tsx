@@ -27,8 +27,14 @@ export default function GoogleWorkspaceIntegrationSection() {
         if (response.ok) {
           const data = await response.json();
           console.log('🔍 Token test results:', data);
-          const hasTokens = data.hasToken && data.tokenInfo?.hasAccessToken;
+          console.log('🔍 data.hasToken:', data.hasToken);
+          console.log('🔍 data.tokenInfo:', data.tokenInfo);
+          console.log('🔍 data.tokenInfo?.hasAccessToken:', data.tokenInfo?.hasAccessToken);
+          
+          // Fix: The API returns hasToken directly, not tokenInfo.hasAccessToken
+          const hasTokens = data.hasToken === true;
           console.log('🔍 Setting hasGoogleTokens to:', hasTokens);
+          console.log('🔍 Type of hasTokens:', typeof hasTokens);
           setHasGoogleTokens(hasTokens);
         } else {
           console.error('❌ Failed to check Google tokens:', response.status);
@@ -76,7 +82,7 @@ export default function GoogleWorkspaceIntegrationSection() {
       const response = await fetch('/api/test-token');
       if (response.ok) {
         const data = await response.json();
-        setHasGoogleTokens(data.hasToken && data.tokenInfo?.hasAccessToken);
+        setHasGoogleTokens(data.hasToken === true);
       }
     } catch (error) {
       console.error('Error disconnecting Google:', error);
@@ -93,7 +99,7 @@ export default function GoogleWorkspaceIntegrationSection() {
       const response = await fetch('/api/test-token');
       if (response.ok) {
         const data = await response.json();
-        setHasGoogleTokens(data.hasToken && data.tokenInfo?.hasAccessToken);
+        setHasGoogleTokens(data.hasToken === true);
       }
     } catch (error) {
       console.error('Error refreshing Google status:', error);
