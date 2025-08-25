@@ -48,11 +48,10 @@ export async function GET(request: NextRequest) {
     const tokenData = await tokenResponse.json();
     const { access_token, expires_in, refresh_token } = tokenData;
 
-    // Get user's LinkedIn profile information
-    const profileResponse = await fetch('https://api.linkedin.com/v2/me', {
+    // Get user's LinkedIn profile information using the correct API endpoint
+    const profileResponse = await fetch('https://api.linkedin.com/v2/userinfo', {
       headers: {
         'Authorization': `Bearer ${access_token}`,
-        'X-Restli-Protocol-Version': '2.0.0',
       },
     });
 
@@ -62,20 +61,12 @@ export async function GET(request: NextRequest) {
     }
 
     const profileData = await profileResponse.json();
+    console.log('LinkedIn profile data:', profileData);
 
-    // Get user's email address
-    const emailResponse = await fetch('https://api.linkedin.com/v2/emailAddress?q=members&projection=(elements*(handle~))', {
-      headers: {
-        'Authorization': `Bearer ${access_token}`,
-        'X-Restli-Protocol-Version': '2.0.0',
-      },
-    });
-
-    let linkedinEmail = '';
-    if (emailResponse.ok) {
-      const emailData = await emailResponse.json();
-      linkedinEmail = emailData.elements?.[0]?.['handle~']?.emailAddress || '';
-    }
+    // Extract email from the userinfo response (it's included in the userinfo endpoint)
+    const linkedinEmail = profileData.email || '';
+    const linkedinName = profileData.name || '';
+    const linkedinUserId = profileData.sub || profileData.id || '';
 
     // Get user's teams to find the team ID
     const teams = await convex.query(api.crm.getTeamsByUser, { userId: state });
@@ -92,10 +83,10 @@ export async function GET(request: NextRequest) {
       accessToken: access_token,
       refreshToken: refresh_token,
       expiresAt: Date.now() + (expires_in * 1000),
-      linkedinUserId: profileData.id,
+      linkedinUserId: linkedinUserId,
       linkedinEmail,
-      linkedinName: `${profileData.localizedFirstName} ${profileData.localizedLastName}`,
-      linkedinProfileUrl: `https://www.linkedin.com/in/${profileData.id}`,
+      linkedinName,
+      linkedinProfileUrl: `https://www.linkedin.com/in/${linkedinUserId}`,
     });
 
     return NextResponse.redirect('https://app.shabe.ai/admin?success=linkedin_connected');
