@@ -2553,21 +2553,9 @@ class LinkedInPostIntentHandler implements IntentHandler {
   }
 
   private async generateLinkedInPost(content: string, context: IntentRouterContext): Promise<string> {
-    // Use the AI to generate LinkedIn post content
-    const prompt = `Create a professional LinkedIn post about: ${content}
-
-Please make it:
-- Engaging and professional
-- Include relevant hashtags
-- Keep it under 1300 characters
-- Add value to the reader
-- Include a call-to-action if appropriate
-
-Format the response as just the post content, no additional text.`;
-
-    // Fix: Use proper URL construction for server-side requests
+    // Use the dedicated LinkedIn content generation endpoint
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.shabe.ai';
-    const apiUrl = `${baseUrl}/api/chat`;
+    const apiUrl = `${baseUrl}/api/linkedin/generate-content`;
 
     const response = await fetch(apiUrl, {
       method: 'POST',
@@ -2575,9 +2563,8 @@ Format the response as just the post content, no additional text.`;
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        message: prompt,
-        userId: context.userId,
-        isLinkedInPost: true
+        content: content,
+        userId: context.userId
       }),
     });
 
