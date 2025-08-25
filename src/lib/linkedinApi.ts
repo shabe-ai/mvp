@@ -383,6 +383,12 @@ export class LinkedInAPI {
         author: authorUrn,
         commentary: postData.content,
         visibility: postData.visibility.toUpperCase(),
+        distribution: {
+          linkedInDistributionTarget: {
+            visibleToGuest: true
+          }
+        },
+        lifecycleState: 'PUBLISHED',
         ...(postData.imageUrl && {
           media: {
             mediaType: 'IMAGE',
