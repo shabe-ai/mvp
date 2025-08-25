@@ -176,68 +176,90 @@ export class LinkedInAPI {
    */
   async getOrganizations(): Promise<LinkedInOrganization[]> {
     try {
-      // Try the Advertising API endpoint first (if available)
-      try {
-        const response = await fetch(`${this.advertisingApiUrl}/organizations`, {
+      // Try multiple endpoints to find organizations
+      const endpoints = [
+        {
+          url: `${this.advertisingApiUrl}/organizations`,
           headers: {
             'Authorization': `Bearer ${this.accessToken}`,
             'X-Restli-Protocol-Version': '2.0.0',
             'LinkedIn-Version': '202505',
           },
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const organizations: LinkedInOrganization[] = [];
-
-          if (data.elements) {
-            for (const org of data.elements) {
-              organizations.push({
-                id: org.id,
-                name: org.name,
-                logoUrl: org.logoUrl,
-                websiteUrl: `https://www.linkedin.com/company/${org.id}`,
-              });
-            }
-          }
-
-          logger.info('LinkedIn API - Found organizations via Advertising API:', organizations);
-          return organizations;
-        }
-      } catch (advertisingError) {
-        logger.warn('LinkedIn API - Advertising API organizations endpoint not available, trying legacy endpoint');
-      }
-
-      // Fallback to legacy endpoint
-      const response = await fetch(`${this.baseUrl}/organizationalEntityAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organizationalTarget~(id,name,logoV2(original~:playableStreams))))`, {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-          'X-Restli-Protocol-Version': '2.0.0',
+          name: 'Advertising API organizations'
         },
-      });
+        {
+          url: `${this.advertisingApiUrl}/adAccounts`,
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'X-Restli-Protocol-Version': '2.0.0',
+            'LinkedIn-Version': '202505',
+          },
+          name: 'Advertising API ad accounts'
+        },
+        {
+          url: `${this.baseUrl}/organizationalEntityAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organizationalTarget~(id,name,logoV2(original~:playableStreams))))`,
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+          name: 'Legacy organizationalEntityAcls'
+        }
+      ];
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch organizations: ${response.statusText}`);
-      }
+      for (const endpoint of endpoints) {
+        try {
+          logger.info(`LinkedIn API - Trying ${endpoint.name} endpoint`);
+          
+          const response = await fetch(endpoint.url, {
+            headers: endpoint.headers as Record<string, string>,
+          });
 
-      const data = await response.json();
-      const organizations: LinkedInOrganization[] = [];
+          logger.info(`LinkedIn API - ${endpoint.name} response status: ${response.status}`);
 
-      if (data.elements) {
-        for (const element of data.elements) {
-          const org = element['organizationalTarget~'];
-          if (org) {
-            organizations.push({
-              id: org.id,
-              name: org.name,
-              logoUrl: org.logoV2?.['original~']?.elements?.[0]?.identifiers?.[0]?.identifier,
-              websiteUrl: `https://www.linkedin.com/company/${org.id}`,
-            });
+          if (response.ok) {
+            const data = await response.json();
+            logger.info(`LinkedIn API - ${endpoint.name} response data: ${JSON.stringify(data, null, 2)}`);
+
+            const organizations: LinkedInOrganization[] = [];
+
+            if (data.elements && data.elements.length > 0) {
+              for (const element of data.elements) {
+                let org;
+                
+                if (endpoint.name.includes('Advertising API')) {
+                  // Advertising API format
+                  org = element;
+                } else {
+                  // Legacy API format
+                  org = element['organizationalTarget~'];
+                }
+
+                if (org && org.id) {
+                  organizations.push({
+                    id: org.id,
+                    name: org.name || org.displayName || 'Unknown Organization',
+                    logoUrl: org.logoUrl || org.logoV2?.['original~']?.elements?.[0]?.identifiers?.[0]?.identifier,
+                    websiteUrl: `https://www.linkedin.com/company/${org.id}`,
+                  });
+                }
+              }
+
+              if (organizations.length > 0) {
+                logger.info(`LinkedIn API - Found organizations via ${endpoint.name}: ${JSON.stringify(organizations)}`);
+                return organizations;
+              }
+            }
+          } else {
+            const errorText = await response.text();
+            logger.warn(`LinkedIn API - ${endpoint.name} failed: ${response.status} ${errorText}`);
           }
+        } catch (endpointError) {
+          logger.warn(`LinkedIn API - ${endpoint.name} error: ${endpointError}`);
         }
       }
 
-      return organizations;
+      // If all endpoints fail, throw a comprehensive error
+      throw new Error('All organization endpoints failed. Please ensure you have the correct LinkedIn API permissions and are an admin of at least one company page.');
     } catch (error) {
       logger.error('LinkedIn API - Get organizations error:', error as Error);
       throw error;
