@@ -152,6 +152,14 @@ export class LinkedInAPI {
         }
       }
       
+      // Log the full userinfo for debugging
+      logger.info('LinkedIn API - Full userinfo for debugging:', {
+        sub: userinfo.sub,
+        picture: userinfo.picture,
+        name: userinfo.name,
+        email: userinfo.email
+      });
+      
       // Last resort: try to use a common LinkedIn ID format
       // This is not ideal but might work for testing
       logger.warn('LinkedIn API - No numeric person ID found, using fallback ID');
@@ -238,7 +246,7 @@ export class LinkedInAPI {
     try {
       // Get person ID for personal posting
       const personId = await this.getPersonId();
-      const authorUrn = `urn:li:member:${personId}`;
+      const authorUrn = `urn:li:person:${personId}`; // Try urn:li:person format
       
       logger.info('LinkedIn API - Creating personal post with author:', { 
         authorUrn, 
