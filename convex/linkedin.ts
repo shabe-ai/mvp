@@ -20,12 +20,20 @@ export const createLinkedInIntegration = mutation({
   },
   handler: async (ctx, args) => {
     try {
+      console.log("Creating LinkedIn integration for user:", args.userId);
+      console.log("Team ID:", args.teamId);
+      console.log("LinkedIn User ID:", args.linkedinUserId);
+      console.log("LinkedIn Email:", args.linkedinEmail);
+      console.log("LinkedIn Name:", args.linkedinName);
+
       // Deactivate any existing integrations for this user
       const existingIntegrations = await ctx.db
         .query("linkedinIntegrations")
         .filter((q) => q.eq(q.field("userId"), args.userId))
         .filter((q) => q.eq(q.field("isActive"), true))
         .collect();
+
+      console.log("Found existing integrations:", existingIntegrations.length);
 
       for (const integration of existingIntegrations) {
         await ctx.db.patch(integration._id, {
@@ -35,7 +43,7 @@ export const createLinkedInIntegration = mutation({
       }
 
       // Create new integration
-      const integrationId = await ctx.db.insert("linkedinIntegrations", {
+      const integrationData = {
         userId: args.userId,
         teamId: args.teamId,
         accessToken: args.accessToken,
@@ -50,12 +58,23 @@ export const createLinkedInIntegration = mutation({
         isActive: true,
         createdAt: Date.now(),
         updatedAt: Date.now(),
-      });
+      };
+
+      console.log("Inserting integration data:", integrationData);
+
+      const integrationId = await ctx.db.insert("linkedinIntegrations", integrationData);
+
+      console.log("Successfully created LinkedIn integration with ID:", integrationId);
 
       return integrationId;
     } catch (error) {
       console.error("Error creating LinkedIn integration:", error);
-      throw new Error("Failed to create LinkedIn integration");
+      console.error("Error details:", {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        args: args
+      });
+      throw new Error(`Failed to create LinkedIn integration: ${error instanceof Error ? error.message : String(error)}`);
     }
   },
 });
