@@ -56,7 +56,8 @@ export async function GET(request: NextRequest) {
     console.log('🔗 Client ID:', process.env.GOOGLE_CLIENT_ID ? `${process.env.GOOGLE_CLIENT_ID.substring(0, 10)}...` : 'NOT_SET');
     console.log('🔗 Has Client Secret:', !!process.env.GOOGLE_CLIENT_SECRET);
 
-    return NextResponse.json({ authUrl });
+    // Redirect user directly to Google OAuth page
+    return NextResponse.redirect(authUrl);
 
   } catch (error) {
     console.error('❌ Error generating Google OAuth URL:', error);
