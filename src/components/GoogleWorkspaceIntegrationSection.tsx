@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,9 +10,32 @@ export default function GoogleWorkspaceIntegrationSection() {
   const { user } = useUser();
   const [isConnecting, setIsConnecting] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [hasGoogleTokens, setHasGoogleTokens] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Check if user has Google tokens (this would need to be implemented with your token storage)
-  const hasGoogleTokens = false; // This should be replaced with actual token check
+  // Check if user has Google tokens
+  useEffect(() => {
+    const checkGoogleTokens = async () => {
+      if (!user?.id) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch('/api/test-token');
+        if (response.ok) {
+          const data = await response.json();
+          setHasGoogleTokens(data.hasToken && data.tokenInfo?.hasAccessToken);
+        }
+      } catch (error) {
+        console.error('Error checking Google tokens:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkGoogleTokens();
+  }, [user?.id]);
 
   const handleConnectGoogle = async () => {
     setIsConnecting(true);
@@ -20,7 +43,6 @@ export default function GoogleWorkspaceIntegrationSection() {
       window.location.href = '/api/auth/google';
     } catch (error) {
       console.error('Error connecting Google:', error);
-    } finally {
       setIsConnecting(false);
     }
   };
@@ -32,6 +54,12 @@ export default function GoogleWorkspaceIntegrationSection() {
     try {
       // This would need to be implemented to clear Google tokens
       console.log('Disconnecting Google account...');
+      // For now, just refresh the token check
+      const response = await fetch('/api/test-token');
+      if (response.ok) {
+        const data = await response.json();
+        setHasGoogleTokens(data.hasToken && data.tokenInfo?.hasAccessToken);
+      }
     } catch (error) {
       console.error('Error disconnecting Google:', error);
     } finally {
@@ -39,7 +67,28 @@ export default function GoogleWorkspaceIntegrationSection() {
     }
   };
 
+  const handleRefreshStatus = async () => {
+    if (!user?.id) return;
+    
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/test-token');
+      if (response.ok) {
+        const data = await response.json();
+        setHasGoogleTokens(data.hasToken && data.tokenInfo?.hasAccessToken);
+      }
+    } catch (error) {
+      console.error('Error refreshing Google status:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getStatusBadge = () => {
+    if (isLoading) {
+      return <Badge variant="secondary">Checking...</Badge>;
+    }
+    
     if (!hasGoogleTokens) {
       return <Badge variant="secondary">Not Connected</Badge>;
     }
@@ -112,6 +161,15 @@ export default function GoogleWorkspaceIntegrationSection() {
 
           <div className="flex gap-2">
             <Button
+              onClick={handleRefreshStatus}
+              disabled={isLoading}
+              variant="outline"
+              className="font-button"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh Status
+            </Button>
+            <Button
               onClick={handleDisconnectGoogle}
               disabled={isDisconnecting}
               variant="outline"
@@ -128,15 +186,6 @@ export default function GoogleWorkspaceIntegrationSection() {
                   Disconnect
                 </>
               )}
-            </Button>
-            
-            <Button
-              onClick={handleConnectGoogle}
-              variant="outline"
-              className="font-button"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Reconnect
             </Button>
           </div>
         </div>
