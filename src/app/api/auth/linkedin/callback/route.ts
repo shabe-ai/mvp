@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { currentUser } from "@clerk/nextjs/server";
 import { ConvexHttpClient } from "convex/browser";
-import { api } from "../../../../../../convex/_generated/api";
+import { api } from "@/convex/_generated/api";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
 const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
-const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/linkedin/callback`;
+// Fix: Use the exact redirect URL that matches LinkedIn app configuration
+const REDIRECT_URI = 'https://app.shabe.ai/api/auth/linkedin/callback';
 
 export async function GET(request: NextRequest) {
   try {
@@ -16,11 +18,11 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       console.error('LinkedIn OAuth error:', error);
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin?error=linkedin_auth_failed`);
+      return NextResponse.redirect('https://app.shabe.ai/admin?error=linkedin_auth_failed');
     }
 
     if (!code || !state) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin?error=missing_params`);
+      return NextResponse.redirect('https://app.shabe.ai/admin?error=missing_params');
     }
 
     // Exchange authorization code for access token
@@ -40,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     if (!tokenResponse.ok) {
       console.error('LinkedIn token exchange failed:', await tokenResponse.text());
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin?error=token_exchange_failed`);
+      return NextResponse.redirect('https://app.shabe.ai/admin?error=token_exchange_failed');
     }
 
     const tokenData = await tokenResponse.json();
@@ -56,7 +58,7 @@ export async function GET(request: NextRequest) {
 
     if (!profileResponse.ok) {
       console.error('LinkedIn profile fetch failed:', await profileResponse.text());
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin?error=profile_fetch_failed`);
+      return NextResponse.redirect('https://app.shabe.ai/admin?error=profile_fetch_failed');
     }
 
     const profileData = await profileResponse.json();
@@ -80,7 +82,7 @@ export async function GET(request: NextRequest) {
     const teamId = teams?.[0]?._id;
 
     if (!teamId) {
-      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin?error=no_team_found`);
+      return NextResponse.redirect('https://app.shabe.ai/admin?error=no_team_found');
     }
 
     // Create LinkedIn integration in database
@@ -96,10 +98,10 @@ export async function GET(request: NextRequest) {
       linkedinProfileUrl: `https://www.linkedin.com/in/${profileData.id}`,
     });
 
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin?success=linkedin_connected`);
+    return NextResponse.redirect('https://app.shabe.ai/admin?success=linkedin_connected');
 
   } catch (error) {
     console.error('LinkedIn callback error:', error);
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/admin?error=callback_failed`);
+    return NextResponse.redirect('https://app.shabe.ai/admin?error=callback_failed');
   }
 }

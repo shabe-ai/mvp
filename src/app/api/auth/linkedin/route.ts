@@ -3,7 +3,8 @@ import { currentUser } from "@clerk/nextjs/server";
 
 const LINKEDIN_CLIENT_ID = process.env.LINKEDIN_CLIENT_ID;
 const LINKEDIN_CLIENT_SECRET = process.env.LINKEDIN_CLIENT_SECRET;
-const REDIRECT_URI = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/linkedin/callback`;
+// Fix: Use the exact redirect URL that matches LinkedIn app configuration
+const REDIRECT_URI = 'https://app.shabe.ai/api/auth/linkedin/callback';
 
 export async function GET(request: NextRequest) {
   try {
