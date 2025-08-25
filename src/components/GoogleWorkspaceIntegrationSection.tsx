@@ -22,19 +22,37 @@ export default function GoogleWorkspaceIntegrationSection() {
       }
 
       try {
+        console.log('🔍 Checking Google tokens for user:', user.id);
         const response = await fetch('/api/test-token');
         if (response.ok) {
           const data = await response.json();
-          setHasGoogleTokens(data.hasToken && data.tokenInfo?.hasAccessToken);
+          console.log('🔍 Token test results:', data);
+          const hasTokens = data.hasToken && data.tokenInfo?.hasAccessToken;
+          console.log('🔍 Setting hasGoogleTokens to:', hasTokens);
+          setHasGoogleTokens(hasTokens);
+        } else {
+          console.error('❌ Failed to check Google tokens:', response.status);
         }
       } catch (error) {
-        console.error('Error checking Google tokens:', error);
+        console.error('❌ Error checking Google tokens:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
     checkGoogleTokens();
+  }, [user?.id]);
+
+  // Add a refresh effect when the component mounts
+  useEffect(() => {
+    if (user?.id) {
+      // Force a refresh after a short delay to ensure we get the latest token status
+      const timer = setTimeout(() => {
+        handleRefreshStatus();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
   }, [user?.id]);
 
   const handleConnectGoogle = async () => {

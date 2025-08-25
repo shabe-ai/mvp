@@ -51,9 +51,17 @@ export default function DebugDashboard() {
   // Access control - only show to specific user
   const AUTHORIZED_USER_ID = 'user_30yNzzaqY36tW07nKprV52twdEQ';
   
+  // Add debugging to see what's happening
+  console.log('🔍 DebugDashboard: user =', user?.id);
+  console.log('🔍 DebugDashboard: AUTHORIZED_USER_ID =', AUTHORIZED_USER_ID);
+  console.log('🔍 DebugDashboard: should show =', user?.id === AUTHORIZED_USER_ID);
+  
   if (!user || user.id !== AUTHORIZED_USER_ID) {
+    console.log('🔍 DebugDashboard: Not showing - access denied');
     return null;
   }
+
+  console.log('🔍 DebugDashboard: Rendering component');
 
   const addDebugInfo = (info: DebugInfo) => {
     setDebugInfo(prev => [info, ...prev.slice(0, 49)]); // Keep last 50 entries
