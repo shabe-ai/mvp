@@ -27,6 +27,7 @@ export interface LinkedInOrganization {
 export class LinkedInAPI {
   private accessToken: string;
   private baseUrl = 'https://api.linkedin.com/v2';
+  private advertisingApiUrl = 'https://api.linkedin.com/rest';
 
   constructor(accessToken: string) {
     this.accessToken = accessToken;
@@ -314,41 +315,39 @@ export class LinkedInAPI {
         postType: 'company'
       });
       
-      // Prepare the post payload
+      // Prepare the post payload for Advertising API
       const payload = {
         author: authorUrn,
-        lifecycleState: 'PUBLISHED',
-        specificContent: {
-          'com.linkedin.ugc.ShareContent': {
-            shareCommentary: {
-              text: postData.content,
-            },
-            shareMediaCategory: postData.imageUrl ? 'IMAGE' : 'NONE',
-            ...(postData.imageUrl && {
-              media: [{
-                status: 'READY',
-                description: {
-                  text: postData.description || '',
-                },
-                media: postData.imageUrl,
-                title: {
-                  text: postData.title || '',
-                },
-              }],
-            }),
+        commentary: postData.content,
+        visibility: postData.visibility.toUpperCase(),
+        ...(postData.imageUrl && {
+          media: {
+            mediaType: 'IMAGE',
+            title: postData.title || '',
+            description: postData.description || '',
+            url: postData.imageUrl,
           },
-        },
-        visibility: {
-          'com.linkedin.ugc.MemberNetworkVisibility': postData.visibility.toUpperCase(),
-        },
+        }),
+        ...(postData.linkUrl && {
+          content: {
+            contentEntities: [{
+              entityLocation: postData.linkUrl,
+              thumbnails: [],
+            }],
+            title: postData.title || '',
+          },
+        }),
       };
 
-      const response = await fetch(`${this.baseUrl}/ugcPosts`, {
+      logger.info('LinkedIn API - Post payload:', payload);
+
+      const response = await fetch(`${this.advertisingApiUrl}/posts`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.accessToken}`,
           'Content-Type': 'application/json',
           'X-Restli-Protocol-Version': '2.0.0',
+          'LinkedIn-Version': '202505',
         },
         body: JSON.stringify(payload),
       });
@@ -362,8 +361,10 @@ export class LinkedInAPI {
 
       const result = await response.json();
       
+      logger.info('LinkedIn API - Post created successfully:', result);
+      
       return {
-        postId: result.id,
+        postId: result.id || result.postId,
         response: result,
       };
     } catch (error) {
