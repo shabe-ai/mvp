@@ -107,11 +107,21 @@ export class LinkedInAPI {
    * Get the first available organization ID for posting
    */
   async getOrganizationId(): Promise<string> {
-    const organizations = await this.getOrganizations();
-    if (organizations.length === 0) {
-      throw new Error('No company pages found. You must be an admin of at least one company page to post.');
+    try {
+      const organizations = await this.getOrganizations();
+      if (organizations.length === 0) {
+        throw new Error('No company pages found. You must be an admin of at least one company page to post.');
+      }
+      return organizations[0].id; // Use the first available organization
+    } catch (error) {
+      // If organization fetching fails, try to get from stored integration data
+      logger.warn('LinkedIn API - Organization fetching failed, trying fallback:', error as Error);
+      
+      // For now, fall back to personal posting until organization access is properly configured
+      const profile = await this.getProfile();
+      logger.info('LinkedIn API - Falling back to personal posting with user ID:', { userId: profile.id });
+      return profile.id; // Return personal ID as fallback
     }
-    return organizations[0].id; // Use the first available organization
   }
 
   /**
@@ -123,16 +133,26 @@ export class LinkedInAPI {
   }
 
   /**
-   * Create a LinkedIn post on behalf of a company page
+   * Create a LinkedIn post (company page or personal profile)
    */
   async createPost(postData: LinkedInPostData): Promise<{ postId: string; response: any }> {
     try {
-      // Get organization ID for posting
+      // Get organization ID for posting (with fallback to personal)
       const organizationId = await this.getOrganizationId();
       
-      // Prepare the post payload for organization
+      // Determine if this is a company page or personal profile
+      const isCompanyPage = organizationId.length > 10; // Company IDs are typically longer
+      const authorUrn = isCompanyPage ? `urn:li:organization:${organizationId}` : `urn:li:person:${organizationId}`;
+      
+      logger.info('LinkedIn API - Creating post with author:', { 
+        authorUrn, 
+        isCompanyPage, 
+        organizationId: organizationId.substring(0, 10) + '...' 
+      });
+      
+      // Prepare the post payload
       const payload = {
-        author: `urn:li:organization:${organizationId}`,
+        author: authorUrn,
         lifecycleState: 'PUBLISHED',
         specificContent: {
           'com.linkedin.ugc.ShareContent': {
