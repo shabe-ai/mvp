@@ -37,7 +37,30 @@ export class LinkedInAPI {
    */
   async getProfile(): Promise<LinkedInProfile> {
     try {
-      // Use the userinfo endpoint which works with our current scopes
+      // Try the /me endpoint first (requires r_liteprofile scope)
+      try {
+        const response = await fetch(`${this.baseUrl}/me`, {
+          headers: {
+            'Authorization': `Bearer ${this.accessToken}`,
+            'X-Restli-Protocol-Version': '2.0.0',
+          },
+        });
+
+        if (response.ok) {
+          const profile = await response.json();
+          return {
+            id: profile.id, // This is the correct LinkedIn person ID
+            firstName: profile.localizedFirstName || '',
+            lastName: profile.localizedLastName || '',
+            email: '', // Email not available from /me endpoint
+            profileUrl: `https://www.linkedin.com/in/${profile.id}`,
+          };
+        }
+      } catch (meError) {
+        logger.warn('LinkedIn API - /me endpoint failed, trying userinfo:', meError as Error);
+      }
+
+      // Fallback to userinfo endpoint
       const response = await fetch(`${this.baseUrl}/userinfo`, {
         headers: {
           'Authorization': `Bearer ${this.accessToken}`,
@@ -50,12 +73,16 @@ export class LinkedInAPI {
 
       const profile = await response.json();
       
+      // For userinfo, we need to extract the numeric ID from the sub field
+      // sub format is typically like "urn:li:person:123456789"
+      const personId = profile.sub?.replace('urn:li:person:', '') || profile.sub;
+      
       return {
-        id: profile.sub, // LinkedIn user ID
+        id: personId,
         firstName: profile.given_name || '',
         lastName: profile.family_name || '',
         email: profile.email || '',
-        profileUrl: `https://www.linkedin.com/in/${profile.sub}`,
+        profileUrl: `https://www.linkedin.com/in/${personId}`,
       };
     } catch (error) {
       logger.error('LinkedIn API - Get profile error:', error as Error);

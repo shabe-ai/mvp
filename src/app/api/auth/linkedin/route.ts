@@ -21,6 +21,7 @@ export async function GET(request: NextRequest) {
     const scopes = [
       'openid',
       'profile', 
+      'r_liteprofile', // Required for getting person ID
       'w_organization_social', // For posting on behalf of company pages
       'email'
     ];
