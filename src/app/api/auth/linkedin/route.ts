@@ -17,12 +17,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // LinkedIn OAuth scopes for posting and profile access
+    // LinkedIn OAuth scopes - must match exactly what's configured in LinkedIn app
     const scopes = [
-      'r_liteprofile',
-      'r_emailaddress',
+      'openid',
+      'profile', 
       'w_member_social',
-      'rw_organization_admin',
+      'email'
     ];
 
     const authUrl = new URL('https://www.linkedin.com/oauth/v2/authorization');
