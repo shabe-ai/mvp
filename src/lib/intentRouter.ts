@@ -2531,12 +2531,21 @@ class LinkedInPostIntentHandler implements IntentHandler {
         postType: 'text'
       };
 
-      return {
+      const response = {
         type: 'linkedin_post_preview',
         content: postPreview,
         hasData: true,
         needsConfirmation: true
       };
+      
+      logger.info('LinkedIn post preview response', {
+        responseType: response.type,
+        hasContent: !!response.content,
+        contentKeys: response.content ? Object.keys(response.content) : [],
+        userId: context.userId
+      });
+      
+      return response;
 
     } catch (error) {
       logger.error('Error handling LinkedIn post intent', error instanceof Error ? error : new Error(String(error)), {

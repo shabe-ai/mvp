@@ -316,10 +316,27 @@ export default function Chat({ onAction }: ChatProps = {}) {
       // Handle LinkedIn post preview
       if (data.type === 'linkedin_post_preview') {
         console.log('Setting LinkedIn post preview:', data.content);
-        setLinkedInPostPreview({
-          postPreview: data.content,
-          isVisible: true
-        });
+        console.log('Full data object:', data);
+        
+        // Ensure we have the correct structure
+        const postPreview = data.content || data.postPreview || data;
+        
+        if (postPreview && typeof postPreview === 'object') {
+          setLinkedInPostPreview({
+            postPreview: postPreview,
+            isVisible: true
+          });
+        } else {
+          console.error('Invalid LinkedIn post preview data:', postPreview);
+          // Fallback to error message
+          const errorMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: "I encountered an issue while creating your LinkedIn post preview. Please try again.",
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, errorMessage]);
+        }
       }
 
       const assistantMessage: Message = {
