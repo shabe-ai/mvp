@@ -8,6 +8,7 @@ import MonitoringDashboard from '@/components/MonitoringDashboard';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import RAGEvaluationDashboard from '@/components/RAGEvaluationDashboard';
 import TeamManagement from '@/components/TeamManagement';
+import DebugDashboard from '@/components/DebugDashboard';
 import ConvexProviderWrapper from '@/components/ConvexProvider';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
@@ -97,6 +98,11 @@ function AdminPageContent() {
         {/* Team Management Section */}
         <div className="mb-8">
           <TeamManagement />
+        </div>
+
+        {/* Debug Dashboard Section */}
+        <div className="mb-8">
+          <DebugDashboard />
         </div>
 
         {/* Regular User Message */}
