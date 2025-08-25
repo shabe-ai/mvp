@@ -280,13 +280,21 @@ export class LinkedInAPI {
         return integration.linkedinPersonId;
       }
       
-      // Fallback: use 'me' for personal posting (this was working before)
-      logger.info('LinkedIn API - Using fallback person ID: me');
-      return 'me';
+      // Get the actual person ID from LinkedIn profile
+      const profile = await this.getProfile();
+      
+      // Use the profile.id which contains the LinkedIn person ID
+      const personId = profile.id;
+      
+      logger.info('LinkedIn API - Using profile person ID:', { 
+        personId,
+        profileId: profile.id
+      });
+      
+      return personId;
     } catch (error) {
       logger.error('LinkedIn API - Failed to get person ID:', error as Error);
-      // Final fallback to 'me' which was working before
-      return 'me';
+      throw new Error(`LinkedIn posting failed: Unable to get person ID. Please ensure you have the correct LinkedIn API permissions.`);
     }
   }
 
@@ -327,11 +335,6 @@ export class LinkedInAPI {
       // Get person ID for personal profile posting
       const personId = await this.getPersonId();
       const authorUrn = `urn:li:person:${personId}`;
-      
-      // For personal posting, we can use 'me' which was working before
-      if (personId === 'me') {
-        logger.info('LinkedIn API - Using personal posting with "me" identifier');
-      }
       
       logger.info('LinkedIn API - Creating personal post with author:', { 
         authorUrn, 
