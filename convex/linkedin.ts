@@ -26,6 +26,13 @@ export const createLinkedInIntegration = mutation({
       console.log("LinkedIn User ID:", args.linkedinUserId);
       console.log("LinkedIn Email:", args.linkedinEmail);
       console.log("LinkedIn Name:", args.linkedinName);
+      console.log("Has Organization ID:", !!args.linkedinOrganizationId);
+      console.log("Has Organization Name:", !!args.linkedinOrganizationName);
+
+      // Validate required fields
+      if (!args.userId || !args.teamId || !args.accessToken || !args.linkedinUserId || !args.linkedinEmail || !args.linkedinName) {
+        throw new Error("Missing required fields for LinkedIn integration");
+      }
 
       // Deactivate any existing integrations for this user
       const existingIntegrations = await ctx.db
@@ -62,7 +69,18 @@ export const createLinkedInIntegration = mutation({
         updatedAt: Date.now(),
       };
 
-      console.log("Inserting integration data:", integrationData);
+      console.log("Inserting integration data:", {
+        userId: integrationData.userId,
+        teamId: integrationData.teamId,
+        linkedinUserId: integrationData.linkedinUserId,
+        linkedinEmail: integrationData.linkedinEmail,
+        linkedinName: integrationData.linkedinName,
+        hasAccessToken: !!integrationData.accessToken,
+        hasRefreshToken: !!integrationData.refreshToken,
+        hasOrganizationId: !!integrationData.linkedinOrganizationId,
+        hasOrganizationName: !!integrationData.linkedinOrganizationName,
+        expiresAt: integrationData.expiresAt
+      });
 
       const integrationId = await ctx.db.insert("linkedinIntegrations", integrationData);
 
@@ -74,7 +92,17 @@ export const createLinkedInIntegration = mutation({
       console.error("Error details:", {
         message: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
-        args: args
+        args: {
+          userId: args.userId,
+          teamId: args.teamId,
+          linkedinUserId: args.linkedinUserId,
+          linkedinEmail: args.linkedinEmail,
+          linkedinName: args.linkedinName,
+          hasAccessToken: !!args.accessToken,
+          hasRefreshToken: !!args.refreshToken,
+          hasOrganizationId: !!args.linkedinOrganizationId,
+          hasOrganizationName: !!args.linkedinOrganizationName
+        }
       });
       throw new Error(`Failed to create LinkedIn integration: ${error instanceof Error ? error.message : String(error)}`);
     }
