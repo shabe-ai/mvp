@@ -65,7 +65,7 @@ export class LinkedInAPI {
         profileUrl: `https://www.linkedin.com/in/${profile.id}`,
       };
     } catch (error) {
-      logger.error('LinkedIn API - Get profile error:', error);
+      logger.error('LinkedIn API - Get profile error:', error as Error);
       throw error;
     }
   }
@@ -116,12 +116,9 @@ export class LinkedInAPI {
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.error('LinkedIn API - Create post error:', {
-          status: response.status,
-          statusText: response.statusText,
-          error: errorText,
-        });
-        throw new Error(`Failed to create post: ${response.statusText} - ${errorText}`);
+        const error = new Error(`Failed to create post: ${response.statusText} - ${errorText}`);
+        logger.error('LinkedIn API - Create post error:', error);
+        throw error;
       }
 
       const result = await response.json();
@@ -131,7 +128,7 @@ export class LinkedInAPI {
         response: result,
       };
     } catch (error) {
-      logger.error('LinkedIn API - Create post error:', error);
+      logger.error('LinkedIn API - Create post error:', error as Error);
       throw error;
     }
   }
@@ -178,7 +175,7 @@ export class LinkedInAPI {
         refreshToken: data.refresh_token || refreshToken,
       };
     } catch (error) {
-      logger.error('LinkedIn API - Refresh token error:', error);
+      logger.error('LinkedIn API - Refresh token error:', error as Error);
       throw error;
     }
   }
@@ -197,7 +194,7 @@ export class LinkedInAPI {
 
       return response.ok;
     } catch (error) {
-      logger.error('LinkedIn API - Validate token error:', error);
+      logger.error('LinkedIn API - Validate token error:', error as Error);
       return false;
     }
   }
@@ -240,7 +237,7 @@ export class LinkedInAPI {
         shares: data.totalShareStatistics?.shareCount || 0,
       };
     } catch (error) {
-      logger.error('LinkedIn API - Get analytics error:', error);
+      logger.error('LinkedIn API - Get analytics error:', error as Error);
       return {
         views: 0,
         likes: 0,
