@@ -518,13 +518,13 @@ export default function Chat({ onAction }: ChatProps = {}) {
       }
 
       // Add success message
-      const successMessage: Message = {
-        id: Date.now().toString(),
-        role: "assistant",
+        const successMessage: Message = {
+          id: Date.now().toString(),
+          role: "assistant",
         content: `✅ Calendar event created successfully! ${result.message || ''}`,
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, successMessage]);
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, successMessage]);
       
       // Clear calendar preview
       setCalendarPreview(null);
@@ -660,7 +660,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
     try {
       logger.info('Chart export requested', { 
         format,
-        userId: user?.id 
+          userId: user?.id
       });
       
       // Find the chart element to export
@@ -737,12 +737,12 @@ export default function Chat({ onAction }: ChatProps = {}) {
 
       // Create download link
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+          const link = document.createElement('a');
       link.href = url;
-      link.download = `chart-${Date.now()}.${format}`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+          link.download = `chart-${Date.now()}.${format}`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
       logger.info('Chart exported successfully', { 
@@ -847,7 +847,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
 
         processedFiles.push({
           id: Date.now().toString() + Math.random(),
-          name: file.name,
+        name: file.name,
           content: content.substring(0, 1000) // Limit content size
         });
       } catch (error) {
@@ -1050,8 +1050,8 @@ export default function Chat({ onAction }: ChatProps = {}) {
                     {message.field && message.value && (
                       <div>Updated: {message.field} = {message.value}</div>
                     )}
+                    </div>
                   </div>
-                </div>
               )}
 
               {/* Partial Details for Clarification */}
@@ -1065,10 +1065,10 @@ export default function Chat({ onAction }: ChatProps = {}) {
                         <span className="font-medium">{value}</span>
                       </div>
                     ))}
-                  </div>
                 </div>
-              )}
-
+              </div>
+            )}
+            
               {/* Timestamp */}
               <div className="text-xs opacity-70 mt-1 font-body">
                 {message.timestamp.toLocaleTimeString()}
@@ -1101,8 +1101,8 @@ export default function Chat({ onAction }: ChatProps = {}) {
                   value={emailDraft.to}
                   onChange={(e) => setEmailDraft(prev => prev ? {...prev, to: e.target.value} : null)}
                   className="w-full p-2 border border-neutral-secondary rounded-md font-body"
-                />
-              </div>
+          />
+        </div>
               <div>
                 <label className="block text-sm font-medium mb-1 font-body text-text-primary">Subject:</label>
                 <input
@@ -1174,19 +1174,19 @@ export default function Chat({ onAction }: ChatProps = {}) {
             <Upload className="h-4 w-4" />
           </Button>
           
-          <Input
+        <Input
             placeholder="Type your message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            disabled={isLoading}
+          disabled={isLoading}
             className="font-body"
           />
           
           <Button type="submit" disabled={isLoading || !input.trim()} className="bg-accent-primary text-text-on-accent-primary hover:bg-accent-primary-hover">
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          </Button>
-        </form>
+        </Button>
+      </form>
       </div>
     </div>
   );

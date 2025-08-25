@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const scopes = [
       'openid',
       'profile', 
-      'w_organization_social', // For posting on behalf of company pages
+      'w_member_social', // For personal posting (temporary until org scope is approved)
       'email'
     ];
 
