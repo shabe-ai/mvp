@@ -215,16 +215,25 @@ export class LinkedInAPI {
    */
   async getOrganizationId(): Promise<string> {
     try {
+      // First, try to get organization ID from the stored integration data
+      const integration = await this.getLinkedInIntegration();
+      if (integration?.linkedinOrganizationId) {
+        logger.info('LinkedIn API - Using stored organization ID:', { 
+          organizationId: integration.linkedinOrganizationId,
+          organizationName: integration.linkedinOrganizationName
+        });
+        return integration.linkedinOrganizationId;
+      }
+      
+      // Fallback: try to fetch organizations from LinkedIn API
       const organizations = await this.getOrganizations();
       if (organizations.length === 0) {
         throw new Error('No company pages found. You must be an admin of at least one company page to post.');
       }
       return organizations[0].id; // Use the first available organization
     } catch (error) {
-      // If organization fetching fails, try to get from stored integration data
-      logger.warn('LinkedIn API - Organization fetching failed, trying fallback:', error as Error);
-      
-      // For now, fall back to personal posting until organization access is properly configured
+      // If organization fetching fails, fall back to personal posting
+      logger.warn('LinkedIn API - Organization fetching failed, falling back to personal posting:', error as Error);
       const profile = await this.getProfile();
       logger.info('LinkedIn API - Falling back to personal posting with user ID:', { userId: profile.id });
       return profile.id; // Return personal ID as fallback
@@ -232,9 +241,41 @@ export class LinkedInAPI {
   }
 
   /**
+   * Get LinkedIn integration data from Convex
+   */
+  private async getLinkedInIntegration() {
+    try {
+      const response = await fetch('/api/linkedin/integration', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return data.integration;
+      }
+      
+      return null;
+    } catch (error) {
+      logger.error('LinkedIn API - Get integration error:', error as Error);
+      return null;
+    }
+  }
+
+  /**
    * Get person ID for posting (temporary until org scope is approved)
    */
   private async getPersonId(): Promise<string> {
+    // First, try to get person ID from the stored integration data
+    const integration = await this.getLinkedInIntegration();
+    if (integration?.linkedinPersonId) {
+      logger.info('LinkedIn API - Using stored person ID:', { personId: integration.linkedinPersonId });
+      return integration.linkedinPersonId;
+    }
+    
+    // Fallback: get from profile
     const profile = await this.getProfile();
     return profile.id;
   }
@@ -244,13 +285,13 @@ export class LinkedInAPI {
    */
   async createPost(postData: LinkedInPostData): Promise<{ postId: string; response: any }> {
     try {
-      // Get person ID for personal posting
-      const personId = await this.getPersonId();
-      const authorUrn = `urn:li:person:${personId}`; // Try urn:li:person format
-      
-      logger.info('LinkedIn API - Creating personal post with author:', { 
+            // Get organization ID for company page posting
+      const organizationId = await this.getOrganizationId();
+      const authorUrn = `urn:li:organization:${organizationId}`;
+
+      logger.info('LinkedIn API - Creating company page post with author:', { 
         authorUrn, 
-        personId
+        organizationId
       });
       
       // Prepare the post payload

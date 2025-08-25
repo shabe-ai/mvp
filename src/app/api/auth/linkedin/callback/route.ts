@@ -67,6 +67,50 @@ export async function GET(request: NextRequest) {
     const linkedinEmail = profileData.email || '';
     const linkedinName = profileData.name || '';
     const linkedinUserId = profileData.sub || profileData.id || '';
+    
+    // Get the actual LinkedIn person ID from the profile
+    let linkedinPersonId = '';
+    try {
+      const personResponse = await fetch('https://api.linkedin.com/v2/me', {
+        headers: {
+          'Authorization': `Bearer ${access_token}`,
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      });
+      
+      if (personResponse.ok) {
+        const personData = await personResponse.json();
+        linkedinPersonId = personData.id;
+        console.log('LinkedIn person ID:', linkedinPersonId);
+      }
+    } catch (error) {
+      console.log('Could not fetch LinkedIn person ID, will use userinfo sub:', error);
+      linkedinPersonId = linkedinUserId;
+    }
+    
+    // Get user's organizations (company pages they can post to)
+    let linkedinOrganizationId = '';
+    let linkedinOrganizationName = '';
+    try {
+      const orgResponse = await fetch('https://api.linkedin.com/v2/organizationalEntityAcls?q=roleAssignee&role=ADMINISTRATOR&projection=(elements*(organizationalTarget~(id,name)))', {
+        headers: {
+          'Authorization': `Bearer ${access_token}`,
+          'X-Restli-Protocol-Version': '2.0.0',
+        },
+      });
+      
+      if (orgResponse.ok) {
+        const orgData = await orgResponse.json();
+        if (orgData.elements && orgData.elements.length > 0) {
+          const firstOrg = orgData.elements[0]['organizationalTarget~'];
+          linkedinOrganizationId = firstOrg.id;
+          linkedinOrganizationName = firstOrg.name;
+          console.log('LinkedIn organization:', { id: linkedinOrganizationId, name: linkedinOrganizationName });
+        }
+      }
+    } catch (error) {
+      console.log('Could not fetch LinkedIn organizations:', error);
+    }
 
     // Get user's teams to find the team ID
     const teams = await convex.query(api.crm.getTeamsByUser, { userId: state });
@@ -84,6 +128,9 @@ export async function GET(request: NextRequest) {
       refreshToken: refresh_token,
       expiresAt: Date.now() + (expires_in * 1000),
       linkedinUserId: linkedinUserId,
+      linkedinPersonId: linkedinPersonId,
+      linkedinOrganizationId: linkedinOrganizationId,
+      linkedinOrganizationName: linkedinOrganizationName,
       linkedinEmail,
       linkedinName,
       linkedinProfileUrl: `https://www.linkedin.com/in/${linkedinUserId}`,

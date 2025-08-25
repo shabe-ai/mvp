@@ -172,13 +172,14 @@ export default defineSchema({
     
     // LinkedIn account info
     linkedinUserId: v.string(),
+    linkedinPersonId: v.optional(v.string()),
     linkedinEmail: v.string(),
     linkedinName: v.string(),
     linkedinProfileUrl: v.optional(v.string()),
     
     // Organization info (for company posts)
-    organizationId: v.optional(v.string()),
-    organizationName: v.optional(v.string()),
+    linkedinOrganizationId: v.optional(v.string()),
+    linkedinOrganizationName: v.optional(v.string()),
     
     // Integration status
     isActive: v.boolean(),
