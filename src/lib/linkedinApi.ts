@@ -348,9 +348,7 @@ export class LinkedInAPI {
         commentary: postData.content,
         visibility: postData.visibility.toUpperCase(),
         distribution: {
-          linkedInDistributionTarget: {
-            visibleToGuest: true
-          }
+          feedDistribution: 'MAIN_FEED'
         },
         lifecycleState: 'PUBLISHED',
         ...(postData.imageUrl && {
