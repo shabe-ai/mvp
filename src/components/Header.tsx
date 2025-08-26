@@ -32,6 +32,9 @@ export default function Header() {
                 <Link href="/admin" className="text-text-secondary hover:text-text-primary px-4 py-2 text-sm font-medium transition-colors font-body">
                   Admin
                 </Link>
+                <Link href="/campaign-manager" className="text-text-secondary hover:text-text-primary px-4 py-2 text-sm font-medium transition-colors font-body">
+                  Campaign Manager
+                </Link>
                 <SimpleTourButton />
                 <UserButton />
               </div>
