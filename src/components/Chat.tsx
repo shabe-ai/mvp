@@ -1091,8 +1091,8 @@ export default function Chat({ onAction }: ChatProps = {}) {
 
       {/* Email Draft Modal */}
       {emailDraft && (
-        <div className="fixed inset-0 bg-bg-overlay/50 flex items-center justify-center z-50">
-          <div className="bg-neutral-primary rounded-lg p-6 max-w-2xl w-full mx-4 border border-neutral-secondary">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+          <div className="bg-neutral-primary rounded-lg p-6 max-w-2xl w-full mx-4 border border-neutral-secondary shadow-xl">
             <h3 className="text-lg font-semibold mb-4 font-heading text-text-primary">Email Preview</h3>
             <div className="space-y-4">
               <div>

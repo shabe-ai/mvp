@@ -128,14 +128,14 @@ class ChartIntentHandler implements IntentHandler {
         chartSpec,
         hasData: true
       };
-
+      
     } catch (error) {
       logger.error('Error handling chart intent', error instanceof Error ? error : new Error(String(error)), {
         intent: intent.action,
         userId: context.userId
       });
-
-      return {
+    
+    return {
         type: 'text',
         content: 'I encountered an error while creating your chart. Please try again.',
         hasData: false
@@ -164,7 +164,7 @@ class ChartIntentHandler implements IntentHandler {
         operation: 'chart_generation',
         model: 'gpt-4'
       });
-
+      
       return {
         type: chartType,
         dataType,
@@ -221,7 +221,7 @@ class DataIntentHandler implements IntentHandler {
         company,
         hasData: true
       };
-
+      
     } catch (error) {
       logger.error('Error handling data intent', error instanceof Error ? error : new Error(String(error)), {
         intent: intent.action,
@@ -261,7 +261,7 @@ class CrudIntentHandler implements IntentHandler {
       // would need to be implemented based on the dataType
       result = { success: true, message: `${intent.action} operation completed` };
       
-      return {
+    return {
         type: 'crud_result',
         result,
         action: intent.action,
@@ -273,7 +273,7 @@ class CrudIntentHandler implements IntentHandler {
         intent: intent.action,
         userId: context.userId
       });
-
+      
       return {
         type: 'text',
         content: 'I encountered an error while processing your request. Please try again.',
@@ -311,7 +311,7 @@ class EmailIntentHandler implements IntentHandler {
         },
         hasData: true
       };
-
+      
     } catch (error) {
       logger.error('Error handling email intent', error instanceof Error ? error : new Error(String(error)), {
         intent: intent.action,
@@ -390,14 +390,14 @@ class CalendarIntentHandler implements IntentHandler {
         eventDetails,
         hasData: true
       };
-
+      
     } catch (error) {
       logger.error('Error handling calendar intent', error instanceof Error ? error : new Error(String(error)), {
         intent: intent.action,
         userId: context.userId
       });
 
-      return {
+        return {
         type: 'text',
         content: 'I encountered an error while creating your calendar event. Please try again.',
         hasData: false
@@ -427,7 +427,7 @@ class CalendarIntentHandler implements IntentHandler {
         model: 'gpt-4'
       });
 
-      return {
+        return {
         attendee,
         date,
         time,
@@ -464,19 +464,19 @@ class AnalysisIntentHandler implements IntentHandler {
       // Perform data analysis
       const analysis = await this.performAnalysis(dataType, dimension, context);
       
-      return {
+        return {
         type: 'analysis',
         analysis,
         hasData: true
       };
-
+      
     } catch (error) {
       logger.error('Error handling analysis intent', error instanceof Error ? error : new Error(String(error)), {
         intent: intent.action,
         userId: context.userId
       });
-
-      return {
+          
+          return {
         type: 'text',
         content: 'I encountered an error while analyzing your data. Please try again.',
         hasData: false
@@ -506,7 +506,7 @@ class AnalysisIntentHandler implements IntentHandler {
         model: 'gpt-4'
       });
 
-      return {
+        return {
         dataType,
         dimension,
         insights: response.choices[0]?.message?.content || 'No insights available'
@@ -552,12 +552,12 @@ class ProfileIntentHandler implements IntentHandler {
       
       const content = this.formatProfileResponse(profileData, query, profileType);
       
-      return {
+        return {
         type: 'text',
         content,
         hasData: true
       };
-
+      
     } catch (error) {
       logger.error('Error handling profile intent', error instanceof Error ? error : new Error(String(error)), {
         intent: intent.action,
@@ -674,7 +674,7 @@ class LinkedInPostIntentHandler implements IntentHandler {
       });
       
       return response;
-
+      
     } catch (error) {
       logger.error('Error handling LinkedIn post intent', error instanceof Error ? error : new Error(String(error)), {
         intent: intent.action,
@@ -778,7 +778,7 @@ class BlogPostIntentHandler implements IntentHandler {
       });
       
       return response;
-
+      
     } catch (error) {
       logger.error('Error handling blog post intent', error instanceof Error ? error : new Error(String(error)), {
         intent: intent.action,

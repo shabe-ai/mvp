@@ -323,7 +323,7 @@ export async function POST(request: NextRequest) {
         }, { status: 401 });
       }
     }
-
+    
     return NextResponse.json(
       { error: 'Failed to create calendar event', message: 'Please try again or contact support.' },
       { status: 500 }
