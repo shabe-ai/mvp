@@ -213,13 +213,23 @@ class DataIntentHandler implements IntentHandler {
         data = await convex.query(api.crm.getActivitiesByTeam, { teamId: context.userId });
       }
       
+      // Create a user-friendly message based on the query type
+      let message = '';
+      if (query === 'count') {
+        message = `You have ${data.length} ${dataType}.`;
+      } else {
+        message = `Here are your ${dataType}:`;
+      }
+      
       return {
         type: 'data',
         data,
         dataType,
         query,
         company,
-        hasData: true
+        hasData: true,
+        content: message, // Add content field for conversational handler
+        message: message  // Add message field for compatibility
       };
       
     } catch (error) {
