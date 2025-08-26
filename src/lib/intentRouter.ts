@@ -345,13 +345,24 @@ class EmailIntentHandler implements IntentHandler {
     try {
       const { recipient, content_type, context: emailContext } = intent.entities;
       
+      // Try to find the contact's email address
+      const emailAddress = await this.findContactEmail(recipient, context.userId);
+      
+      if (!emailAddress) {
+        return {
+          type: 'text',
+          content: `I couldn't find an email address for "${recipient}". Please provide their email address so I can send the email.`,
+          hasData: false
+        };
+      }
+      
       // Generate email content
       const emailContent = await this.generateEmailContent(recipient, content_type, emailContext, context);
       
       return {
         type: 'email_draft',
         emailDraft: {
-          to: recipient,
+          to: emailAddress,
           subject: emailContent.subject,
           content: emailContent.body
         },
@@ -369,6 +380,36 @@ class EmailIntentHandler implements IntentHandler {
         content: 'I encountered an error while creating your email. Please try again.',
         hasData: false
       };
+    }
+  }
+
+  private async findContactEmail(recipientName: string, userId: string): Promise<string | null> {
+    try {
+      const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+      
+      // Get user's team ID
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId });
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      
+      // Find the contact by name
+      const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+      const contact = contacts.find((c: any) => {
+        const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
+        const searchName = recipientName.toLowerCase();
+        
+        return fullName.includes(searchName) || 
+               searchName.includes(fullName) ||
+               fullName.split(' ').some((part: string) => searchName.includes(part)) ||
+               searchName.split(' ').some((part: string) => fullName.includes(part));
+      });
+      
+      return contact?.email || null;
+    } catch (error) {
+      logger.error('Error finding contact email', error instanceof Error ? error : new Error(String(error)), {
+        recipientName,
+        userId
+      });
+      return null;
     }
   }
 

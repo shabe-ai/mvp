@@ -94,6 +94,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
     content: string;
   }>>([]);
   const [conversationContext, setConversationContext] = useState<any>(null);
+  const [pendingEmailRecipient, setPendingEmailRecipient] = useState<string | null>(null);
 
   // Auto-create team for new users
   const checkAndCreateDefaultTeam = useCallback(async () => {
