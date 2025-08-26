@@ -800,10 +800,7 @@ class BlogPostIntentHandler implements IntentHandler {
         messages: [
           {
             role: "system",
-            content: `You are a professional blog writer. Write the COMPLETE blog post content, not an outline or summary.
-
-IMPORTANT: Write the actual blog post content that readers would see, not an outline or structure. Do not say things like "Please note that the content needs to be written by you" or "This outline should provide a good starting point."
-
+            content: `You are a professional blog writer. Create engaging, informative blog posts that are well-structured and professional. 
             
             Focus on creating content that:
             - Is engaging and informative
@@ -819,11 +816,11 @@ IMPORTANT: Write the actual blog post content that readers would see, not an out
           },
           {
             role: "user",
-            content: `Write a complete blog post about: ${content}`
+            content: `Create a blog post about: ${content}`
           }
         ],
         temperature: 0.7,
-        max_tokens: 1500
+        max_tokens: 1000
       }, {
         userId: context.userId,
         operation: 'blog_post_generation',
