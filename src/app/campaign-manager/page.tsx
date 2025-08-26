@@ -203,28 +203,28 @@ export default function CampaignManagerPage() {
     trendValue?: string;
     subtitle?: string;
   }) => (
-    <Card className="bg-white">
-      <CardContent className="p-4">
+    <Card className="bg-white border-gray-300 shadow-sm">
+      <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-600">{title}</p>
-            <p className="text-2xl font-bold text-gray-900">{value}</p>
-            {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+            <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">{title}</p>
+            <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
+            {subtitle && <p className="text-xs text-gray-500 font-medium mt-1">{subtitle}</p>}
             {trend && (
-              <div className="flex items-center mt-1">
+              <div className="flex items-center mt-2">
                 {trend === 'up' ? (
-                  <ArrowUpRight className="h-3 w-3 text-green-500" />
+                  <ArrowUpRight className="h-4 w-4 text-green-600" />
                 ) : (
-                  <ArrowDownRight className="h-3 w-3 text-red-500" />
+                  <ArrowDownRight className="h-4 w-4 text-red-600" />
                 )}
-                <span className={`text-xs ml-1 ${trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                <span className={`text-sm ml-1 font-semibold ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
                   {trendValue}
                 </span>
               </div>
             )}
           </div>
-          <div className={`p-2 rounded-lg ${color}`}>
-            <Icon className="h-6 w-6 text-white" />
+          <div className={`p-3 rounded-lg ${color}`}>
+            <Icon className="h-8 w-8 text-white" />
           </div>
         </div>
       </CardContent>
@@ -232,9 +232,9 @@ export default function CampaignManagerPage() {
   );
 
   const ChartCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <Card className="bg-white">
+    <Card className="bg-white border-gray-300 shadow-sm">
       <CardHeader>
-        <CardTitle className="text-lg font-semibold">{title}</CardTitle>
+        <CardTitle className="text-xl font-bold text-gray-900 uppercase tracking-wide">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         {children}
@@ -246,21 +246,28 @@ export default function CampaignManagerPage() {
     <div className="min-h-screen bg-gray-50">
       <div className="flex">
         {/* Sidebar */}
-        <div className="w-80 bg-white border-r border-gray-200 min-h-screen">
+        <div className="w-80 bg-white border-r border-gray-300 min-h-screen shadow-sm">
           <div className="p-6">
             <div className="mb-8">
-              <h1 className="text-xl font-bold text-gray-900">Campaign Manager</h1>
-              <p className="text-sm text-gray-600 mt-1">AI-powered marketing campaigns</p>
+              <div className="flex items-center mb-4">
+                <img 
+                  src="/Fime.png" 
+                  alt="Shabe AI Logo" 
+                  className="h-8 w-auto mr-3"
+                />
+              </div>
+              <h1 className="text-xl font-bold text-gray-900 uppercase tracking-wide">Campaign Manager</h1>
+              <p className="text-sm text-gray-600 mt-1 font-medium">AI-powered marketing campaigns</p>
             </div>
 
             {/* Navigation */}
             <nav className="space-y-2 mb-8">
               <button
                 onClick={() => setActiveSection('overview')}
-                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                className={`w-full flex items-center px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${
                   activeSection === 'overview'
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-gray-900 text-white border border-gray-900'
+                    : 'text-gray-800 hover:bg-gray-100 border border-transparent'
                 }`}
               >
                 <BarChart3 className="h-4 w-4 mr-3" />
@@ -268,10 +275,10 @@ export default function CampaignManagerPage() {
               </button>
               <button
                 onClick={() => setActiveSection('campaign-agent')}
-                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                className={`w-full flex items-center px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${
                   activeSection === 'campaign-agent'
-                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                    : 'text-gray-700 hover:bg-gray-50'
+                    ? 'bg-gray-900 text-white border border-gray-900'
+                    : 'text-gray-800 hover:bg-gray-100 border border-transparent'
                 }`}
               >
                 <Bot className="h-4 w-4 mr-3" />
@@ -281,19 +288,19 @@ export default function CampaignManagerPage() {
 
             {/* Quick Stats */}
             <div className="space-y-3">
-              <h3 className="text-sm font-semibold text-gray-900">Quick Stats</h3>
+              <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide">Quick Stats</h3>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Active Campaigns</span>
-                  <span className="font-medium">3</span>
+                  <span className="text-gray-600 font-medium">Active Campaigns</span>
+                  <span className="font-bold text-gray-900">3</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Assets Created</span>
-                  <span className="font-medium">{generatedAssets.length}</span>
+                  <span className="text-gray-600 font-medium">Assets Created</span>
+                  <span className="font-bold text-gray-900">{generatedAssets.length}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Published Today</span>
-                  <span className="font-medium">2</span>
+                  <span className="text-gray-600 font-medium">Published Today</span>
+                  <span className="font-bold text-gray-900">2</span>
                 </div>
               </div>
             </div>
@@ -301,12 +308,12 @@ export default function CampaignManagerPage() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 p-6">
+        <div className="flex-1 p-8 bg-gray-50">
           {activeSection === 'overview' && (
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Campaign Overview</h2>
-                <p className="text-gray-600">Monitor your campaign performance and key metrics</p>
+                <h2 className="text-3xl font-bold text-gray-900 mb-3 uppercase tracking-wide">Campaign Overview</h2>
+                <p className="text-gray-700 font-medium">Monitor your campaign performance and key metrics</p>
               </div>
 
               {/* Key Metrics Grid */}
@@ -420,22 +427,22 @@ export default function CampaignManagerPage() {
 
               {/* Performance Summary */}
               <ChartCard title="Performance Summary">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{metrics.totalLikes.toLocaleString()}</div>
-                    <div className="text-sm text-gray-600">Total Likes</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  <div className="text-center p-6 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-3xl font-bold text-gray-900">{metrics.totalLikes.toLocaleString()}</div>
+                    <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide mt-2">Total Likes</div>
                   </div>
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{metrics.totalComments.toLocaleString()}</div>
-                    <div className="text-sm text-gray-600">Comments</div>
+                  <div className="text-center p-6 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-3xl font-bold text-gray-900">{metrics.totalComments.toLocaleString()}</div>
+                    <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide mt-2">Comments</div>
                   </div>
-                  <div className="text-center p-4 bg-purple-50 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600">{metrics.totalShares.toLocaleString()}</div>
-                    <div className="text-sm text-gray-600">Shares</div>
+                  <div className="text-center p-6 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-3xl font-bold text-gray-900">{metrics.totalShares.toLocaleString()}</div>
+                    <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide mt-2">Shares</div>
                   </div>
-                  <div className="text-center p-4 bg-orange-50 rounded-lg">
-                    <div className="text-2xl font-bold text-orange-600">{metrics.totalClicks.toLocaleString()}</div>
-                    <div className="text-sm text-gray-600">Clicks</div>
+                  <div className="text-center p-6 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="text-3xl font-bold text-gray-900">{metrics.totalClicks.toLocaleString()}</div>
+                    <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide mt-2">Clicks</div>
                   </div>
                 </div>
               </ChartCard>
@@ -443,17 +450,17 @@ export default function CampaignManagerPage() {
           )}
 
           {activeSection === 'campaign-agent' && (
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Campaign Agent</h2>
-                <p className="text-gray-600">Generate and manage your campaign assets with AI</p>
+                <h2 className="text-3xl font-bold text-gray-900 mb-3 uppercase tracking-wide">Campaign Agent</h2>
+                <p className="text-gray-700 font-medium">Generate and manage your campaign assets with AI</p>
               </div>
 
               {/* Asset Generator */}
-              <Card>
+              <Card className="bg-white border-gray-300 shadow-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Zap className="h-5 w-5" />
+                  <CardTitle className="flex items-center gap-3 text-xl font-bold text-gray-900 uppercase tracking-wide">
+                    <Zap className="h-6 w-6 text-gray-900" />
                     Generate Campaign Assets
                   </CardTitle>
                 </CardHeader>
@@ -490,7 +497,7 @@ export default function CampaignManagerPage() {
                   <Button 
                     onClick={generateAssets}
                     disabled={isGenerating || selectedAssets.length === 0 || !campaignTopic.trim()}
-                    className="w-full"
+                    className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 text-base"
                   >
                     {isGenerating ? (
                       <>
@@ -509,21 +516,21 @@ export default function CampaignManagerPage() {
 
               {/* Generated Assets Display */}
               {generatedAssets.length > 0 && (
-                <Card>
+                <Card className="bg-white border-gray-300 shadow-sm">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Target className="h-5 w-5" />
+                    <CardTitle className="flex items-center gap-3 text-xl font-bold text-gray-900 uppercase tracking-wide">
+                      <Target className="h-6 w-6 text-gray-900" />
                       Generated Campaign Assets
                     </CardTitle>
-                    <div className="text-sm text-gray-600 mt-2">
+                    <div className="text-sm text-gray-700 mt-3 font-medium">
                       💡 Publishing is currently available for LinkedIn posts only. Other platforms coming soon!
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       {generatedAssets.map((asset) => (
-                        <div key={asset.id} className="border rounded-lg p-4 bg-white">
-                          <div className="flex items-center justify-between mb-3">
+                        <div key={asset.id} className="border border-gray-300 rounded-lg p-6 bg-white shadow-sm">
+                          <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
                               <Badge variant={asset.status === 'published' ? 'default' : 'secondary'}>
                                 {asset.status}
@@ -552,12 +559,13 @@ export default function CampaignManagerPage() {
                                     <Edit3 className="h-4 w-4 mr-1" />
                                     Edit
                                   </Button>
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => publishAsset(asset.id)}
-                                    variant={asset.type === 'linkedin_post' ? 'default' : 'outline'}
-                                    disabled={asset.type !== 'linkedin_post'}
-                                  >
+                                                                  <Button 
+                                  size="sm" 
+                                  onClick={() => publishAsset(asset.id)}
+                                  variant={asset.type === 'linkedin_post' ? 'default' : 'outline'}
+                                  disabled={asset.type !== 'linkedin_post'}
+                                  className={asset.type === 'linkedin_post' ? 'bg-gray-900 hover:bg-gray-800 text-white font-semibold' : 'border-gray-300 text-gray-700 font-semibold hover:bg-gray-50'}
+                                >
                                     <Send className="h-4 w-4 mr-1" />
                                     {asset.type === 'linkedin_post' ? 'Publish' : 'Coming Soon'}
                                   </Button>
@@ -602,25 +610,25 @@ export default function CampaignManagerPage() {
                             )
                           ) : (
                             asset.type === 'image' ? (
-                              <div className="space-y-3">
-                                <div className="bg-gray-50 p-3 rounded border">
-                                  <p className="text-sm text-gray-700 mb-2"><strong>Description:</strong></p>
-                                  <p className="text-sm">{asset.content}</p>
+                              <div className="space-y-4">
+                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                  <p className="text-sm font-semibold text-gray-800 mb-2 uppercase tracking-wide">Description:</p>
+                                  <p className="text-sm font-medium text-gray-700">{asset.content}</p>
                                 </div>
                                 {asset.imageUrl && (
-                                  <div className="bg-gray-50 p-3 rounded border">
-                                    <p className="text-sm text-gray-700 mb-2"><strong>Generated Image:</strong></p>
+                                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                    <p className="text-sm font-semibold text-gray-800 mb-3 uppercase tracking-wide">Generated Image:</p>
                                     <img 
                                       src={asset.imageUrl} 
                                       alt="Generated" 
-                                      className="max-w-full h-auto rounded-lg border"
+                                      className="max-w-full h-auto rounded-lg border border-gray-300 shadow-sm"
                                     />
                                   </div>
                                 )}
                               </div>
                             ) : (
-                              <div className="bg-gray-50 p-3 rounded border">
-                                <pre className="whitespace-pre-wrap text-sm">{asset.content}</pre>
+                              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                <pre className="whitespace-pre-wrap text-sm font-medium text-gray-800">{asset.content}</pre>
                               </div>
                             )
                           )}
