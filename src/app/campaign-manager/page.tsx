@@ -139,6 +139,19 @@ export default function CampaignManagerPage() {
   };
 
   const publishAsset = (assetId: string) => {
+    const asset = generatedAssets.find(a => a.id === assetId);
+    
+    if (!asset) {
+      console.error('Asset not found:', assetId);
+      return;
+    }
+
+    // Only allow publishing for LinkedIn posts
+    if (asset.type !== 'linkedin_post') {
+      alert('Publishing is currently only available for LinkedIn posts. Other asset types will be available soon.');
+      return;
+    }
+
     setGeneratedAssets(prev => 
       prev.map(asset => 
         asset.id === assetId 
@@ -146,8 +159,9 @@ export default function CampaignManagerPage() {
           : asset
       )
     );
-    // Here you would publish to respective platform
-    console.log('Publishing asset:', assetId);
+    
+    // Here you would publish to LinkedIn
+    console.log('Publishing LinkedIn post:', assetId);
   };
 
   return (
@@ -158,9 +172,9 @@ export default function CampaignManagerPage() {
           <p className="text-gray-600">Create and manage your marketing campaigns with AI-powered content generation</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Left Section - Metrics Dashboard */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-3 space-y-6">
             {/* Campaign Performance Overview */}
             <Card>
               <CardHeader>
@@ -170,26 +184,26 @@ export default function CampaignManagerPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="text-center p-4 bg-blue-50 rounded-lg">
-                    <Eye className="h-8 w-8 text-blue-600 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-blue-600">{metrics.totalViews.toLocaleString()}</div>
-                    <div className="text-sm text-gray-600">Total Views</div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="text-center p-3 bg-blue-50 rounded-lg">
+                    <Eye className="h-6 w-6 text-blue-600 mx-auto mb-1" />
+                    <div className="text-lg font-bold text-blue-600">{metrics.totalViews.toLocaleString()}</div>
+                    <div className="text-xs text-gray-600">Total Views</div>
                   </div>
-                  <div className="text-center p-4 bg-green-50 rounded-lg">
-                    <Heart className="h-8 w-8 text-green-600 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-green-600">{metrics.totalLikes.toLocaleString()}</div>
-                    <div className="text-sm text-gray-600">Total Likes</div>
+                  <div className="text-center p-3 bg-green-50 rounded-lg">
+                    <Heart className="h-6 w-6 text-green-600 mx-auto mb-1" />
+                    <div className="text-lg font-bold text-green-600">{metrics.totalLikes.toLocaleString()}</div>
+                    <div className="text-xs text-gray-600">Total Likes</div>
                   </div>
-                  <div className="text-center p-4 bg-purple-50 rounded-lg">
-                    <MessageCircle className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-purple-600">{metrics.totalComments.toLocaleString()}</div>
-                    <div className="text-sm text-gray-600">Comments</div>
+                  <div className="text-center p-3 bg-purple-50 rounded-lg">
+                    <MessageCircle className="h-6 w-6 text-purple-600 mx-auto mb-1" />
+                    <div className="text-lg font-bold text-purple-600">{metrics.totalComments.toLocaleString()}</div>
+                    <div className="text-xs text-gray-600">Comments</div>
                   </div>
-                  <div className="text-center p-4 bg-orange-50 rounded-lg">
-                    <Share2 className="h-8 w-8 text-orange-600 mx-auto mb-2" />
-                    <div className="text-2xl font-bold text-orange-600">{metrics.totalShares.toLocaleString()}</div>
-                    <div className="text-sm text-gray-600">Shares</div>
+                  <div className="text-center p-3 bg-orange-50 rounded-lg">
+                    <Share2 className="h-6 w-6 text-orange-600 mx-auto mb-1" />
+                    <div className="text-lg font-bold text-orange-600">{metrics.totalShares.toLocaleString()}</div>
+                    <div className="text-xs text-gray-600">Shares</div>
                   </div>
                 </div>
               </CardContent>
@@ -204,17 +218,17 @@ export default function CampaignManagerPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-green-600">${metrics.totalRevenue.toLocaleString()}</div>
+                    <div className="text-2xl font-bold text-green-600">${metrics.totalRevenue.toLocaleString()}</div>
                     <div className="text-sm text-gray-600">Total Revenue</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-blue-600">{metrics.roi}x</div>
+                    <div className="text-2xl font-bold text-blue-600">{metrics.roi}x</div>
                     <div className="text-sm text-gray-600">ROI</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-3xl font-bold text-purple-600">{metrics.engagementRate}%</div>
+                    <div className="text-2xl font-bold text-purple-600">{metrics.engagementRate}%</div>
                     <div className="text-sm text-gray-600">Engagement Rate</div>
                   </div>
                 </div>
@@ -229,6 +243,9 @@ export default function CampaignManagerPage() {
                     <Target className="h-5 w-5" />
                     Generated Campaign Assets
                   </CardTitle>
+                  <div className="text-sm text-gray-600 mt-2">
+                    💡 Publishing is currently available for LinkedIn posts only. Other platforms coming soon!
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
@@ -240,6 +257,11 @@ export default function CampaignManagerPage() {
                               {asset.status}
                             </Badge>
                             <span className="font-medium">{asset.title}</span>
+                            {asset.type === 'linkedin_post' && (
+                              <Badge variant="outline" className="text-xs">
+                                💼 LinkedIn
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex gap-2">
                             {editingAsset === asset.id ? (
@@ -258,9 +280,14 @@ export default function CampaignManagerPage() {
                                   <Edit3 className="h-4 w-4 mr-1" />
                                   Edit
                                 </Button>
-                                <Button size="sm" onClick={() => publishAsset(asset.id)}>
+                                <Button 
+                                  size="sm" 
+                                  onClick={() => publishAsset(asset.id)}
+                                  variant={asset.type === 'linkedin_post' ? 'default' : 'outline'}
+                                  disabled={asset.type !== 'linkedin_post'}
+                                >
                                   <Send className="h-4 w-4 mr-1" />
-                                  Publish
+                                  {asset.type === 'linkedin_post' ? 'Publish' : 'Coming Soon'}
                                 </Button>
                               </>
                             )}
