@@ -271,16 +271,7 @@ export class LinkedInAPI {
    */
   async getPersonId(): Promise<string> {
     try {
-      // First, try to get person ID from the stored integration data
-      const integration = await this.getLinkedInIntegration();
-      if (integration?.linkedinPersonId) {
-        logger.info('LinkedIn API - Using stored person ID:', { 
-          personId: integration.linkedinPersonId
-        });
-        return integration.linkedinPersonId;
-      }
-      
-      // Get the actual person ID from LinkedIn profile
+      // Get the actual person ID from LinkedIn profile (prioritize fresh data)
       const profile = await this.getProfile();
       
       // Use the profile.id which contains the LinkedIn person ID
