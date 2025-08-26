@@ -292,24 +292,10 @@ export class LinkedInAPI {
         personId = personId.replace('urn:li:person:', '');
       }
       
-      // If we have a numeric ID, use it
-      if (personId && !isNaN(Number(personId))) {
-        logger.info('LinkedIn API - Using numeric person ID from userinfo:', { personId });
+      // Use the full alphanumeric ID directly (don't extract numeric parts)
+      if (personId) {
+        logger.info('LinkedIn API - Using full person ID from userinfo:', { personId });
         return personId;
-      }
-      
-      // If we don't have a numeric ID, extract numeric parts from alphanumeric ID
-      if (personId && isNaN(Number(personId))) {
-        const numericMatch = personId.match(/\d+/g);
-        if (numericMatch && numericMatch.length > 0) {
-          const numericId = numericMatch.join('');
-          logger.info('LinkedIn API - Extracted numeric ID from alphanumeric:', { 
-            originalId: personId, 
-            extractedId: numericId,
-            allNumericParts: numericMatch
-          });
-          return numericId;
-        }
       }
       
       // Log the full userinfo for debugging
