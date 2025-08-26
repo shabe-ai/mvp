@@ -334,7 +334,7 @@ export class LinkedInAPI {
     try {
       // Get person ID for personal profile posting
       const personId = await this.getPersonId();
-      const authorUrn = `urn:li:person:${personId}`;
+      const authorUrn = `urn:li:member:${personId}`;
       
       logger.info('LinkedIn API - Creating personal post with author:', { 
         authorUrn, 
