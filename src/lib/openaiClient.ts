@@ -17,6 +17,15 @@ interface EmbeddingsParams {
   encoding_format?: "float" | "base64";
 }
 
+interface ImageGenerationParams {
+  prompt: string;
+  model?: "dall-e-3" | "dall-e-2";
+  size?: "1024x1024" | "1792x1024" | "1024x1792" | "256x256" | "512x512";
+  quality?: "standard" | "hd";
+  style?: "vivid" | "natural";
+  n?: number;
+}
+
 // Rate limiting configuration
 const RATE_LIMITS = {
   // Per user per minute
@@ -212,6 +221,39 @@ class RateLimitedOpenAI {
           "text-embedding-3-small",
           response.usage.total_tokens,
           0
+        );
+      }
+
+      return response;
+    } catch (error) {
+      console.error("OpenAI API error:", error);
+      throw error;
+    }
+  }
+
+  async imageCreate(params: ImageGenerationParams, config: RateLimitConfig) {
+    if (!(await this.checkRateLimit(config))) {
+      throw new Error("Rate limit exceeded. Please try again later.");
+    }
+
+    try {
+      const response = await this.client.images.generate({
+        model: params.model || "dall-e-3",
+        prompt: params.prompt,
+        size: params.size || "1024x1024",
+        quality: params.quality || "standard",
+        style: params.style || "vivid",
+        n: params.n || 1,
+      });
+      
+      // Track cost for image generation (approximate cost tracking)
+      if (config.userId) {
+        const costPerImage = params.model === "dall-e-3" ? 0.04 : 0.02; // Approximate cost per image
+        await this.trackCost(
+          config.userId,
+          params.model || "dall-e-3",
+          0, // No tokens for images
+          costPerImage
         );
       }
 

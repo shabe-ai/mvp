@@ -15,6 +15,7 @@ export interface GeneratedAsset {
   type: string;
   title: string;
   content: string;
+  imageUrl?: string;
   status: 'draft' | 'ready' | 'published';
   metadata?: {
     wordCount?: number;
@@ -75,6 +76,11 @@ export class CampaignAssetGenerator {
   ): Promise<GeneratedAsset> {
     const { campaignTopic, targetAudience, campaignGoals, tone, userId } = context;
 
+    // Handle image generation separately
+    if (assetType === 'image') {
+      return await this.generateImageAsset(context);
+    }
+
     const prompt = this.buildPrompt(assetType, {
       campaignTopic,
       targetAudience,
@@ -111,6 +117,79 @@ export class CampaignAssetGenerator {
       content: parsedContent,
       status: 'draft',
       metadata: this.generateMetadata(assetType, parsedContent)
+    };
+  }
+
+  private async generateImageAsset(context: {
+    campaignTopic: string;
+    targetAudience?: string;
+    campaignGoals?: string[];
+    tone?: string;
+    userId: string;
+  }): Promise<GeneratedAsset> {
+    const { campaignTopic, targetAudience, campaignGoals, tone, userId } = context;
+
+    // First, generate a description for the image using GPT
+    const descriptionPrompt = `Create a detailed, professional image description for a marketing campaign about: "${campaignTopic}"
+
+${targetAudience ? `Target audience: ${targetAudience}` : ''}
+${campaignGoals?.length ? `Campaign goals: ${campaignGoals.join(', ')}` : ''}
+${tone ? `Tone: ${tone}` : 'Tone: Professional and engaging'}
+
+The image should be:
+- Professional and high-quality
+- Suitable for marketing materials
+- Visually appealing and modern
+- Relevant to the campaign topic
+
+Create a detailed description that DALL-E can use to generate the image. Focus on visual elements, style, composition, and mood.`;
+
+    const descriptionResponse = await openaiClient.chatCompletionsCreate({
+      model: 'gpt-4',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert at creating detailed image descriptions for AI image generation. Create vivid, specific descriptions that will produce high-quality marketing images.'
+        },
+        {
+          role: 'user',
+          content: descriptionPrompt
+        }
+      ],
+      max_tokens: 500,
+      temperature: 0.7,
+    }, {
+      userId,
+      operation: 'campaign_asset_generation'
+    });
+
+    const imageDescription = descriptionResponse.choices[0]?.message?.content || '';
+
+    // Generate the image using DALL-E
+    const imageResponse = await openaiClient.imageCreate({
+      prompt: imageDescription,
+      model: 'dall-e-3',
+      size: '1024x1024',
+      quality: 'standard',
+      style: 'vivid',
+    }, {
+      userId,
+      operation: 'campaign_image_generation'
+    });
+
+    const imageUrl = imageResponse.data?.[0]?.url || '';
+
+    return {
+      id: `asset-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      type: 'image',
+      title: this.generateAssetTitle('image', campaignTopic),
+      content: imageDescription,
+      imageUrl: imageUrl,
+      status: 'draft',
+      metadata: {
+        wordCount: imageDescription.split(/\s+/).length,
+        estimatedReadTime: 1
+      }
     };
   }
 
@@ -211,7 +290,23 @@ Create a landing page with:
 - Strong call-to-action
 - Contact information
 
-Format as markdown.`
+Format as markdown.`,
+
+      image: `
+${basePrompt}
+
+${audiencePrompt}
+${goalsPrompt}
+${tonePrompt}
+
+Create a detailed image description for DALL-E that will generate a professional marketing image. The description should include:
+- Visual style and composition
+- Color scheme and mood
+- Key visual elements
+- Professional quality requirements
+- Marketing-appropriate content
+
+Focus on creating a description that will produce a high-quality, professional marketing image.`
     };
 
     return assetSpecificPrompts[assetType as keyof typeof assetSpecificPrompts] || basePrompt;
@@ -233,7 +328,8 @@ Format as markdown.`
       blog: `Blog Post: ${campaignTopic}`,
       linkedin_post: `LinkedIn Post: ${campaignTopic}`,
       social_post: `Social Media Post: ${campaignTopic}`,
-      landing_page: `Landing Page: ${campaignTopic}`
+      landing_page: `Landing Page: ${campaignTopic}`,
+      image: `AI Generated Image: ${campaignTopic}`
     };
     
     return titles[assetType as keyof typeof titles] || `Asset: ${campaignTopic}`;
@@ -278,6 +374,7 @@ Format as markdown.`
       type: assetType,
       title: this.generateAssetTitle(assetType, campaignTopic),
       content: fallbackContent,
+      imageUrl: assetType === 'image' ? undefined : undefined,
       status: 'draft',
       metadata: {
         wordCount: fallbackContent.split(/\s+/).length,
@@ -296,7 +393,9 @@ Format as markdown.`
       
       social_post: `🔥 Hot take on ${campaignTopic}!\n\nThis is changing everything! What are your thoughts? 👇\n\n#${campaignTopic.replace(/\s+/g, '')}`,
       
-      landing_page: `# ${campaignTopic}\n\n## Transform Your Business\n\nDiscover how ${campaignTopic} can revolutionize your operations.\n\n[Call-to-Action Button]`
+      landing_page: `# ${campaignTopic}\n\n## Transform Your Business\n\nDiscover how ${campaignTopic} can revolutionize your operations.\n\n[Call-to-Action Button]`,
+      
+      image: `A professional marketing image representing ${campaignTopic}. The image should be modern, visually appealing, and suitable for marketing materials. Include elements that convey innovation, growth, and success.`
     };
 
     return fallbackContent[assetType as keyof typeof fallbackContent] || 

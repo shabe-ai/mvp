@@ -39,9 +39,10 @@ import {
 
 interface GeneratedAsset {
   id: string;
-  type: 'email' | 'blog' | 'linkedin_post' | 'social_post';
+  type: 'email' | 'blog' | 'linkedin_post' | 'social_post' | 'image';
   title: string;
   content: string;
+  imageUrl?: string;
   status: 'draft' | 'ready' | 'published';
 }
 
@@ -93,7 +94,8 @@ export default function CampaignManagerPage() {
     { value: 'blog', label: 'Blog Article', icon: '📝' },
     { value: 'linkedin_post', label: 'LinkedIn Post', icon: '💼' },
     { value: 'social_post', label: 'Social Media Post', icon: '📱' },
-    { value: 'landing_page', label: 'Landing Page', icon: '🌐' }
+    { value: 'landing_page', label: 'Landing Page', icon: '🌐' },
+    { value: 'image', label: 'AI Generated Image', icon: '🎨' }
   ];
 
   const handleAssetToggle = (assetType: string) => {
@@ -565,16 +567,62 @@ export default function CampaignManagerPage() {
                           </div>
                           
                           {editingAsset === asset.id ? (
-                            <Textarea
-                              value={asset.content}
-                              onChange={(e) => updateAssetContent(asset.id, e.target.value)}
-                              className="min-h-[200px]"
-                              placeholder="Edit your content here..."
-                            />
+                            asset.type === 'image' ? (
+                              <div className="space-y-4">
+                                <div>
+                                  <Label className="text-sm font-medium">Image Description</Label>
+                                  <Textarea
+                                    value={asset.content}
+                                    onChange={(e) => updateAssetContent(asset.id, e.target.value)}
+                                    className="mt-1"
+                                    placeholder="Describe the image you want to generate..."
+                                    rows={3}
+                                  />
+                                </div>
+                                {asset.imageUrl && (
+                                  <div>
+                                    <Label className="text-sm font-medium">Generated Image</Label>
+                                    <div className="mt-2">
+                                      <img 
+                                        src={asset.imageUrl} 
+                                        alt="Generated" 
+                                        className="max-w-full h-auto rounded-lg border"
+                                      />
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <Textarea
+                                value={asset.content}
+                                onChange={(e) => updateAssetContent(asset.id, e.target.value)}
+                                className="min-h-[200px]"
+                                placeholder="Edit your content here..."
+                              />
+                            )
                           ) : (
-                            <div className="bg-gray-50 p-3 rounded border">
-                              <pre className="whitespace-pre-wrap text-sm">{asset.content}</pre>
-                            </div>
+                            asset.type === 'image' ? (
+                              <div className="space-y-3">
+                                <div className="bg-gray-50 p-3 rounded border">
+                                  <p className="text-sm text-gray-700 mb-2"><strong>Description:</strong></p>
+                                  <p className="text-sm">{asset.content}</p>
+                                </div>
+                                {asset.imageUrl && (
+                                  <div className="bg-gray-50 p-3 rounded border">
+                                    <p className="text-sm text-gray-700 mb-2"><strong>Generated Image:</strong></p>
+                                    <img 
+                                      src={asset.imageUrl} 
+                                      alt="Generated" 
+                                      className="max-w-full h-auto rounded-lg border"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="bg-gray-50 p-3 rounded border">
+                                <pre className="whitespace-pre-wrap text-sm">{asset.content}</pre>
+                              </div>
+                            )
                           )}
                         </div>
                       ))}
