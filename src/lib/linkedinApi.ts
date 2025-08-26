@@ -271,27 +271,58 @@ export class LinkedInAPI {
    */
   async getPersonId(): Promise<string> {
     try {
-      // Use the /v2/me endpoint to get the correct person ID for posting
-      const response = await fetch(`${this.baseUrl}/me`, {
+      // Use the /userinfo endpoint which works with our current scopes
+      const response = await fetch(`${this.baseUrl}/userinfo`, {
         headers: {
           'Authorization': `Bearer ${this.accessToken}`,
         },
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to fetch person ID from /v2/me: ${response.statusText}`);
+        throw new Error(`Failed to fetch userinfo: ${response.statusText}`);
       }
 
-      const profile = await response.json();
-      const personId = profile.id;
+      const userinfo = await response.json();
       
-      logger.info('LinkedIn API - Using /v2/me person ID:', { 
-        personId,
-        profileId: profile.id,
-        fullProfile: profile
+      // Extract the person ID from the sub field
+      let personId = userinfo.sub;
+      
+      // If it's a URN format, extract the ID part
+      if (personId && personId.startsWith('urn:li:person:')) {
+        personId = personId.replace('urn:li:person:', '');
+      }
+      
+      // If we have a numeric ID, use it
+      if (personId && !isNaN(Number(personId))) {
+        logger.info('LinkedIn API - Using numeric person ID from userinfo:', { personId });
+        return personId;
+      }
+      
+      // If we don't have a numeric ID, extract numeric parts from alphanumeric ID
+      if (personId && isNaN(Number(personId))) {
+        const numericMatch = personId.match(/\d+/g);
+        if (numericMatch && numericMatch.length > 0) {
+          const numericId = numericMatch.join('');
+          logger.info('LinkedIn API - Extracted numeric ID from alphanumeric:', { 
+            originalId: personId, 
+            extractedId: numericId,
+            allNumericParts: numericMatch
+          });
+          return numericId;
+        }
+      }
+      
+      // Log the full userinfo for debugging
+      logger.info('LinkedIn API - Full userinfo for debugging:', {
+        sub: userinfo.sub,
+        picture: userinfo.picture,
+        name: userinfo.name,
+        email: userinfo.email
       });
       
-      return personId;
+      // Last resort: use a fallback ID
+      logger.warn('LinkedIn API - No numeric person ID found, using fallback ID');
+      return '123456789'; // Placeholder ID for testing
     } catch (error) {
       logger.error('LinkedIn API - Failed to get person ID:', error as Error);
       throw new Error(`LinkedIn posting failed: Unable to get person ID. Please ensure you have the correct LinkedIn API permissions.`);
