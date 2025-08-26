@@ -41,7 +41,7 @@ export class EnhancedRAGHandler {
       const ragResults = await this.getRAGResults(userMessage, intent, context);
       
       // Step 2: Analyze documents if present
-      const documentAnalysis = await this.analyzeDocuments(context.sessionFiles || []);
+      const documentAnalysis = await this.analyzeDocuments(context.sessionFiles || [], conversationState);
       
       // Step 3: Enhance context with RAG insights
       const enhancedContext = this.buildEnhancedContext(ragResults, documentAnalysis, conversationState);
@@ -125,7 +125,7 @@ export class EnhancedRAGHandler {
     return results;
   }
 
-  private async analyzeDocuments(sessionFiles: any[]): Promise<any> {
+  private async analyzeDocuments(sessionFiles: any[], conversationState: any): Promise<any> {
     if (!sessionFiles || sessionFiles.length === 0) {
       return null;
     }
@@ -136,7 +136,7 @@ export class EnhancedRAGHandler {
       const analysisResults = [];
       
       for (const file of sessionFiles.slice(0, 2)) { // Analyze up to 2 files
-        const analysis = await this.analyzeSingleDocument(file);
+        const analysis = await this.analyzeSingleDocument(file, conversationState);
         if (analysis) {
           analysisResults.push(analysis);
         }
@@ -155,7 +155,7 @@ export class EnhancedRAGHandler {
     }
   }
 
-  private async analyzeSingleDocument(file: any): Promise<any> {
+  private async analyzeSingleDocument(file: any, conversationState: any): Promise<any> {
     try {
       const prompt = `Analyze this document and extract key insights:
 
@@ -226,6 +226,7 @@ Return as JSON:
       documents: ragResults.relevantDocuments || [],
       documentAnalysis,
       conversationHistory: conversationState.memory?.sessionHistory?.slice(-3) || [],
+      userId: conversationState.metadata?.userId,
       summary: ''
     };
 
@@ -278,7 +279,7 @@ Return as JSON:
         temperature: 0.7,
         max_tokens: 1000
       }, {
-        userId: enhancedContext.conversationState?.metadata?.userId,
+        userId: enhancedContext.userId,
         operation: 'enhanced_response_generation',
         model: 'gpt-4'
       });
