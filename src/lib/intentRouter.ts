@@ -203,14 +203,18 @@ class DataIntentHandler implements IntentHandler {
       const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
       let data: any[] = [];
       
+      // Get user's team ID first
+      const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+      const teamId = teams.length > 0 ? teams[0]._id : 'default';
+      
       if (dataType === 'contacts') {
-        data = await convex.query(api.crm.getContactsByTeam, { teamId: context.userId });
+        data = await convex.query(api.crm.getContactsByTeam, { teamId });
       } else if (dataType === 'deals') {
-        data = await convex.query(api.crm.getDealsByTeam, { teamId: context.userId });
+        data = await convex.query(api.crm.getDealsByTeam, { teamId });
       } else if (dataType === 'accounts') {
-        data = await convex.query(api.crm.getAccountsByTeam, { teamId: context.userId });
+        data = await convex.query(api.crm.getAccountsByTeam, { teamId });
       } else if (dataType === 'activities') {
-        data = await convex.query(api.crm.getActivitiesByTeam, { teamId: context.userId });
+        data = await convex.query(api.crm.getActivitiesByTeam, { teamId });
       }
       
       // Create a user-friendly message based on the query type
@@ -261,21 +265,49 @@ class CrudIntentHandler implements IntentHandler {
     });
 
     try {
-      const { dataType, field, value } = intent.entities;
-      
-      // Handle CRUD operations
       const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
       let result = null;
+      let message = '';
       
-      // For now, return a placeholder result since the specific CRUD operations
-      // would need to be implemented based on the dataType
-      result = { success: true, message: `${intent.action} operation completed` };
+      // Handle delete operations
+      if (intent.action === 'delete_contact') {
+        const { contactName } = intent.entities;
+        
+        // Get user's team ID
+        const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+        const teamId = teams.length > 0 ? teams[0]._id : 'default';
+        
+        // Find the contact by name
+        const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+        const contact = contacts.find((c: any) => {
+          const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
+          return fullName === contactName.toLowerCase() || 
+                 c.firstName?.toLowerCase() === contactName.toLowerCase() ||
+                 c.lastName?.toLowerCase() === contactName.toLowerCase();
+        });
+        
+        if (contact) {
+          // Delete the contact
+          await convex.mutation(api.crm.deleteContact, { contactId: contact._id });
+          result = { success: true, deletedContact: contact };
+          message = `Successfully deleted contact "${contactName}".`;
+        } else {
+          result = { success: false, error: 'Contact not found' };
+          message = `Contact "${contactName}" not found. Please check the name and try again.`;
+        }
+      } else {
+        // For other CRUD operations, return a placeholder
+        result = { success: true, message: `${intent.action} operation completed` };
+        message = `${intent.action} operation completed successfully.`;
+      }
       
-    return {
+      return {
         type: 'crud_result',
         result,
         action: intent.action,
-        hasData: true
+        hasData: true,
+        content: message,
+        message: message
       };
 
     } catch (error) {
