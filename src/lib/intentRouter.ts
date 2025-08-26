@@ -222,7 +222,36 @@ class DataIntentHandler implements IntentHandler {
       if (query === 'count') {
         message = `You have ${data.length} ${dataType}.`;
       } else {
-        message = `Here are your ${dataType}:`;
+        // Format the data into a readable list
+        if (dataType === 'contacts') {
+          const contactNames = data.map((contact: any) => {
+            const firstName = contact.firstName || '';
+            const lastName = contact.lastName || '';
+            return `${firstName} ${lastName}`.trim();
+          }).filter((name: string) => name.length > 0);
+          
+          if (contactNames.length > 0) {
+            message = `Here are your contacts:\n\n${contactNames.join('\n')}`;
+          } else {
+            message = 'You have no contacts in your database.';
+          }
+        } else if (dataType === 'deals') {
+          const dealNames = data.map((deal: any) => deal.name || 'Unnamed Deal').filter((name: string) => name.length > 0);
+          if (dealNames.length > 0) {
+            message = `Here are your deals:\n\n${dealNames.join('\n')}`;
+          } else {
+            message = 'You have no deals in your database.';
+          }
+        } else if (dataType === 'accounts') {
+          const accountNames = data.map((account: any) => account.name || 'Unnamed Account').filter((name: string) => name.length > 0);
+          if (accountNames.length > 0) {
+            message = `Here are your accounts:\n\n${accountNames.join('\n')}`;
+          } else {
+            message = 'You have no accounts in your database.';
+          }
+        } else {
+          message = `Here are your ${dataType}:`;
+        }
       }
       
       return {
