@@ -23,7 +23,18 @@ import {
   BarChart3,
   Target,
   Calendar,
-  Zap
+  Zap,
+  BarChart,
+  PieChart,
+  Activity,
+  MousePointer,
+  Clock,
+  TrendingDown,
+  ArrowUpRight,
+  ArrowDownRight,
+  Layers,
+  Settings,
+  Bot
 } from 'lucide-react';
 
 interface GeneratedAsset {
@@ -43,6 +54,12 @@ interface CampaignMetrics {
   totalRevenue: number;
   roi: number;
   engagementRate: number;
+  conversionRate: number;
+  avgSessionDuration: number;
+  bounceRate: number;
+  costPerClick: number;
+  impressions: number;
+  reach: number;
 }
 
 export default function CampaignManagerPage() {
@@ -51,8 +68,9 @@ export default function CampaignManagerPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedAssets, setGeneratedAssets] = useState<GeneratedAsset[]>([]);
   const [editingAsset, setEditingAsset] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<'overview' | 'campaign-agent'>('overview');
 
-  // Hardcoded metrics for demonstration
+  // Enhanced metrics for demonstration
   const metrics: CampaignMetrics = {
     totalViews: 15420,
     totalLikes: 892,
@@ -61,7 +79,13 @@ export default function CampaignManagerPage() {
     totalClicks: 1234,
     totalRevenue: 45600,
     roi: 3.2,
-    engagementRate: 8.3
+    engagementRate: 8.3,
+    conversionRate: 4.7,
+    avgSessionDuration: 245,
+    bounceRate: 32.1,
+    costPerClick: 2.45,
+    impressions: 45600,
+    reach: 12340
   };
 
   const assetTypes = [
@@ -109,6 +133,7 @@ export default function CampaignManagerPage() {
       
       if (result.success) {
         setGeneratedAssets(result.assets);
+        setActiveSection('campaign-agent'); // Switch to campaign agent after generation
       } else {
         throw new Error(result.error || 'Failed to generate assets');
       }
@@ -119,8 +144,6 @@ export default function CampaignManagerPage() {
       setIsGenerating(false);
     }
   };
-
-
 
   const updateAssetContent = (assetId: string, newContent: string) => {
     setGeneratedAssets(prev => 
@@ -134,7 +157,6 @@ export default function CampaignManagerPage() {
 
   const saveAsset = (assetId: string) => {
     setEditingAsset(null);
-    // Here you would save to database
     console.log('Saving asset:', assetId);
   };
 
@@ -146,7 +168,6 @@ export default function CampaignManagerPage() {
       return;
     }
 
-    // Only allow publishing for LinkedIn posts
     if (asset.type !== 'linkedin_post') {
       alert('Publishing is currently only available for LinkedIn posts. Other asset types will be available soon.');
       return;
@@ -160,246 +181,409 @@ export default function CampaignManagerPage() {
       )
     );
     
-    // Here you would publish to LinkedIn
     console.log('Publishing LinkedIn post:', assetId);
   };
 
+  const MetricCard = ({ 
+    title, 
+    value, 
+    icon: Icon, 
+    color, 
+    trend, 
+    trendValue, 
+    subtitle 
+  }: {
+    title: string;
+    value: string | number;
+    icon: any;
+    color: string;
+    trend?: 'up' | 'down';
+    trendValue?: string;
+    subtitle?: string;
+  }) => (
+    <Card className="bg-white">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-medium text-gray-600">{title}</p>
+            <p className="text-2xl font-bold text-gray-900">{value}</p>
+            {subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
+            {trend && (
+              <div className="flex items-center mt-1">
+                {trend === 'up' ? (
+                  <ArrowUpRight className="h-3 w-3 text-green-500" />
+                ) : (
+                  <ArrowDownRight className="h-3 w-3 text-red-500" />
+                )}
+                <span className={`text-xs ml-1 ${trend === 'up' ? 'text-green-500' : 'text-red-500'}`}>
+                  {trendValue}
+                </span>
+              </div>
+            )}
+          </div>
+          <div className={`p-2 rounded-lg ${color}`}>
+            <Icon className="h-6 w-6 text-white" />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  const ChartCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
+    <Card className="bg-white">
+      <CardHeader>
+        <CardTitle className="text-lg font-semibold">{title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {children}
+      </CardContent>
+    </Card>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Campaign Manager</h1>
-          <p className="text-gray-600">Create and manage your marketing campaigns with AI-powered content generation</p>
+      <div className="flex">
+        {/* Sidebar */}
+        <div className="w-80 bg-white border-r border-gray-200 min-h-screen">
+          <div className="p-6">
+            <div className="mb-8">
+              <h1 className="text-xl font-bold text-gray-900">Campaign Manager</h1>
+              <p className="text-sm text-gray-600 mt-1">AI-powered marketing campaigns</p>
+            </div>
+
+            {/* Navigation */}
+            <nav className="space-y-2 mb-8">
+              <button
+                onClick={() => setActiveSection('overview')}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  activeSection === 'overview'
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <BarChart3 className="h-4 w-4 mr-3" />
+                Overview
+              </button>
+              <button
+                onClick={() => setActiveSection('campaign-agent')}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                  activeSection === 'campaign-agent'
+                    ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : 'text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <Bot className="h-4 w-4 mr-3" />
+                Campaign Agent
+              </button>
+            </nav>
+
+            {/* Quick Stats */}
+            <div className="space-y-3">
+              <h3 className="text-sm font-semibold text-gray-900">Quick Stats</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Active Campaigns</span>
+                  <span className="font-medium">3</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Assets Created</span>
+                  <span className="font-medium">{generatedAssets.length}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Published Today</span>
+                  <span className="font-medium">2</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          {/* Left Section - Metrics Dashboard */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Campaign Performance Overview */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5" />
-                  Campaign Performance Overview
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div className="text-center p-3 bg-blue-50 rounded-lg">
-                    <Eye className="h-6 w-6 text-blue-600 mx-auto mb-1" />
-                    <div className="text-lg font-bold text-blue-600">{metrics.totalViews.toLocaleString()}</div>
-                    <div className="text-xs text-gray-600">Total Views</div>
+        {/* Main Content */}
+        <div className="flex-1 p-6">
+          {activeSection === 'overview' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Campaign Overview</h2>
+                <p className="text-gray-600">Monitor your campaign performance and key metrics</p>
+              </div>
+
+              {/* Key Metrics Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <MetricCard
+                  title="Total Views"
+                  value={metrics.totalViews.toLocaleString()}
+                  icon={Eye}
+                  color="bg-blue-500"
+                  trend="up"
+                  trendValue="+12.5%"
+                />
+                <MetricCard
+                  title="Engagement Rate"
+                  value={`${metrics.engagementRate}%`}
+                  icon={Heart}
+                  color="bg-green-500"
+                  trend="up"
+                  trendValue="+8.2%"
+                />
+                <MetricCard
+                  title="Total Revenue"
+                  value={`$${metrics.totalRevenue.toLocaleString()}`}
+                  icon={DollarSign}
+                  color="bg-purple-500"
+                  trend="up"
+                  trendValue="+15.3%"
+                />
+                <MetricCard
+                  title="Conversion Rate"
+                  value={`${metrics.conversionRate}%`}
+                  icon={Target}
+                  color="bg-orange-500"
+                  trend="down"
+                  trendValue="-2.1%"
+                />
+              </div>
+
+              {/* Detailed Metrics */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <MetricCard
+                    title="Impressions"
+                    value={metrics.impressions.toLocaleString()}
+                    icon={Layers}
+                    color="bg-indigo-500"
+                    subtitle="Total ad impressions"
+                  />
+                  <MetricCard
+                    title="Reach"
+                    value={metrics.reach.toLocaleString()}
+                    icon={Users}
+                    color="bg-pink-500"
+                    subtitle="Unique users reached"
+                  />
+                  <MetricCard
+                    title="Cost Per Click"
+                    value={`$${metrics.costPerClick}`}
+                    icon={MousePointer}
+                    color="bg-yellow-500"
+                    subtitle="Average CPC"
+                  />
+                </div>
+                <div className="space-y-4">
+                  <MetricCard
+                    title="Avg Session Duration"
+                    value={`${Math.floor(metrics.avgSessionDuration / 60)}:${(metrics.avgSessionDuration % 60).toString().padStart(2, '0')}`}
+                    icon={Clock}
+                    color="bg-teal-500"
+                    subtitle="Minutes:Seconds"
+                  />
+                  <MetricCard
+                    title="Bounce Rate"
+                    value={`${metrics.bounceRate}%`}
+                    icon={TrendingDown}
+                    color="bg-red-500"
+                    subtitle="Page bounce rate"
+                  />
+                  <MetricCard
+                    title="ROI"
+                    value={`${metrics.roi}x`}
+                    icon={TrendingUp}
+                    color="bg-emerald-500"
+                    subtitle="Return on investment"
+                  />
+                </div>
+              </div>
+
+              {/* Charts Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <ChartCard title="Engagement Trends">
+                  <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
+                    <div className="text-center">
+                      <BarChart className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">Engagement Chart</p>
+                      <p className="text-xs text-gray-400">Likes, Comments, Shares over time</p>
+                    </div>
                   </div>
-                  <div className="text-center p-3 bg-green-50 rounded-lg">
-                    <Heart className="h-6 w-6 text-green-600 mx-auto mb-1" />
-                    <div className="text-lg font-bold text-green-600">{metrics.totalLikes.toLocaleString()}</div>
-                    <div className="text-xs text-gray-600">Total Likes</div>
+                </ChartCard>
+
+                <ChartCard title="Revenue Distribution">
+                  <div className="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
+                    <div className="text-center">
+                      <PieChart className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">Revenue Chart</p>
+                      <p className="text-xs text-gray-400">Revenue by campaign source</p>
+                    </div>
                   </div>
-                  <div className="text-center p-3 bg-purple-50 rounded-lg">
-                    <MessageCircle className="h-6 w-6 text-purple-600 mx-auto mb-1" />
-                    <div className="text-lg font-bold text-purple-600">{metrics.totalComments.toLocaleString()}</div>
-                    <div className="text-xs text-gray-600">Comments</div>
+                </ChartCard>
+              </div>
+
+              {/* Performance Summary */}
+              <ChartCard title="Performance Summary">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="text-center p-4 bg-blue-50 rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">{metrics.totalLikes.toLocaleString()}</div>
+                    <div className="text-sm text-gray-600">Total Likes</div>
                   </div>
-                  <div className="text-center p-3 bg-orange-50 rounded-lg">
-                    <Share2 className="h-6 w-6 text-orange-600 mx-auto mb-1" />
-                    <div className="text-lg font-bold text-orange-600">{metrics.totalShares.toLocaleString()}</div>
-                    <div className="text-xs text-gray-600">Shares</div>
+                  <div className="text-center p-4 bg-green-50 rounded-lg">
+                    <div className="text-2xl font-bold text-green-600">{metrics.totalComments.toLocaleString()}</div>
+                    <div className="text-sm text-gray-600">Comments</div>
+                  </div>
+                  <div className="text-center p-4 bg-purple-50 rounded-lg">
+                    <div className="text-2xl font-bold text-purple-600">{metrics.totalShares.toLocaleString()}</div>
+                    <div className="text-sm text-gray-600">Shares</div>
+                  </div>
+                  <div className="text-center p-4 bg-orange-50 rounded-lg">
+                    <div className="text-2xl font-bold text-orange-600">{metrics.totalClicks.toLocaleString()}</div>
+                    <div className="text-sm text-gray-600">Clicks</div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </ChartCard>
+            </div>
+          )}
 
-            {/* ROI and Revenue Metrics */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <DollarSign className="h-5 w-5" />
-                  Revenue & ROI Metrics
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-600">${metrics.totalRevenue.toLocaleString()}</div>
-                    <div className="text-sm text-gray-600">Total Revenue</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-600">{metrics.roi}x</div>
-                    <div className="text-sm text-gray-600">ROI</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-600">{metrics.engagementRate}%</div>
-                    <div className="text-sm text-gray-600">Engagement Rate</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          {activeSection === 'campaign-agent' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Campaign Agent</h2>
+                <p className="text-gray-600">Generate and manage your campaign assets with AI</p>
+              </div>
 
-            {/* Generated Assets Display */}
-            {generatedAssets.length > 0 && (
+              {/* Asset Generator */}
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Target className="h-5 w-5" />
-                    Generated Campaign Assets
+                    <Zap className="h-5 w-5" />
+                    Generate Campaign Assets
                   </CardTitle>
-                  <div className="text-sm text-gray-600 mt-2">
-                    💡 Publishing is currently available for LinkedIn posts only. Other platforms coming soon!
-                  </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {generatedAssets.map((asset) => (
-                      <div key={asset.id} className="border rounded-lg p-4 bg-white">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center gap-2">
-                            <Badge variant={asset.status === 'published' ? 'default' : 'secondary'}>
-                              {asset.status}
-                            </Badge>
-                            <span className="font-medium">{asset.title}</span>
-                            {asset.type === 'linkedin_post' && (
-                              <Badge variant="outline" className="text-xs">
-                                💼 LinkedIn
-                              </Badge>
-                            )}
-                          </div>
-                          <div className="flex gap-2">
-                            {editingAsset === asset.id ? (
-                              <>
-                                <Button size="sm" onClick={() => saveAsset(asset.id)}>
-                                  <Save className="h-4 w-4 mr-1" />
-                                  Save
-                                </Button>
-                                <Button size="sm" variant="outline" onClick={() => setEditingAsset(null)}>
-                                  Cancel
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button size="sm" variant="outline" onClick={() => setEditingAsset(asset.id)}>
-                                  <Edit3 className="h-4 w-4 mr-1" />
-                                  Edit
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  onClick={() => publishAsset(asset.id)}
-                                  variant={asset.type === 'linkedin_post' ? 'default' : 'outline'}
-                                  disabled={asset.type !== 'linkedin_post'}
-                                >
-                                  <Send className="h-4 w-4 mr-1" />
-                                  {asset.type === 'linkedin_post' ? 'Publish' : 'Coming Soon'}
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {editingAsset === asset.id ? (
-                          <Textarea
-                            value={asset.content}
-                            onChange={(e) => updateAssetContent(asset.id, e.target.value)}
-                            className="min-h-[200px]"
-                            placeholder="Edit your content here..."
+                <CardContent className="space-y-4">
+                  <div>
+                    <Label htmlFor="asset-types">Select Asset Types</Label>
+                    <div className="mt-2 space-y-2">
+                      {assetTypes.map((asset) => (
+                        <label key={asset.value} className="flex items-center space-x-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={selectedAssets.includes(asset.value)}
+                            onChange={() => handleAssetToggle(asset.value)}
+                            className="rounded"
                           />
-                        ) : (
-                          <div className="bg-gray-50 p-3 rounded border">
-                            <pre className="whitespace-pre-wrap text-sm">{asset.content}</pre>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                          <span>{asset.icon} {asset.label}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
+
+                  <div>
+                    <Label htmlFor="campaign-topic">Campaign Topic</Label>
+                    <Textarea
+                      id="campaign-topic"
+                      value={campaignTopic}
+                      onChange={(e) => setCampaignTopic(e.target.value)}
+                      placeholder="e.g., Building a campaign for Shabe AI focused on HubSpot displacement"
+                      className="mt-2"
+                      rows={3}
+                    />
+                  </div>
+
+                  <Button 
+                    onClick={generateAssets}
+                    disabled={isGenerating || selectedAssets.length === 0 || !campaignTopic.trim()}
+                    className="w-full"
+                  >
+                    {isGenerating ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                        Generating Assets...
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Generate Assets
+                      </>
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
-            )}
-          </div>
 
-          {/* Right Section - Asset Generator */}
-          <div className="space-y-6">
-            {/* Asset Selection */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="h-5 w-5" />
-                  Generate Campaign Assets
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div>
-                  <Label htmlFor="asset-types">Select Asset Types</Label>
-                  <div className="mt-2 space-y-2">
-                    {assetTypes.map((asset) => (
-                      <label key={asset.value} className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={selectedAssets.includes(asset.value)}
-                          onChange={() => handleAssetToggle(asset.value)}
-                          className="rounded"
-                        />
-                        <span>{asset.icon} {asset.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="campaign-topic">Campaign Topic</Label>
-                  <Textarea
-                    id="campaign-topic"
-                    value={campaignTopic}
-                    onChange={(e) => setCampaignTopic(e.target.value)}
-                    placeholder="e.g., Building a campaign for Shabe AI focused on HubSpot displacement"
-                    className="mt-2"
-                    rows={3}
-                  />
-                </div>
-
-                <Button 
-                  onClick={generateAssets}
-                  disabled={isGenerating || selectedAssets.length === 0 || !campaignTopic.trim()}
-                  className="w-full"
-                >
-                  {isGenerating ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                      Generating Assets...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Generate Assets
-                    </>
-                  )}
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Quick Stats */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Quick Stats
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Active Campaigns</span>
-                    <span className="font-medium">3</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Assets Created</span>
-                    <span className="font-medium">{generatedAssets.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-600">Published Today</span>
-                    <span className="font-medium">2</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              {/* Generated Assets Display */}
+              {generatedAssets.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Target className="h-5 w-5" />
+                      Generated Campaign Assets
+                    </CardTitle>
+                    <div className="text-sm text-gray-600 mt-2">
+                      💡 Publishing is currently available for LinkedIn posts only. Other platforms coming soon!
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {generatedAssets.map((asset) => (
+                        <div key={asset.id} className="border rounded-lg p-4 bg-white">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              <Badge variant={asset.status === 'published' ? 'default' : 'secondary'}>
+                                {asset.status}
+                              </Badge>
+                              <span className="font-medium">{asset.title}</span>
+                              {asset.type === 'linkedin_post' && (
+                                <Badge variant="outline" className="text-xs">
+                                  💼 LinkedIn
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex gap-2">
+                              {editingAsset === asset.id ? (
+                                <>
+                                  <Button size="sm" onClick={() => saveAsset(asset.id)}>
+                                    <Save className="h-4 w-4 mr-1" />
+                                    Save
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={() => setEditingAsset(null)}>
+                                    Cancel
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <Button size="sm" variant="outline" onClick={() => setEditingAsset(asset.id)}>
+                                    <Edit3 className="h-4 w-4 mr-1" />
+                                    Edit
+                                  </Button>
+                                  <Button 
+                                    size="sm" 
+                                    onClick={() => publishAsset(asset.id)}
+                                    variant={asset.type === 'linkedin_post' ? 'default' : 'outline'}
+                                    disabled={asset.type !== 'linkedin_post'}
+                                  >
+                                    <Send className="h-4 w-4 mr-1" />
+                                    {asset.type === 'linkedin_post' ? 'Publish' : 'Coming Soon'}
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          
+                          {editingAsset === asset.id ? (
+                            <Textarea
+                              value={asset.content}
+                              onChange={(e) => updateAssetContent(asset.id, e.target.value)}
+                              className="min-h-[200px]"
+                              placeholder="Edit your content here..."
+                            />
+                          ) : (
+                            <div className="bg-gray-50 p-3 rounded border">
+                              <pre className="whitespace-pre-wrap text-sm">{asset.content}</pre>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
