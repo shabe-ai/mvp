@@ -189,6 +189,7 @@ Return as JSON:
         temperature: 0.1,
         max_tokens: 500
       }, {
+        userId: conversationState.metadata?.userId,
         operation: 'document_analysis',
         model: 'gpt-4'
       });
@@ -277,6 +278,7 @@ Return as JSON:
         temperature: 0.7,
         max_tokens: 1000
       }, {
+        userId: enhancedContext.conversationState?.metadata?.userId,
         operation: 'enhanced_response_generation',
         model: 'gpt-4'
       });

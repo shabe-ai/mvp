@@ -3,6 +3,7 @@ import { conversationalHandler } from './conversationalHandler';
 import { logger } from './logger';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../convex/_generated/api';
+import { openaiClient } from './openaiClient';
 
 interface IntentHandler {
   canHandle(intent: SimplifiedIntent): boolean;
@@ -2608,6 +2609,214 @@ class LinkedInPostIntentHandler implements IntentHandler {
   }
 }
 
+// Blog Post Intent Handler
+class BlogPostIntentHandler implements IntentHandler {
+  canHandle(intent: SimplifiedIntent): boolean {
+    return intent.action === 'create_blog_post';
+  }
+
+  async handle(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
+    logger.info('Handling blog post intent', {
+      action: intent.action,
+      entities: intent.entities,
+      userId: context.userId
+    });
+
+    try {
+      const { content, length } = intent.entities;
+      
+      // Generate blog post content using AI
+      const blogContent = await this.generateBlogPost(content, length, context);
+      
+      // Create blog post preview
+      const blogPreview = {
+        content: blogContent,
+        topic: content,
+        length: length || 'standard',
+        type: 'blog_post',
+        needsConfirmation: true
+      };
+
+      const response = {
+        type: 'blog_post_preview',
+        content: blogPreview,
+        hasData: true,
+        needsConfirmation: true
+      };
+      
+      logger.info('Blog post preview response', {
+        responseType: response.type,
+        hasContent: !!response.content,
+        contentKeys: response.content ? Object.keys(response.content) : [],
+        userId: context.userId
+      });
+      
+      return response;
+
+    } catch (error) {
+      logger.error('Error handling blog post intent', error instanceof Error ? error : new Error(String(error)), {
+        intent: intent.action,
+        userId: context.userId
+      });
+
+      return {
+        type: 'text',
+        content: 'I encountered an error while creating your blog post. Please try again.',
+        hasData: false
+      };
+    }
+  }
+
+  private async generateBlogPost(content: string, length: string, context: IntentRouterContext): Promise<string> {
+    try {
+      const response = await openaiClient.chatCompletionsCreate({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional blog writer. Create engaging, informative blog posts that are well-structured and professional. 
+            
+            Focus on creating content that:
+            - Is engaging and informative
+            - Has a clear structure with proper paragraphs
+            - Uses professional language
+            - Includes relevant insights and value for readers
+            - Is optimized for readability
+            
+            ${length === '3 paragraphs' ? 'Create exactly 3 well-structured paragraphs.' : 
+              length === 'short' ? 'Keep it concise (2-3 paragraphs).' :
+              length === 'long' ? 'Create a comprehensive post (5-7 paragraphs).' :
+              'Create a standard blog post (4-5 paragraphs).'}`
+          },
+          {
+            role: "user",
+            content: `Create a blog post about: ${content}`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      }, {
+        userId: context.userId,
+        operation: 'blog_post_generation',
+        model: 'gpt-4'
+      });
+
+      return response.choices[0]?.message?.content || `Blog post about ${content}`;
+    } catch (error) {
+      logger.error('Error generating blog post content', error instanceof Error ? error : new Error(String(error)), {
+        content,
+        length,
+        userId: context.userId
+      });
+      throw error;
+    }
+  }
+}
+
+// Blog Post Intent Handler
+class BlogPostIntentHandler implements IntentHandler {
+  canHandle(intent: SimplifiedIntent): boolean {
+    return intent.action === 'create_blog_post';
+  }
+
+  async handle(intent: SimplifiedIntent, context: IntentRouterContext): Promise<any> {
+    logger.info('Handling blog post intent', {
+      action: intent.action,
+      entities: intent.entities,
+      userId: context.userId
+    });
+
+    try {
+      const { content, length } = intent.entities;
+      
+      // Generate blog post content using AI
+      const blogContent = await this.generateBlogPost(content, length, context);
+      
+      // Create blog post preview
+      const blogPreview = {
+        content: blogContent,
+        topic: content,
+        length: length || 'standard',
+        type: 'blog_post',
+        needsConfirmation: true
+      };
+
+      const response = {
+        type: 'blog_post_preview',
+        content: blogPreview,
+        hasData: true,
+        needsConfirmation: true
+      };
+      
+      logger.info('Blog post preview response', {
+        responseType: response.type,
+        hasContent: !!response.content,
+        contentKeys: response.content ? Object.keys(response.content) : [],
+        userId: context.userId
+      });
+      
+      return response;
+
+    } catch (error) {
+      logger.error('Error handling blog post intent', error instanceof Error ? error : new Error(String(error)), {
+        intent: intent.action,
+        userId: context.userId
+      });
+
+      return {
+        type: 'text',
+        content: 'I encountered an error while creating your blog post. Please try again.',
+        hasData: false
+      };
+    }
+  }
+
+  private async generateBlogPost(content: string, length: string, context: IntentRouterContext): Promise<string> {
+    try {
+      const response = await openaiClient.chatCompletionsCreate({
+        model: "gpt-4",
+        messages: [
+          {
+            role: "system",
+            content: `You are a professional blog writer. Create engaging, informative blog posts that are well-structured and professional. 
+            
+            Focus on creating content that:
+            - Is engaging and informative
+            - Has a clear structure with proper paragraphs
+            - Uses professional language
+            - Includes relevant insights and value for readers
+            - Is optimized for readability
+            
+            ${length === '3 paragraphs' ? 'Create exactly 3 well-structured paragraphs.' : 
+              length === 'short' ? 'Keep it concise (2-3 paragraphs).' :
+              length === 'long' ? 'Create a comprehensive post (5-7 paragraphs).' :
+              'Create a standard blog post (4-5 paragraphs).'}`
+          },
+          {
+            role: "user",
+            content: `Create a blog post about: ${content}`
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 1000
+      }, {
+        userId: context.userId,
+        operation: 'blog_post_generation',
+        model: 'gpt-4'
+      });
+
+      return response.choices[0]?.message?.content || `Blog post about ${content}`;
+    } catch (error) {
+      logger.error('Error generating blog post content', error instanceof Error ? error : new Error(String(error)), {
+        content,
+        length,
+        userId: context.userId
+      });
+      throw error;
+    }
+  }
+}
+
 // Create and configure the router
 export const intentRouter = new IntentRouter();
 
@@ -2619,4 +2828,5 @@ intentRouter.registerHandler(new EmailIntentHandler());
 intentRouter.registerHandler(new CalendarIntentHandler());
 intentRouter.registerHandler(new AnalysisIntentHandler());
 intentRouter.registerHandler(new ProfileIntentHandler());
-intentRouter.registerHandler(new LinkedInPostIntentHandler()); 
+intentRouter.registerHandler(new LinkedInPostIntentHandler());
+intentRouter.registerHandler(new BlogPostIntentHandler()); 
