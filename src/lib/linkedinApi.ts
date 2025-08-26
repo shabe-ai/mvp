@@ -271,15 +271,24 @@ export class LinkedInAPI {
    */
   async getPersonId(): Promise<string> {
     try {
-      // Get the actual person ID from LinkedIn profile (prioritize fresh data)
-      const profile = await this.getProfile();
-      
-      // Use the profile.id which contains the LinkedIn person ID
+      // Use the /v2/me endpoint to get the correct person ID for posting
+      const response = await fetch(`${this.baseUrl}/me`, {
+        headers: {
+          'Authorization': `Bearer ${this.accessToken}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch person ID from /v2/me: ${response.statusText}`);
+      }
+
+      const profile = await response.json();
       const personId = profile.id;
       
-      logger.info('LinkedIn API - Using profile person ID:', { 
+      logger.info('LinkedIn API - Using /v2/me person ID:', { 
         personId,
-        profileId: profile.id
+        profileId: profile.id,
+        fullProfile: profile
       });
       
       return personId;
@@ -325,7 +334,7 @@ export class LinkedInAPI {
     try {
       // Get person ID for personal profile posting
       const personId = await this.getPersonId();
-      const authorUrn = `urn:li:member:${personId}`;
+      const authorUrn = `urn:li:person:${personId}`;
       
       logger.info('LinkedIn API - Creating personal post with author:', { 
         authorUrn, 
