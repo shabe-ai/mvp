@@ -302,8 +302,40 @@ class CrudIntentHandler implements IntentHandler {
       let result = null;
       let message = '';
       
+      // Handle create operations
+      if (intent.action === 'create_contact') {
+        const { contactName, email } = intent.entities;
+        
+        if (!contactName || !email) {
+          result = { success: false, error: 'Missing required fields' };
+          message = 'Please provide both contact name and email address.';
+        } else {
+          // Get user's team ID
+          const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+          const teamId = teams.length > 0 ? teams[0]._id : 'default';
+          
+          // Parse the contact name into first and last name
+          const nameParts = contactName.trim().split(' ');
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.slice(1).join(' ') || '';
+          
+          // Create the contact
+          const contactId = await convex.mutation(api.crm.createContact, {
+            teamId,
+            createdBy: context.userId,
+            firstName,
+            lastName,
+            email,
+            leadStatus: 'new',
+            contactType: 'contact'
+          });
+          
+          result = { success: true, contactId, contact: { firstName, lastName, email } };
+          message = `Successfully created contact "${contactName}" with email ${email}.`;
+        }
+      }
       // Handle delete operations
-      if (intent.action === 'delete_contact') {
+      else if (intent.action === 'delete_contact') {
         const { contactName } = intent.entities;
         
         // Get user's team ID
