@@ -1091,32 +1091,32 @@ export default function Chat({ onAction }: ChatProps = {}) {
 
       {/* Email Draft Modal */}
       {emailDraft && (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-          <div className="bg-neutral-primary rounded-lg p-6 max-w-2xl w-full mx-4 border border-neutral-secondary shadow-xl">
-            <h3 className="text-lg font-semibold mb-4 font-heading text-text-primary">Email Preview</h3>
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 border-2 border-gray-300 shadow-2xl">
+            <h3 className="text-lg font-semibold mb-4 font-heading text-black">Email Preview</h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1 font-body text-text-primary">To:</label>
+                <label className="block text-sm font-medium mb-1 font-body text-black">To:</label>
                 <input
                   value={emailDraft.to}
                   onChange={(e) => setEmailDraft(prev => prev ? {...prev, to: e.target.value} : null)}
-                  className="w-full p-2 border border-neutral-secondary rounded-md font-body"
+                  className="w-full p-2 border border-gray-300 rounded-md font-body text-black bg-white"
           />
         </div>
               <div>
-                <label className="block text-sm font-medium mb-1 font-body text-text-primary">Subject:</label>
+                <label className="block text-sm font-medium mb-1 font-body text-black">Subject:</label>
                 <input
                   value={emailDraft.subject}
                   onChange={(e) => setEmailDraft(prev => prev ? {...prev, subject: e.target.value} : null)}
-                  className="w-full p-2 border border-neutral-secondary rounded-md font-body"
+                  className="w-full p-2 border border-gray-300 rounded-md font-body text-black bg-white"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1 font-body text-text-primary">Content:</label>
+                <label className="block text-sm font-medium mb-1 font-body text-black">Content:</label>
                 <textarea
                   value={emailDraft.content}
                   onChange={(e) => setEmailDraft(prev => prev ? {...prev, content: e.target.value} : null)}
-                  className="w-full p-2 border border-neutral-secondary rounded-md h-32 font-body"
+                  className="w-full p-2 border border-gray-300 rounded-md h-32 font-body text-black bg-white"
                 />
               </div>
             </div>

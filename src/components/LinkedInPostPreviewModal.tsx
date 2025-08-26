@@ -58,8 +58,8 @@ export default function LinkedInPostPreviewModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4">
-      <Card className="w-full max-w-2xl shadow-xl">
+    <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-2xl shadow-2xl bg-white">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
