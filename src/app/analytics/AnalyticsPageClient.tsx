@@ -15,7 +15,9 @@ import {
   Save,
   Settings,
   Plus,
-  BarChart3
+  BarChart3,
+  Maximize2,
+  X
 } from "lucide-react";
 
 interface ChartWidget {
@@ -33,6 +35,7 @@ export default function AnalyticsPageClient() {
   const [widgets, setWidgets] = useState<ChartWidget[]>([]);
   const [editingWidget, setEditingWidget] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [fullscreenWidget, setFullscreenWidget] = useState<ChartWidget | null>(null);
 
   // Get user's team data
   const teams = useQuery(api.crm.getTeamsByUser, user?.id ? { userId: user.id } : "skip");
@@ -311,6 +314,14 @@ export default function AnalyticsPageClient() {
     setEditingWidget(null);
   };
 
+  const handleFullscreenChart = (widget: ChartWidget) => {
+    setFullscreenWidget(widget);
+  };
+
+  const handleCloseFullscreen = () => {
+    setFullscreenWidget(null);
+  };
+
   const handleAutoSave = () => {
     localStorage.setItem('analytics-widgets', JSON.stringify(widgets));
   };
@@ -466,20 +477,30 @@ export default function AnalyticsPageClient() {
                 )}
 
                 {/* Chart Display */}
-                <div className="h-80">
+                <div className="h-80 relative">
                   {widget.isActive && widget.data.length > 0 ? (
-                    <ChartDisplay
-                      chartSpec={{
-                        chartType: widget.chartType,
-                        data: widget.data,
-                        chartConfig: {
-                          width: 500,
-                          height: 300,
-                          margin: { top: 20, right: 30, left: 20, bottom: 5 }
-                        }
-                      }}
-                      narrative={widget.prompt}
-                    />
+                    <div className="h-full">
+                      <ChartDisplay
+                        chartSpec={{
+                          chartType: widget.chartType,
+                          data: widget.data,
+                          chartConfig: {
+                            width: 400,
+                            height: 280,
+                            margin: { top: 20, right: 30, left: 20, bottom: 5 }
+                          }
+                        }}
+                        narrative={widget.prompt}
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleFullscreenChart(widget)}
+                        className="absolute top-2 right-2 bg-white/80 hover:bg-white text-black border border-gray-200"
+                      >
+                        <Maximize2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   ) : (
                     <div className="h-full flex items-center justify-center border-2 border-dashed border-[#d9d2c7] rounded-lg">
                       <div className="text-center">
@@ -502,6 +523,52 @@ export default function AnalyticsPageClient() {
             Auto-saving...
           </div>
         </div>
+
+        {/* Fullscreen Modal */}
+        {fullscreenWidget && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200">
+                <h2 className="text-2xl font-bold text-black">
+                  {fullscreenWidget.title || `Chart ${fullscreenWidget.id.split('-')[1]}`}
+                </h2>
+                <div className="flex items-center space-x-4">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleExportWidget(fullscreenWidget)}
+                    className="text-[#d9d2c7] hover:text-black"
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCloseFullscreen}
+                    className="text-[#d9d2c7] hover:text-black"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div className="p-6">
+                <ChartDisplay
+                  chartSpec={{
+                    chartType: fullscreenWidget.chartType,
+                    data: fullscreenWidget.data,
+                    chartConfig: {
+                      width: 800,
+                      height: 500,
+                      margin: { top: 20, right: 30, left: 20, bottom: 5 }
+                    }
+                  }}
+                  narrative={fullscreenWidget.prompt}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
