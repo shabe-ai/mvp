@@ -26,6 +26,8 @@ interface ChartWidget {
   prompt: string;
   chartType: 'bar' | 'line' | 'pie' | 'area';
   data: any[];
+  xAxisKey: string;
+  yAxisKey: string;
   lastUpdated: Date;
   isActive: boolean;
 }
@@ -67,6 +69,8 @@ export default function AnalyticsPageClient() {
       prompt: '',
       chartType: 'bar',
       data: [],
+      xAxisKey: 'stage',
+      yAxisKey: 'amount',
       lastUpdated: new Date(),
       isActive: false
     }));
@@ -80,7 +84,7 @@ export default function AnalyticsPageClient() {
   }, []);
 
   // Data processing functions
-  const processDataFromPrompt = (prompt: string): { data: any[], chartType: 'bar' | 'line' | 'pie' | 'area' } => {
+  const processDataFromPrompt = (prompt: string): { data: any[], chartType: 'bar' | 'line' | 'pie' | 'area', xAxisKey: string, yAxisKey: string } => {
     const lowerPrompt = prompt.toLowerCase();
     
     // Determine chart type based on prompt
@@ -98,42 +102,56 @@ export default function AnalyticsPageClient() {
       if (lowerPrompt.includes('growth') || lowerPrompt.includes('over time')) {
         return {
           chartType: 'line',
-          data: processContactsData(contacts || [])
+          data: processContactsData(contacts || []),
+          xAxisKey: 'month',
+          yAxisKey: 'contacts'
         };
       } else if (lowerPrompt.includes('status') || lowerPrompt.includes('conversion')) {
         return {
           chartType: 'pie',
-          data: processConversionData(contacts || [])
+          data: processConversionData(contacts || []),
+          xAxisKey: 'status',
+          yAxisKey: 'count'
         };
       }
     } else if (lowerPrompt.includes('deal') || lowerPrompt.includes('pipeline')) {
       if (lowerPrompt.includes('stage')) {
         return {
           chartType: 'bar',
-          data: processDealsData(deals || [])
+          data: processDealsData(deals || []),
+          xAxisKey: 'stage',
+          yAxisKey: 'amount'
         };
       } else if (lowerPrompt.includes('revenue') || lowerPrompt.includes('amount')) {
         return {
           chartType: 'area',
-          data: processRevenueData(deals || [])
+          data: processRevenueData(deals || []),
+          xAxisKey: 'month',
+          yAxisKey: 'revenue'
         };
       }
     } else if (lowerPrompt.includes('activity')) {
       return {
         chartType: 'bar',
-        data: processActivitiesData(activities || [])
+        data: processActivitiesData(activities || []),
+        xAxisKey: 'type',
+        yAxisKey: 'count'
       };
     } else if (lowerPrompt.includes('account') || lowerPrompt.includes('industry')) {
       return {
         chartType: 'pie',
-        data: processAccountsData(accounts || [])
+        data: processAccountsData(accounts || []),
+        xAxisKey: 'industry',
+        yAxisKey: 'count'
       };
     }
 
     // Default fallback
     return {
       chartType: 'bar',
-      data: processDealsData(deals || [])
+      data: processDealsData(deals || []),
+      xAxisKey: 'stage',
+      yAxisKey: 'amount'
     };
   };
 
@@ -254,10 +272,10 @@ export default function AnalyticsPageClient() {
     setIsLoading(true);
     
     // Process the prompt and generate chart data
-    const { data, chartType } = processDataFromPrompt(prompt);
+    const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(prompt);
     
     // Debug: Log the generated data
-    console.log('Generated chart data:', { data, chartType, prompt });
+    console.log('Generated chart data:', { data, chartType, xAxisKey, yAxisKey, prompt });
     
     // Generate a title from the prompt
     const title = prompt.length > 30 ? prompt.substring(0, 30) + '...' : prompt;
@@ -270,6 +288,8 @@ export default function AnalyticsPageClient() {
             prompt, 
             chartType,
             data,
+            xAxisKey,
+            yAxisKey,
             lastUpdated: new Date(),
             isActive: true
           }
@@ -283,10 +303,10 @@ export default function AnalyticsPageClient() {
   const handleRefreshWidget = (widgetId: string) => {
     const widget = widgets.find(w => w.id === widgetId);
     if (widget && widget.prompt) {
-      const { data, chartType } = processDataFromPrompt(widget.prompt);
+      const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(widget.prompt);
       setWidgets(prev => prev.map(w => 
         w.id === widgetId 
-          ? { ...w, data, chartType, lastUpdated: new Date() }
+          ? { ...w, data, chartType, xAxisKey, yAxisKey, lastUpdated: new Date() }
           : w
       ));
     }
@@ -328,6 +348,8 @@ export default function AnalyticsPageClient() {
             title: '',
             prompt: '', 
             data: [],
+            xAxisKey: 'stage',
+            yAxisKey: 'amount',
             isActive: false
           }
         : widget
@@ -507,9 +529,11 @@ export default function AnalyticsPageClient() {
                             chartType: widget.chartType,
                             data: widget.data,
                             chartConfig: {
-                              width: 320,
-                              height: 220,
-                              margin: { top: 20, right: 30, left: 20, bottom: 5 }
+                              width: 280,
+                              height: 180,
+                              margin: { top: 15, right: 20, left: 15, bottom: 5 },
+                              xAxis: { dataKey: widget.xAxisKey },
+                              yAxis: { dataKey: widget.yAxisKey }
                             }
                           }}
                           narrative={widget.prompt}
