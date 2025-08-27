@@ -201,15 +201,15 @@ export default function CampaignManagerPage() {
     trendValue?: string;
     subtitle?: string;
   }) => (
-    <Card className="bg-white border-gray-300 shadow-sm">
+    <Card className="bg-white border-[#d9d2c7] shadow-sm">
       <CardContent className="p-6">
         <div className="text-center">
-          <div className="p-3 rounded-lg bg-gray-100 border border-gray-200 inline-flex mb-4">
-            <Icon className="h-6 w-6 text-gray-700" />
+          <div className="p-3 rounded-lg bg-[#f3e89a]/20 border border-[#d9d2c7] inline-flex mb-4">
+            <Icon className="h-6 w-6 text-black" />
           </div>
-          <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">{title}</p>
-          <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
-          {subtitle && <p className="text-xs text-gray-500 font-medium mt-1">{subtitle}</p>}
+          <p className="text-sm font-semibold text-black uppercase tracking-wide">{title}</p>
+          <p className="text-3xl font-bold text-black mt-1">{value}</p>
+          {subtitle && <p className="text-xs text-[#d9d2c7] font-medium mt-1">{subtitle}</p>}
           {trend && (
             <div className="flex items-center justify-center mt-2">
               {trend === 'up' ? (
@@ -228,9 +228,9 @@ export default function CampaignManagerPage() {
   );
 
   const ChartCard = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <Card className="bg-white border-gray-300 shadow-sm">
+    <Card className="bg-white border-[#d9d2c7] shadow-sm">
       <CardHeader>
-        <CardTitle className="text-xl font-bold text-gray-900 uppercase tracking-wide">{title}</CardTitle>
+        <CardTitle className="text-xl font-bold text-black uppercase tracking-wide">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         {children}
@@ -239,19 +239,12 @@ export default function CampaignManagerPage() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <div className="flex">
         {/* Sidebar */}
-        <div className="w-80 bg-white border-r border-gray-300 min-h-screen shadow-sm">
+        <div className="w-80 bg-white border-r border-[#d9d2c7] min-h-screen">
           <div className="p-6">
             <div className="mb-8">
-              <div className="flex items-center mb-6">
-                <img 
-                  src="/Fime.png" 
-                  alt="Shabe AI Logo" 
-                  className="h-8 w-auto mr-3"
-                />
-              </div>
               <h1 className="text-xl font-bold text-gray-900 uppercase tracking-wide">Campaign Manager</h1>
               <p className="text-sm text-gray-600 mt-1 font-medium">AI-powered marketing campaigns</p>
             </div>
@@ -262,8 +255,8 @@ export default function CampaignManagerPage() {
                 onClick={() => setActiveSection('overview')}
                 className={`w-full flex items-center px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${
                   activeSection === 'overview'
-                    ? 'bg-gray-900 text-white border border-gray-900'
-                    : 'text-gray-800 hover:bg-gray-100 border border-transparent'
+                    ? 'bg-[#f3e89a] text-black border border-[#d9d2c7]'
+                    : 'text-black hover:bg-[#f3e89a]/10 border border-transparent'
                 }`}
               >
                 <BarChart3 className="h-4 w-4 mr-3" />
@@ -273,8 +266,8 @@ export default function CampaignManagerPage() {
                 onClick={() => setActiveSection('campaign-agent')}
                 className={`w-full flex items-center px-3 py-2 text-sm font-semibold rounded-lg transition-colors ${
                   activeSection === 'campaign-agent'
-                    ? 'bg-gray-900 text-white border border-gray-900'
-                    : 'text-gray-800 hover:bg-gray-100 border border-transparent'
+                    ? 'bg-[#f3e89a] text-black border border-[#d9d2c7]'
+                    : 'text-black hover:bg-[#f3e89a]/10 border border-transparent'
                 }`}
               >
                 <Bot className="h-4 w-4 mr-3" />
@@ -304,12 +297,12 @@ export default function CampaignManagerPage() {
         </div>
 
         {/* Main Content */}
-        <div className="flex-1 p-8 bg-gray-50">
+        <div className="flex-1 p-8 bg-white">
           {activeSection === 'overview' && (
             <div className="space-y-8">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-3 uppercase tracking-wide">Campaign Overview</h2>
-                <p className="text-gray-700 font-medium">Monitor your campaign performance and key metrics</p>
+                <h2 className="text-3xl font-bold text-black mb-3 uppercase tracking-wide">Campaign Overview</h2>
+                <p className="text-[#d9d2c7] font-medium">Monitor your campaign performance and key metrics</p>
               </div>
 
               {/* Key Metrics Grid */}
@@ -414,21 +407,21 @@ export default function CampaignManagerPage() {
               {/* Performance Summary */}
               <ChartCard title="Performance Summary">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                  <div className="text-center p-6 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="text-3xl font-bold text-gray-900">{metrics.totalLikes.toLocaleString()}</div>
-                    <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide mt-2">Total Likes</div>
+                  <div className="text-center p-6 bg-[#f3e89a]/10 rounded-lg border border-[#d9d2c7]">
+                    <div className="text-3xl font-bold text-black">{metrics.totalLikes.toLocaleString()}</div>
+                    <div className="text-sm font-semibold text-black uppercase tracking-wide mt-2">Total Likes</div>
                   </div>
-                  <div className="text-center p-6 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="text-3xl font-bold text-gray-900">{metrics.totalComments.toLocaleString()}</div>
-                    <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide mt-2">Comments</div>
+                  <div className="text-center p-6 bg-[#f3e89a]/10 rounded-lg border border-[#d9d2c7]">
+                    <div className="text-3xl font-bold text-black">{metrics.totalComments.toLocaleString()}</div>
+                    <div className="text-sm font-semibold text-black uppercase tracking-wide mt-2">Comments</div>
                   </div>
-                  <div className="text-center p-6 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="text-3xl font-bold text-gray-900">{metrics.totalShares.toLocaleString()}</div>
-                    <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide mt-2">Shares</div>
+                  <div className="text-center p-6 bg-[#f3e89a]/10 rounded-lg border border-[#d9d2c7]">
+                    <div className="text-3xl font-bold text-black">{metrics.totalShares.toLocaleString()}</div>
+                    <div className="text-sm font-semibold text-black uppercase tracking-wide mt-2">Shares</div>
                   </div>
-                  <div className="text-center p-6 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="text-3xl font-bold text-gray-900">{metrics.totalClicks.toLocaleString()}</div>
-                    <div className="text-sm font-semibold text-gray-700 uppercase tracking-wide mt-2">Clicks</div>
+                  <div className="text-center p-6 bg-[#f3e89a]/10 rounded-lg border border-[#d9d2c7]">
+                    <div className="text-3xl font-bold text-black">{metrics.totalClicks.toLocaleString()}</div>
+                    <div className="text-sm font-semibold text-black uppercase tracking-wide mt-2">Clicks</div>
                   </div>
                 </div>
               </ChartCard>
@@ -438,15 +431,15 @@ export default function CampaignManagerPage() {
           {activeSection === 'campaign-agent' && (
             <div className="space-y-8">
               <div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-3 uppercase tracking-wide">Campaign Agent</h2>
-                <p className="text-gray-700 font-medium">Generate and manage your campaign assets with AI</p>
+                <h2 className="text-3xl font-bold text-black mb-3 uppercase tracking-wide">Campaign Agent</h2>
+                <p className="text-[#d9d2c7] font-medium">Generate and manage your campaign assets with AI</p>
               </div>
 
               {/* Asset Generator */}
-              <Card className="bg-white border-gray-300 shadow-sm">
+              <Card className="bg-white border-[#d9d2c7] shadow-sm">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-3 text-xl font-bold text-gray-900 uppercase tracking-wide">
-                    <Zap className="h-6 w-6 text-gray-900" />
+                  <CardTitle className="flex items-center gap-3 text-xl font-bold text-black uppercase tracking-wide">
+                    <Zap className="h-6 w-6 text-black" />
                     Generate Campaign Assets
                   </CardTitle>
                 </CardHeader>
@@ -483,7 +476,7 @@ export default function CampaignManagerPage() {
                   <Button 
                     onClick={generateAssets}
                     disabled={isGenerating || selectedAssets.length === 0 || !campaignTopic.trim()}
-                    className="w-full bg-gray-900 hover:bg-gray-800 text-white font-semibold py-3 text-base"
+                    className="w-full bg-[#f3e89a] hover:bg-[#f3e89a]/80 text-black font-semibold py-3 text-base border border-[#d9d2c7]"
                   >
                     {isGenerating ? (
                       <>
@@ -502,20 +495,20 @@ export default function CampaignManagerPage() {
 
               {/* Generated Assets Display */}
               {generatedAssets.length > 0 && (
-                <Card className="bg-white border-gray-300 shadow-sm">
+                <Card className="bg-white border-[#d9d2c7] shadow-sm">
                   <CardHeader>
-                    <CardTitle className="flex items-center gap-3 text-xl font-bold text-gray-900 uppercase tracking-wide">
-                      <Target className="h-6 w-6 text-gray-900" />
+                    <CardTitle className="flex items-center gap-3 text-xl font-bold text-black uppercase tracking-wide">
+                      <Target className="h-6 w-6 text-black" />
                       Generated Campaign Assets
                     </CardTitle>
-                    <div className="text-sm text-gray-700 mt-3 font-medium">
+                    <div className="text-sm text-[#d9d2c7] mt-3 font-medium">
                       💡 Publishing is currently available for LinkedIn posts only. Other platforms coming soon!
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       {generatedAssets.map((asset) => (
-                        <div key={asset.id} className="border border-gray-300 rounded-lg p-6 bg-white shadow-sm">
+                        <div key={asset.id} className="border border-[#d9d2c7] rounded-lg p-6 bg-white shadow-sm">
                           <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
                               <Badge variant={asset.status === 'published' ? 'default' : 'secondary'}>
@@ -550,7 +543,7 @@ export default function CampaignManagerPage() {
                                   onClick={() => publishAsset(asset.id)}
                                   variant={asset.type === 'linkedin_post' ? 'default' : 'outline'}
                                   disabled={asset.type !== 'linkedin_post'}
-                                  className={asset.type === 'linkedin_post' ? 'bg-gray-900 hover:bg-gray-800 text-white font-semibold' : 'border-gray-300 text-gray-700 font-semibold hover:bg-gray-50'}
+                                  className={asset.type === 'linkedin_post' ? 'bg-[#f3e89a] hover:bg-[#f3e89a]/80 text-black font-semibold border-[#d9d2c7]' : 'border-[#d9d2c7] text-[#d9d2c7] font-semibold hover:bg-[#f3e89a]/10'}
                                 >
                                     <Send className="h-4 w-4 mr-1" />
                                     {asset.type === 'linkedin_post' ? 'Publish' : 'Coming Soon'}
@@ -597,24 +590,24 @@ export default function CampaignManagerPage() {
                           ) : (
                             asset.type === 'image' ? (
                               <div className="space-y-4">
-                                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                  <p className="text-sm font-semibold text-gray-800 mb-2 uppercase tracking-wide">Description:</p>
-                                  <p className="text-sm font-medium text-gray-700">{asset.content}</p>
+                                <div className="bg-[#f3e89a]/10 p-4 rounded-lg border border-[#d9d2c7]">
+                                  <p className="text-sm font-semibold text-black mb-2 uppercase tracking-wide">Description:</p>
+                                  <p className="text-sm font-medium text-black">{asset.content}</p>
                                 </div>
                                 {asset.imageUrl && (
-                                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                    <p className="text-sm font-semibold text-gray-800 mb-3 uppercase tracking-wide">Generated Image:</p>
+                                  <div className="bg-[#f3e89a]/10 p-4 rounded-lg border border-[#d9d2c7]">
+                                    <p className="text-sm font-semibold text-black mb-3 uppercase tracking-wide">Generated Image:</p>
                                     <img 
                                       src={asset.imageUrl} 
                                       alt="Generated" 
-                                      className="max-w-full h-auto rounded-lg border border-gray-300 shadow-sm"
+                                      className="max-w-full h-auto rounded-lg border border-[#d9d2c7] shadow-sm"
                                     />
                                   </div>
                                 )}
                               </div>
                             ) : (
-                              <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                                <pre className="whitespace-pre-wrap text-sm font-medium text-gray-800">{asset.content}</pre>
+                              <div className="bg-[#f3e89a]/10 p-4 rounded-lg border border-[#d9d2c7]">
+                                <pre className="whitespace-pre-wrap text-sm font-medium text-black">{asset.content}</pre>
                               </div>
                             )
                           )}
