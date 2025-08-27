@@ -13,23 +13,26 @@ import {
   RefreshCw,
   Download,
   Save,
-  Settings
+  Settings,
+  Plus,
+  BarChart3
 } from "lucide-react";
 
-interface WidgetConfig {
+interface ChartWidget {
   id: string;
   title: string;
-  type: 'contacts' | 'deals' | 'accounts' | 'activities' | 'revenue' | 'conversion';
-  chartType: 'bar' | 'line' | 'pie' | 'area';
   prompt: string;
+  chartType: 'bar' | 'line' | 'pie' | 'area';
   data: any[];
   lastUpdated: Date;
+  isActive: boolean;
 }
 
 export default function AnalyticsPageClient() {
   const { user } = useUser();
-  const [widgets, setWidgets] = useState<WidgetConfig[]>([]);
+  const [widgets, setWidgets] = useState<ChartWidget[]>([]);
   const [editingWidget, setEditingWidget] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   // Get user's team data
   const teams = useQuery(api.crm.getTeamsByUser, user?.id ? { userId: user.id } : "skip");
@@ -53,70 +56,95 @@ export default function AnalyticsPageClient() {
     teamId ? { teamId: teamId.toString() } : "skip"
   );
 
-  // Initialize default widgets
+  // Initialize 6 empty widgets
   useEffect(() => {
-    if (contacts && accounts && deals && activities) {
-      const defaultWidgets: WidgetConfig[] = [
-        {
-          id: 'contacts-overview',
-          title: 'Contact Growth',
-          type: 'contacts',
-          chartType: 'line',
-          prompt: 'Show contact growth over time by month',
-          data: processContactsData(contacts),
-          lastUpdated: new Date()
-        },
-        {
-          id: 'deals-pipeline',
-          title: 'Deal Pipeline',
-          type: 'deals',
-          chartType: 'bar',
-          prompt: 'Show deals by stage with amounts',
-          data: processDealsData(deals),
-          lastUpdated: new Date()
-        },
-        {
-          id: 'revenue-trends',
-          title: 'Revenue Trends',
-          type: 'revenue',
-          chartType: 'area',
-          prompt: 'Show revenue trends over time',
-          data: processRevenueData(deals),
-          lastUpdated: new Date()
-        },
-        {
-          id: 'lead-conversion',
-          title: 'Lead Conversion',
-          type: 'conversion',
-          chartType: 'pie',
-          prompt: 'Show lead conversion rates by status',
-          data: processConversionData(contacts),
-          lastUpdated: new Date()
-        },
-        {
-          id: 'activity-overview',
-          title: 'Activity Overview',
-          type: 'activities',
-          chartType: 'bar',
-          prompt: 'Show activities by type and status',
-          data: processActivitiesData(activities),
-          lastUpdated: new Date()
-        },
-        {
-          id: 'account-distribution',
-          title: 'Account Distribution',
-          type: 'accounts',
-          chartType: 'pie',
-          prompt: 'Show account distribution by industry',
-          data: processAccountsData(accounts),
-          lastUpdated: new Date()
-        }
-      ];
-      setWidgets(defaultWidgets);
+    const emptyWidgets: ChartWidget[] = Array.from({ length: 6 }, (_, index) => ({
+      id: `widget-${index + 1}`,
+      title: `Chart ${index + 1}`,
+      prompt: '',
+      chartType: 'bar',
+      data: [],
+      lastUpdated: new Date(),
+      isActive: false
+    }));
+    setWidgets(emptyWidgets);
+  }, []);
+
+  // Load saved widgets from localStorage
+  useEffect(() => {
+    const savedWidgets = localStorage.getItem('analytics-widgets');
+    if (savedWidgets) {
+      try {
+        const parsed = JSON.parse(savedWidgets);
+        setWidgets(prev => prev.map((widget, index) => ({
+          ...widget,
+          ...parsed[index],
+          lastUpdated: new Date(parsed[index].lastUpdated || Date.now())
+        })));
+      } catch (error) {
+        console.error('Error loading saved widgets:', error);
+      }
     }
-  }, [contacts, accounts, deals, activities]);
+  }, []);
 
   // Data processing functions
+  const processDataFromPrompt = (prompt: string): { data: any[], chartType: 'bar' | 'line' | 'pie' | 'area' } => {
+    const lowerPrompt = prompt.toLowerCase();
+    
+    // Determine chart type based on prompt
+    let chartType: 'bar' | 'line' | 'pie' | 'area' = 'bar';
+    if (lowerPrompt.includes('trend') || lowerPrompt.includes('over time') || lowerPrompt.includes('growth')) {
+      chartType = 'line';
+    } else if (lowerPrompt.includes('distribution') || lowerPrompt.includes('percentage') || lowerPrompt.includes('proportion')) {
+      chartType = 'pie';
+    } else if (lowerPrompt.includes('revenue') || lowerPrompt.includes('amount') || lowerPrompt.includes('value')) {
+      chartType = 'area';
+    }
+
+    // Process data based on prompt content
+    if (lowerPrompt.includes('contact') || lowerPrompt.includes('lead')) {
+      if (lowerPrompt.includes('growth') || lowerPrompt.includes('over time')) {
+        return {
+          chartType: 'line',
+          data: processContactsData(contacts || [])
+        };
+      } else if (lowerPrompt.includes('status') || lowerPrompt.includes('conversion')) {
+        return {
+          chartType: 'pie',
+          data: processConversionData(contacts || [])
+        };
+      }
+    } else if (lowerPrompt.includes('deal') || lowerPrompt.includes('pipeline')) {
+      if (lowerPrompt.includes('stage')) {
+        return {
+          chartType: 'bar',
+          data: processDealsData(deals || [])
+        };
+      } else if (lowerPrompt.includes('revenue') || lowerPrompt.includes('amount')) {
+        return {
+          chartType: 'area',
+          data: processRevenueData(deals || [])
+        };
+      }
+    } else if (lowerPrompt.includes('activity')) {
+      return {
+        chartType: 'bar',
+        data: processActivitiesData(activities || [])
+      };
+    } else if (lowerPrompt.includes('account') || lowerPrompt.includes('industry')) {
+      return {
+        chartType: 'pie',
+        data: processAccountsData(accounts || [])
+      };
+    }
+
+    // Default fallback
+    return {
+      chartType: 'bar',
+      data: processDealsData(deals || [])
+    };
+  };
+
   const processContactsData = (contacts: any[]) => {
     if (!contacts) return [];
     
@@ -212,16 +240,48 @@ export default function AnalyticsPageClient() {
   };
 
   // Widget actions
-  const handleRefreshWidget = (widgetId: string) => {
+  const handleCreateChart = (widgetId: string, prompt: string) => {
+    setIsLoading(true);
+    
+    // Process the prompt and generate chart data
+    const { data, chartType } = processDataFromPrompt(prompt);
+    
+    // Generate a title from the prompt
+    const title = prompt.length > 30 ? prompt.substring(0, 30) + '...' : prompt;
+    
     setWidgets(prev => prev.map(widget => 
       widget.id === widgetId 
-        ? { ...widget, lastUpdated: new Date() }
+        ? { 
+            ...widget, 
+            title,
+            prompt, 
+            chartType,
+            data,
+            lastUpdated: new Date(),
+            isActive: true
+          }
         : widget
     ));
+    
+    setEditingWidget(null);
+    setIsLoading(false);
   };
 
-  const handleExportWidget = (widget: WidgetConfig) => {
-    // Use existing Google Sheets export functionality
+  const handleRefreshWidget = (widgetId: string) => {
+    const widget = widgets.find(w => w.id === widgetId);
+    if (widget && widget.prompt) {
+      const { data, chartType } = processDataFromPrompt(widget.prompt);
+      setWidgets(prev => prev.map(w => 
+        w.id === widgetId 
+          ? { ...w, data, chartType, lastUpdated: new Date() }
+          : w
+      ));
+    }
+  };
+
+  const handleExportWidget = (widget: ChartWidget) => {
+    if (!widget.data.length) return;
+    
     const chartData = widget.data;
     const chartConfig = {
       width: 600,
@@ -229,7 +289,6 @@ export default function AnalyticsPageClient() {
       margin: { top: 20, right: 30, left: 20, bottom: 5 }
     };
     
-    // This will use the existing /api/export-sheets endpoint
     fetch('/api/export-sheets', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -248,19 +307,22 @@ export default function AnalyticsPageClient() {
     .catch(error => console.error('Export failed:', error));
   };
 
-  const handleUpdateWidget = (widgetId: string, newPrompt: string) => {
-    // Here you would integrate with AI to generate new chart data based on the prompt
-    // For now, we'll just update the prompt
+  const handleClearWidget = (widgetId: string) => {
     setWidgets(prev => prev.map(widget => 
       widget.id === widgetId 
-        ? { ...widget, prompt: newPrompt, lastUpdated: new Date() }
+        ? { 
+            ...widget, 
+            title: `Chart ${widget.id.split('-')[1]}`,
+            prompt: '', 
+            data: [],
+            isActive: false
+          }
         : widget
     ));
     setEditingWidget(null);
   };
 
   const handleAutoSave = () => {
-    // Save widget configurations to localStorage or database
     localStorage.setItem('analytics-widgets', JSON.stringify(widgets));
   };
 
@@ -287,7 +349,7 @@ export default function AnalyticsPageClient() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-black mb-3 uppercase tracking-wide">Analytics Dashboard</h1>
-          <p className="text-[#d9d2c7] font-medium">Real-time insights from your CRM data</p>
+          <p className="text-[#d9d2c7] font-medium">Create custom charts from your CRM data</p>
         </div>
 
         {/* Widgets Grid */}
@@ -300,22 +362,26 @@ export default function AnalyticsPageClient() {
                     {widget.title}
                   </CardTitle>
                   <div className="flex items-center space-x-2">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleRefreshWidget(widget.id)}
-                      className="text-[#d9d2c7] hover:text-black"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleExportWidget(widget)}
-                      className="text-[#d9d2c7] hover:text-black"
-                    >
-                      <Download className="h-4 w-4" />
-                    </Button>
+                    {widget.isActive && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleRefreshWidget(widget.id)}
+                          className="text-[#d9d2c7] hover:text-black"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleExportWidget(widget)}
+                          className="text-[#d9d2c7] hover:text-black"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
@@ -326,9 +392,11 @@ export default function AnalyticsPageClient() {
                     </Button>
                   </div>
                 </div>
-                <p className="text-xs text-[#d9d2c7]">
-                  Last updated: {widget.lastUpdated.toLocaleTimeString()}
-                </p>
+                {widget.isActive && (
+                  <p className="text-xs text-[#d9d2c7]">
+                    Last updated: {widget.lastUpdated.toLocaleTimeString()}
+                  </p>
+                )}
               </CardHeader>
               
               <CardContent>
@@ -342,19 +410,33 @@ export default function AnalyticsPageClient() {
                           w.id === widget.id ? { ...w, prompt: e.target.value } : w
                         ));
                       }}
-                      placeholder="Describe what you want to see in this widget..."
+                      placeholder="Describe the chart you want to see (e.g., 'deals by stage', 'contact growth over time', 'revenue trends')..."
                       className="mb-2"
-                      rows={2}
+                      rows={3}
                     />
                     <div className="flex space-x-2">
                       <Button
                         size="sm"
-                        onClick={() => handleUpdateWidget(widget.id, widget.prompt)}
+                        onClick={() => handleCreateChart(widget.id, widget.prompt)}
+                        disabled={!widget.prompt.trim() || isLoading}
                         className="bg-[#f3e89a] hover:bg-[#f3e89a]/80 text-black"
                       >
-                        <Save className="h-4 w-4 mr-1" />
-                        Update
+                        {isLoading ? (
+                          <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4 mr-1" />
+                        )}
+                        {widget.isActive ? 'Update' : 'Create'} Chart
                       </Button>
+                      {widget.isActive && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleClearWidget(widget.id)}
+                        >
+                          Clear
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
@@ -370,25 +452,36 @@ export default function AnalyticsPageClient() {
                       value={widget.prompt}
                       readOnly
                       className="text-sm text-[#d9d2c7] bg-[#f3e89a]/10"
-                      placeholder="Click settings to customize this widget..."
+                      placeholder={widget.isActive ? "Click settings to modify this chart..." : "Click settings to create a new chart..."}
                     />
                   </div>
                 )}
 
                 {/* Chart Display */}
                 <div className="h-64">
-                  <ChartDisplay
-                    chartSpec={{
-                      chartType: widget.chartType,
-                      data: widget.data,
-                      chartConfig: {
-                        width: 400,
-                        height: 250,
-                        margin: { top: 20, right: 30, left: 20, bottom: 5 }
-                      }
-                    }}
-                    narrative={widget.prompt}
-                  />
+                  {widget.isActive && widget.data.length > 0 ? (
+                    <ChartDisplay
+                      chartSpec={{
+                        chartType: widget.chartType,
+                        data: widget.data,
+                        chartConfig: {
+                          width: 400,
+                          height: 250,
+                          margin: { top: 20, right: 30, left: 20, bottom: 5 }
+                        }
+                      }}
+                      narrative={widget.prompt}
+                    />
+                  ) : (
+                    <div className="h-full flex items-center justify-center border-2 border-dashed border-[#d9d2c7] rounded-lg">
+                      <div className="text-center">
+                        <BarChart3 className="h-12 w-12 text-[#d9d2c7] mx-auto mb-2" />
+                        <p className="text-sm text-[#d9d2c7]">
+                          {widget.isActive ? 'No data available' : 'Click settings to create a chart'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
