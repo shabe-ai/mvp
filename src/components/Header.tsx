@@ -29,6 +29,9 @@ export default function Header() {
                 <Link href="/" className="text-text-secondary hover:text-text-primary px-4 py-2 text-sm font-medium transition-colors font-body">
                   Home
                 </Link>
+                <Link href="/analytics" className="text-text-secondary hover:text-text-primary px-4 py-2 text-sm font-medium transition-colors font-body">
+                  Analytics
+                </Link>
                 <Link href="/campaign-manager" className="text-text-secondary hover:text-text-primary px-4 py-2 text-sm font-medium transition-colors font-body">
                   Campaign Manager
                 </Link>
