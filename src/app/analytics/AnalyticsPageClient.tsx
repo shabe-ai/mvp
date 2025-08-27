@@ -72,19 +72,8 @@ export default function AnalyticsPageClient() {
 
   // Load saved widgets from localStorage
   useEffect(() => {
-    const savedWidgets = localStorage.getItem('analytics-widgets');
-    if (savedWidgets) {
-      try {
-        const parsed = JSON.parse(savedWidgets);
-        setWidgets(prev => prev.map((widget, index) => ({
-          ...widget,
-          ...parsed[index],
-          lastUpdated: new Date(parsed[index].lastUpdated || Date.now())
-        })));
-      } catch (error) {
-        console.error('Error loading saved widgets:', error);
-      }
-    }
+    // Clear localStorage to start fresh with empty widgets
+    localStorage.removeItem('analytics-widgets');
   }, []);
 
   // Data processing functions
