@@ -203,27 +203,25 @@ export default function CampaignManagerPage() {
   }) => (
     <Card className="bg-white border-gray-300 shadow-sm">
       <CardContent className="p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">{title}</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
-            {subtitle && <p className="text-xs text-gray-500 font-medium mt-1">{subtitle}</p>}
-            {trend && (
-              <div className="flex items-center mt-2">
-                {trend === 'up' ? (
-                  <ArrowUpRight className="h-4 w-4 text-green-600" />
-                ) : (
-                  <ArrowDownRight className="h-4 w-4 text-red-600" />
-                )}
-                <span className={`text-sm ml-1 font-semibold ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
-                  {trendValue}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="p-2.5 rounded-lg bg-gray-100 border border-gray-200 flex-shrink-0 ml-4">
+        <div className="text-center">
+          <div className="p-3 rounded-lg bg-gray-100 border border-gray-200 inline-flex mb-4">
             <Icon className="h-6 w-6 text-gray-700" />
           </div>
+          <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">{title}</p>
+          <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
+          {subtitle && <p className="text-xs text-gray-500 font-medium mt-1">{subtitle}</p>}
+          {trend && (
+            <div className="flex items-center justify-center mt-2">
+              {trend === 'up' ? (
+                <ArrowUpRight className="h-4 w-4 text-green-600" />
+              ) : (
+                <ArrowDownRight className="h-4 w-4 text-red-600" />
+              )}
+              <span className={`text-sm ml-1 font-semibold ${trend === 'up' ? 'text-green-600' : 'text-red-600'}`}>
+                {trendValue}
+              </span>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>
