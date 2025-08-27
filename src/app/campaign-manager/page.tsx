@@ -206,7 +206,7 @@ export default function CampaignManagerPage() {
     <Card className="bg-white border-gray-300 shadow-sm">
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide">{title}</p>
             <p className="text-3xl font-bold text-gray-900 mt-1">{value}</p>
             {subtitle && <p className="text-xs text-gray-500 font-medium mt-1">{subtitle}</p>}
@@ -223,8 +223,8 @@ export default function CampaignManagerPage() {
               </div>
             )}
           </div>
-          <div className={`p-3 rounded-lg ${color}`}>
-            <Icon className="h-8 w-8 text-white" />
+          <div className={`p-2.5 rounded-lg ${color} flex-shrink-0 ml-4`}>
+            <Icon className="h-6 w-6 text-white" />
           </div>
         </div>
       </CardContent>
@@ -249,7 +249,7 @@ export default function CampaignManagerPage() {
         <div className="w-80 bg-white border-r border-gray-300 min-h-screen shadow-sm">
           <div className="p-6">
             <div className="mb-8">
-              <div className="flex items-center mb-4">
+              <div className="flex items-center mb-6">
                 <img 
                   src="/Fime.png" 
                   alt="Shabe AI Logo" 
@@ -317,12 +317,12 @@ export default function CampaignManagerPage() {
               </div>
 
               {/* Key Metrics Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <MetricCard
                   title="Total Views"
                   value={metrics.totalViews.toLocaleString()}
                   icon={Eye}
-                  color="bg-blue-500"
+                  color="bg-gray-900"
                   trend="up"
                   trendValue="+12.5%"
                 />
@@ -330,7 +330,7 @@ export default function CampaignManagerPage() {
                   title="Engagement Rate"
                   value={`${metrics.engagementRate}%`}
                   icon={Heart}
-                  color="bg-green-500"
+                  color="bg-gray-800"
                   trend="up"
                   trendValue="+8.2%"
                 />
@@ -338,7 +338,7 @@ export default function CampaignManagerPage() {
                   title="Total Revenue"
                   value={`$${metrics.totalRevenue.toLocaleString()}`}
                   icon={DollarSign}
-                  color="bg-purple-500"
+                  color="bg-gray-700"
                   trend="up"
                   trendValue="+15.3%"
                 />
@@ -346,7 +346,7 @@ export default function CampaignManagerPage() {
                   title="Conversion Rate"
                   value={`${metrics.conversionRate}%`}
                   icon={Target}
-                  color="bg-orange-500"
+                  color="bg-gray-600"
                   trend="down"
                   trendValue="-2.1%"
                 />
@@ -359,21 +359,21 @@ export default function CampaignManagerPage() {
                     title="Impressions"
                     value={metrics.impressions.toLocaleString()}
                     icon={Layers}
-                    color="bg-indigo-500"
+                    color="bg-gray-500"
                     subtitle="Total ad impressions"
                   />
                   <MetricCard
                     title="Reach"
                     value={metrics.reach.toLocaleString()}
                     icon={Users}
-                    color="bg-pink-500"
+                    color="bg-gray-600"
                     subtitle="Unique users reached"
                   />
                   <MetricCard
                     title="Cost Per Click"
                     value={`$${metrics.costPerClick}`}
                     icon={MousePointer}
-                    color="bg-yellow-500"
+                    color="bg-gray-700"
                     subtitle="Average CPC"
                   />
                 </div>
@@ -382,21 +382,21 @@ export default function CampaignManagerPage() {
                     title="Avg Session Duration"
                     value={`${Math.floor(metrics.avgSessionDuration / 60)}:${(metrics.avgSessionDuration % 60).toString().padStart(2, '0')}`}
                     icon={Clock}
-                    color="bg-teal-500"
+                    color="bg-gray-800"
                     subtitle="Minutes:Seconds"
                   />
                   <MetricCard
                     title="Bounce Rate"
                     value={`${metrics.bounceRate}%`}
                     icon={TrendingDown}
-                    color="bg-red-500"
+                    color="bg-gray-900"
                     subtitle="Page bounce rate"
                   />
                   <MetricCard
                     title="ROI"
                     value={`${metrics.roi}x`}
                     icon={TrendingUp}
-                    color="bg-emerald-500"
+                    color="bg-gray-600"
                     subtitle="Return on investment"
                   />
                 </div>
