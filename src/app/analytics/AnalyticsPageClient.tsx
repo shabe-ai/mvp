@@ -60,7 +60,7 @@ export default function AnalyticsPageClient() {
   useEffect(() => {
     const emptyWidgets: ChartWidget[] = Array.from({ length: 6 }, (_, index) => ({
       id: `widget-${index + 1}`,
-      title: `Chart ${index + 1}`,
+      title: '',
       prompt: '',
       chartType: 'bar',
       data: [],
@@ -312,7 +312,7 @@ export default function AnalyticsPageClient() {
       widget.id === widgetId 
         ? { 
             ...widget, 
-            title: `Chart ${widget.id.split('-')[1]}`,
+            title: '',
             prompt: '', 
             data: [],
             isActive: false
@@ -359,7 +359,7 @@ export default function AnalyticsPageClient() {
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-lg font-bold text-black uppercase tracking-wide">
-                    {widget.title}
+                    {widget.title || `Chart ${widget.id.split('-')[1]}`}
                   </CardTitle>
                   <div className="flex items-center space-x-2">
                     {widget.isActive && (
@@ -450,10 +450,29 @@ export default function AnalyticsPageClient() {
                   <div className="mb-4">
                     <Input
                       value={widget.prompt}
-                      readOnly
-                      className="text-sm text-[#d9d2c7] bg-[#f3e89a]/10"
-                      placeholder={widget.isActive ? "Click settings to modify this chart..." : "Click settings to create a new chart..."}
+                      onChange={(e) => {
+                        setWidgets(prev => prev.map(w => 
+                          w.id === widget.id ? { ...w, prompt: e.target.value } : w
+                        ));
+                      }}
+                      className="text-sm text-black bg-white border-[#d9d2c7] mb-2"
+                      placeholder="Enter a prompt to create a chart (e.g., 'deals by stage', 'contact growth over time')..."
                     />
+                    {widget.prompt.trim() && (
+                      <Button
+                        size="sm"
+                        onClick={() => handleCreateChart(widget.id, widget.prompt)}
+                        disabled={isLoading}
+                        className="bg-[#f3e89a] hover:bg-[#f3e89a]/80 text-black"
+                      >
+                        {isLoading ? (
+                          <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4 mr-1" />
+                        )}
+                        Create Chart
+                      </Button>
+                    )}
                   </div>
                 )}
 
