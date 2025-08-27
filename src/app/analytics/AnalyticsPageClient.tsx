@@ -342,7 +342,7 @@ export default function AnalyticsPageClient() {
         </div>
 
         {/* Widgets Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {widgets.map((widget) => (
             <Card key={widget.id} className="bg-white border-[#d9d2c7] shadow-sm">
               <CardHeader className="pb-3">
@@ -466,15 +466,15 @@ export default function AnalyticsPageClient() {
                 )}
 
                 {/* Chart Display */}
-                <div className="h-64">
+                <div className="h-80">
                   {widget.isActive && widget.data.length > 0 ? (
                     <ChartDisplay
                       chartSpec={{
                         chartType: widget.chartType,
                         data: widget.data,
                         chartConfig: {
-                          width: 400,
-                          height: 250,
+                          width: 500,
+                          height: 300,
                           margin: { top: 20, right: 30, left: 20, bottom: 5 }
                         }
                       }}
