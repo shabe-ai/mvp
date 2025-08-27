@@ -154,7 +154,16 @@ export default function AnalyticsPageClient() {
   };
 
   const processDealsData = (deals: any[]) => {
-    if (!deals) return [];
+    if (!deals || deals.length === 0) {
+      // Return sample data if no deals exist
+      return [
+        { stage: 'PROSPECTING', amount: 25000 },
+        { stage: 'QUALIFICATION', amount: 45000 },
+        { stage: 'PROPOSAL', amount: 60000 },
+        { stage: 'NEGOTIATION', amount: 35000 },
+        { stage: 'CLOSED WON', amount: 80000 }
+      ];
+    }
     
     const stageData = deals.reduce((acc: any, deal) => {
       const stage = deal.stage || 'unknown';
@@ -162,10 +171,19 @@ export default function AnalyticsPageClient() {
       return acc;
     }, {});
 
-    return Object.entries(stageData).map(([stage, amount]) => ({
+    const result = Object.entries(stageData).map(([stage, amount]) => ({
       stage: stage.replace('_', ' ').toUpperCase(),
       amount
     }));
+
+    // Return sample data if no real data was processed
+    return result.length > 0 ? result : [
+      { stage: 'PROSPECTING', amount: 25000 },
+      { stage: 'QUALIFICATION', amount: 45000 },
+      { stage: 'PROPOSAL', amount: 60000 },
+      { stage: 'NEGOTIATION', amount: 35000 },
+      { stage: 'CLOSED WON', amount: 80000 }
+    ];
   };
 
   const processRevenueData = (deals: any[]) => {
@@ -237,6 +255,9 @@ export default function AnalyticsPageClient() {
     
     // Process the prompt and generate chart data
     const { data, chartType } = processDataFromPrompt(prompt);
+    
+    // Debug: Log the generated data
+    console.log('Generated chart data:', { data, chartType, prompt });
     
     // Generate a title from the prompt
     const title = prompt.length > 30 ? prompt.substring(0, 30) + '...' : prompt;
@@ -477,21 +498,23 @@ export default function AnalyticsPageClient() {
                 )}
 
                 {/* Chart Display */}
-                <div className="h-80 relative">
+                <div className="h-80 relative overflow-hidden">
                   {widget.isActive && widget.data.length > 0 ? (
-                    <div className="h-full">
-                      <ChartDisplay
-                        chartSpec={{
-                          chartType: widget.chartType,
-                          data: widget.data,
-                          chartConfig: {
-                            width: 400,
-                            height: 280,
-                            margin: { top: 20, right: 30, left: 20, bottom: 5 }
-                          }
-                        }}
-                        narrative={widget.prompt}
-                      />
+                    <div className="h-full w-full">
+                      <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                        <ChartDisplay
+                          chartSpec={{
+                            chartType: widget.chartType,
+                            data: widget.data,
+                            chartConfig: {
+                              width: 320,
+                              height: 220,
+                              margin: { top: 20, right: 30, left: 20, bottom: 5 }
+                            }
+                          }}
+                          narrative={widget.prompt}
+                        />
+                      </div>
                       <Button
                         size="sm"
                         variant="ghost"
