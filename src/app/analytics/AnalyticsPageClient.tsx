@@ -522,7 +522,7 @@ export default function AnalyticsPageClient() {
                 )}
 
                 {/* Chart Display */}
-                <div className="h-64 relative overflow-hidden">
+                <div className="h-56 relative overflow-hidden">
                   {widget.isActive && widget.data.length > 0 ? (
                     <div className="h-full w-full">
                       <div className="w-full h-full flex items-center justify-center overflow-hidden">
@@ -531,9 +531,9 @@ export default function AnalyticsPageClient() {
                             chartType: widget.chartType,
                             data: widget.data,
                             chartConfig: {
-                              width: 260,
-                              height: 160,
-                              margin: { top: 10, right: 15, left: 10, bottom: 20 },
+                              width: 220,
+                              height: 140,
+                              margin: { top: 8, right: 10, left: 8, bottom: 25 },
                               xAxis: { dataKey: widget.xAxisKey },
                               yAxis: { dataKey: widget.yAxisKey }
                             }

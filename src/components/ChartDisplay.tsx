@@ -477,7 +477,7 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
         )}
         
         <div className="mb-6">
-          <ResponsiveContainer width="100%" height={500}>
+          <ResponsiveContainer width="100%" height={chartConfig?.height < 200 ? 180 : 500}>
             {renderChart()}
           </ResponsiveContainer>
         </div>
