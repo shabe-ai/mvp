@@ -184,9 +184,12 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
 
       case "bar":
       case "barchart":
-        // Check if we have multiple data series
+        // Check if we have multiple data series or single value data
         const barDataKeys = data.length > 0 ? Object.keys(data[0]).filter(key => key !== xAxisDataKey) : [];
         console.log('📊 BarChart data keys:', barDataKeys);
+        
+        // For single value data (like deals by stage), use the first non-x-axis key
+        const primaryDataKey = barDataKeys[0] || 'value';
         
         return (
           <BarChart {...commonProps}>
@@ -207,16 +210,33 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
                 borderRadius: '8px',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
               }}
+              formatter={(value, name, props) => {
+                const formattedValue = typeof value === 'number' ? `$${value.toLocaleString()}` : value;
+                return [formattedValue, primaryDataKey];
+              }}
             />
             <Legend />
-            {barDataKeys.map((key, index) => (
+            {barDataKeys.length > 1 ? (
+              // Multiple data series
+              barDataKeys.map((key, index) => (
+                <Bar 
+                  key={key}
+                  dataKey={key} 
+                  fill={currentColors[index % currentColors.length]}
+                  radius={[4, 4, 0, 0]}
+                />
+              ))
+            ) : (
+              // Single data series - use Cell components for different colors
               <Bar 
-                key={key}
-                dataKey={key} 
-                fill={currentColors[index % currentColors.length]}
+                dataKey={primaryDataKey} 
                 radius={[4, 4, 0, 0]}
-              />
-            ))}
+              >
+                {data.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={currentColors[index % currentColors.length]} />
+                ))}
+              </Bar>
+            )}
           </BarChart>
         );
 

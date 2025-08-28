@@ -609,7 +609,9 @@ export default function AnalyticsPageClient() {
                     chartConfig: {
                       width: 800,
                       height: 500,
-                      margin: { top: 20, right: 30, left: 20, bottom: 5 }
+                      margin: { top: 20, right: 30, left: 20, bottom: 25 },
+                      xAxis: { dataKey: fullscreenWidget.xAxisKey },
+                      yAxis: { dataKey: fullscreenWidget.yAxisKey }
                     }
                   }}
                   narrative={fullscreenWidget.prompt}
