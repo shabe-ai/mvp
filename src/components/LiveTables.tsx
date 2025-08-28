@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { Button } from "@/components/ui/button";
+import { Button, Input } from "@/components/shabe-ui";
 import { 
   Users, 
   Building, 
@@ -13,7 +13,6 @@ import {
   Search,
   ChevronDown
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
@@ -187,11 +186,11 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
   const currentConfig = tableConfigs[activeTable];
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-bg">
       {/* Header */}
-      <div className="p-4 border-b border-[#d9d2c7] bg-[#f3e89a]/5">
+      <div className="p-4 border-b border-line-200 bg-accent-50">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-black">Live Tables</h2>
+          <h2 className="font-display text-lg font-semibold text-ink-900">Live Tables</h2>
           <Button
             variant="ghost"
             size="sm"
@@ -200,7 +199,6 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
               setActiveTable(activeTable); // Keep activeTable as is
             }}
             disabled={loading}
-            className="text-black hover:bg-[#f3e89a]/20"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -221,18 +219,18 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
                 key={type}
                 onClick={() => setActiveTable(type as TableType)}
                 className={`
-                  flex items-center gap-2 p-2 rounded-lg text-sm font-medium transition-all
+                  flex items-center gap-2 p-2 rounded-ctl text-sm font-medium transition-all
                   ${isActive 
-                    ? `${config.bgColor} ${config.color} border border-current` 
-                    : 'bg-gray-50 text-gray-600 hover:bg-gray-100'
+                    ? 'bg-accent-500 text-black border border-accent-600' 
+                    : 'bg-bg-soft text-ink-600 hover:bg-accent-50 border border-line-200'
                   }
                 `}
               >
                 <Icon className="h-4 w-4" />
                 <span>{config.label}</span>
                 <span className={`
-                  ml-auto text-xs px-1.5 py-0.5 rounded-full
-                  ${isActive ? 'bg-white/70' : 'bg-gray-200'}
+                  ml-auto text-xs px-1.5 py-0.5 rounded-pill
+                  ${isActive ? 'bg-white/70' : 'bg-line-200'}
                 `}>
                   {activeTable === type ? filteredData.length : ''}
                 </span>
@@ -243,12 +241,12 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink-500" />
           <Input
             placeholder={`Search ${currentConfig.label.toLowerCase()}...`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-9 text-sm border-[#d9d2c7] focus:border-[#f3e89a] focus:ring-[#f3e89a]"
+            className="pl-10 h-9 text-sm"
           />
         </div>
       </div>
@@ -257,18 +255,18 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
       <div className="flex-1 overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-32">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-            <span className="ml-2 text-gray-500">Loading {currentConfig.label.toLowerCase()}...</span>
+            <Loader2 className="h-6 w-6 animate-spin text-ink-500" />
+            <span className="ml-2 text-ink-600">Loading {currentConfig.label.toLowerCase()}...</span>
           </div>
         ) : error ? (
-          <div className="flex items-center justify-center h-32 text-red-500">
+          <div className="flex items-center justify-center h-32 text-danger-500">
             <span>{error}</span>
           </div>
         ) : filteredData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+          <div className="flex flex-col items-center justify-center h-32 text-ink-500">
             {(() => {
               const Icon = currentConfig.icon;
-              return <Icon className="h-8 w-8 mb-2 text-gray-300" />;
+              return <Icon className="h-8 w-8 mb-2 text-ink-400" />;
             })()}
             <span>No {currentConfig.label.toLowerCase()} found</span>
             {searchTerm && (
@@ -278,12 +276,12 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
         ) : (
           <div className="overflow-auto h-full">
             <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-white border-b border-[#d9d2c7] shadow-sm z-10">
+              <thead className="sticky top-0 bg-bg border-b border-line-200 shadow-card z-10">
                 <tr>
                   {currentConfig.columns.map((column) => (
                     <th
                       key={column}
-                      className="text-left p-3 font-medium text-gray-700 capitalize bg-white"
+                      className="text-left p-3 font-medium text-ink-700 capitalize bg-bg"
                     >
                       {column}
                     </th>
@@ -296,12 +294,12 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
                     key={record._id}
                     onClick={() => onRecordSelect?.(record, activeTable)}
                     className={`
-                      border-b border-gray-100 hover:bg-[#f3e89a]/5 cursor-pointer transition-colors
-                      ${highlightedRecordId === record._id ? 'bg-[#f3e89a]/20 border-[#f3e89a]' : ''}
+                      border-b border-line-100 hover:bg-accent-50 cursor-pointer transition-colors
+                      ${highlightedRecordId === record._id ? 'bg-accent-100 border-accent-500' : ''}
                     `}
                   >
                     {currentConfig.columns.map((column) => (
-                      <td key={column} className="p-3 text-gray-700">
+                      <td key={column} className="p-3 text-ink-700">
                         {currentConfig.formatters[column](record)}
                       </td>
                     ))}
@@ -315,7 +313,7 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
 
       {/* Footer with record count */}
       {!loading && !error && (
-        <div className="p-3 border-t border-[#d9d2c7] bg-[#f3e89a]/5 text-xs text-gray-500">
+        <div className="p-3 border-t border-line-200 bg-accent-50 text-xs text-ink-600">
           {searchTerm ? (
             `${filteredData.length} of ${data.length} ${currentConfig.label.toLowerCase()}`
           ) : (

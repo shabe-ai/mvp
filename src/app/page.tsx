@@ -12,13 +12,13 @@ export default async function Home() {
 
   if (!userId) {
     return (
-      <div className="flex flex-col bg-white w-full h-screen min-h-0">
-        <main className="flex-1 min-h-0 w-full bg-white flex flex-col p-0 m-0 overflow-hidden">
+      <div className="flex flex-col bg-bg w-full h-screen min-h-0">
+        <main className="flex-1 min-h-0 w-full bg-bg flex flex-col p-0 m-0 overflow-hidden">
           <div className="text-center py-12 w-full max-w-2xl mx-auto">
-            <h2 className="text-3xl font-bold text-black mb-4">
+            <h2 className="font-display text-3xl font-bold text-ink-900 mb-4">
               Welcome to Shabe AI
             </h2>
-            <p className="text-lg text-[#d9d2c7] mb-8">
+            <p className="text-lg text-ink-700 mb-8">
               Upload files and chat with AI to analyze your data, generate charts, and get insights.
             </p>
           </div>
@@ -39,8 +39,8 @@ export default async function Home() {
     
     // If user has completed onboarding, show main interface with tour trigger
     return (
-      <div className="flex flex-col bg-white w-full h-screen min-h-0">
-        <main className="flex-1 min-h-0 w-full bg-white flex flex-col p-0 m-0 overflow-hidden">
+      <div className="flex flex-col bg-bg w-full h-screen min-h-0">
+        <main className="flex-1 min-h-0 w-full bg-bg flex flex-col p-0 m-0 overflow-hidden">
           <ConvexProviderWrapper>
             <ChatWithSidebar />
           </ConvexProviderWrapper>

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button } from "@/components/shabe-ui";
 
 interface SidebarLayoutProps {
   children: React.ReactNode;
@@ -24,7 +24,7 @@ export default function SidebarLayout({
         className={`
           transition-all duration-300 ease-in-out
           ${sidebarOpen ? 'w-80' : 'w-0'}
-          bg-white border-r border-[#d9d2c7]
+          bg-bg border-r border-line-200
           flex-shrink-0 relative z-50
           ${sidebarOpen ? 'opacity-100' : 'opacity-0 overflow-hidden'}
           
@@ -47,15 +47,15 @@ export default function SidebarLayout({
         className={`
           absolute top-4 z-50 
           ${sidebarOpen ? 'left-80' : 'left-0'}
-          bg-white border border-[#d9d2c7] shadow-sm
-          hover:bg-[#f3e89a]/10 w-8 h-8 p-0
+          bg-bg border border-line-200 shadow-card
+          hover:bg-accent-50 w-8 h-8 p-0
           transition-all duration-300 ease-in-out
         `}
       >
         {sidebarOpen ? (
-          <ChevronLeft className="h-4 w-4 text-black" />
+          <ChevronLeft className="h-4 w-4 text-ink-900" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-black" />
+          <ChevronRight className="h-4 w-4 text-ink-900" />
         )}
       </Button>
       
