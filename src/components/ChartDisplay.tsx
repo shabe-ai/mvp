@@ -43,7 +43,7 @@ type ChartDisplayProps = {
 export default function ChartDisplay({ chartSpec, narrative, onExport, onColorChange, onGoogleSheetsExport }: ChartDisplayProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [currentColors, setCurrentColors] = useState([
-    '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'
+    '#E4B200', '#6B7280', '#D9A400', '#F0C63A', '#2DBE7E', '#E05656'
   ]);
   
   console.log('📊 ChartDisplay received:', { chartSpec, narrative });
@@ -463,7 +463,7 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
             </div>
             <div className="mt-3 flex gap-2">
               <button
-                onClick={() => setCurrentColors(['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'])}
+                onClick={() => setCurrentColors(['#E4B200', '#6B7280', '#D9A400', '#F0C63A', '#2DBE7E', '#E05656'])}
                 className="text-xs px-2 py-1 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors"
               >
                 Reset to Default

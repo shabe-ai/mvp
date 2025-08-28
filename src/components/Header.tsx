@@ -13,43 +13,30 @@ export default function Header() {
   const { user } = useUser();
 
   return (
-    <header className="bg-neutral-primary shadow-sm border-b border-neutral-secondary">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-3">
-            <Logo />
-            <h1 className="text-xl font-medium text-text-primary font-heading">
-              Shabe ai
-            </h1>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            {user ? (
-              <div className="flex items-center space-x-4">
-                <Link href="/" className="text-text-secondary hover:text-text-primary px-4 py-2 text-sm font-medium transition-colors font-body">
-                  Home
-                </Link>
-                <Link href="/analytics" className="text-text-secondary hover:text-text-primary px-4 py-2 text-sm font-medium transition-colors font-body">
-                  Analytics
-                </Link>
-                <Link href="/campaign-manager" className="text-text-secondary hover:text-text-primary px-4 py-2 text-sm font-medium transition-colors font-body">
-                  Campaign Manager
-                </Link>
-                <Link href="/admin" className="text-text-secondary hover:text-text-primary px-4 py-2 text-sm font-medium transition-colors font-body">
-                  Admin
-                </Link>
-                <SimpleTourButton />
-                <UserButton />
-              </div>
-            ) : (
-              <SignInButton>
-                <button className="bg-accent-primary hover:bg-accent-primary-hover text-text-on-accent-primary px-4 py-2 rounded-md font-medium transition-colors font-button">
-                  Sign In
-                </button>
-              </SignInButton>
-            )}
-          </div>
+    <header className="sticky top-0 z-40 bg-bg/80 backdrop-blur border-b border-line-200">
+      <div className="mx-auto max-w-7xl px-6 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Logo />
+          <span className="font-semibold text-lg tracking-tight text-ink-900">Shabe ai</span>
         </div>
+        <nav className="flex items-center gap-6 text-sm text-ink-700">
+          {user ? (
+            <>
+              <Link href="/" className="hover:text-ink-900 transition-colors">Home</Link>
+              <Link href="/analytics" className="hover:text-ink-900 transition-colors">Analytics</Link>
+              <Link href="/campaign-manager" className="hover:text-ink-900 transition-colors">Campaigns</Link>
+              <Link href="/admin" className="hover:text-ink-900 transition-colors">Admin</Link>
+              <SimpleTourButton />
+              <UserButton />
+            </>
+          ) : (
+            <SignInButton>
+              <button className="ml-2 rounded-ctl border border-line-200 px-3 py-1.5 hover:shadow-card transition-shadow duration-150 ease-shabe text-ink-900">
+                Take Tour
+              </button>
+            </SignInButton>
+          )}
+        </nav>
       </div>
     </header>
   );
