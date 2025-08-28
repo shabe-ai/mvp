@@ -9,41 +9,41 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        bg: 'var(--bg)',
-        'bg-soft': 'var(--bg-soft)',
+        bg: '#FFFFFF',
+        'bg-soft': '#FAFAFA',
         ink: {
-          900: 'var(--ink-900)',
-          700: 'var(--ink-700)',
-          500: 'var(--ink-500)'
+          900: '#1A1A1A',
+          700: '#3A3A3A',
+          500: '#6B7280'
         },
         line: {
-          200: 'var(--line-200)',
-          100: 'var(--line-100)'
+          200: '#ECECEC',
+          100: '#F3F3F3'
         },
         accent: {
-          50: 'var(--accent-50)',
-          100: 'var(--accent-100)',
-          400: 'var(--accent-400)',
-          500: 'var(--accent-500)',
-          600: 'var(--accent-600)'
+          50: '#FFFBEC',
+          100: '#FFF6D6',
+          400: '#F0C63A',
+          500: '#E4B200',
+          600: '#D9A400'
         },
-        success: { 500: 'var(--success-500)' },
-        danger: { 500: 'var(--danger-500)' },
-        warning: { 500: 'var(--warning-500)' }
+        success: { 500: '#2DBE7E' },
+        danger: { 500: '#E05656' },
+        warning: { 500: '#F2A93B' }
       },
       fontFamily: {
         display: ['"Playfair Display"', 'Georgia', 'Times', 'serif'],
         ui: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif']
       },
       borderRadius: {
-        card: 'var(--radius-card)',
-        ctl: 'var(--radius-ctl)',
-        pill: 'var(--radius-pill)'
+        card: '16px',
+        ctl: '12px',
+        pill: '999px'
       },
       boxShadow: {
-        card: 'var(--shadow-card)',
-        pop: 'var(--shadow-pop)',
-        none: 'var(--shadow-none)'
+        card: '0 8px 24px rgba(10,10,10,0.06)',
+        pop: '0 12px 32px rgba(10,10,10,0.10)',
+        none: 'none'
       },
       transitionTimingFunction: {
         shabe: 'cubic-bezier(.2,.7,.2,1)'
