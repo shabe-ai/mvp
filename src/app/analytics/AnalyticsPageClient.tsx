@@ -534,18 +534,18 @@ export default function AnalyticsPageClient() {
                 )}
 
                 {/* Chart Display */}
-                <div className="h-80 relative bg-gray-50 rounded-lg border border-gray-200">
+                <div className="h-80 relative bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
                   {widget.isActive && widget.data.length > 0 ? (
-                    <div className="h-full w-full p-4">
-                      <div className="w-full h-full flex items-center justify-center">
+                    <>
+                      <div className="h-full w-full p-4">
                         <ChartDisplay
                           chartSpec={{
                             chartType: widget.chartType,
                             data: widget.data,
                             chartConfig: {
-                              width: 300,
-                              height: 200,
-                              margin: { top: 20, right: 30, left: 20, bottom: 40 },
+                              width: 280,
+                              height: 180,
+                              margin: { top: 15, right: 20, left: 15, bottom: 35 },
                               xAxis: { dataKey: widget.xAxisKey },
                               yAxis: { dataKey: widget.yAxisKey }
                             }
@@ -561,7 +561,7 @@ export default function AnalyticsPageClient() {
                       >
                         <Maximize2 className="h-4 w-4" />
                       </Button>
-                    </div>
+                    </>
                   ) : (
                     <div className="h-full flex items-center justify-center">
                       <div className="text-center">
