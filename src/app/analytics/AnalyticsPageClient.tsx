@@ -319,7 +319,10 @@ export default function AnalyticsPageClient() {
     const chartConfig = {
       width: 600,
       height: 400,
-      margin: { top: 20, right: 30, left: 20, bottom: 5 }
+      margin: { top: 20, right: 30, left: 20, bottom: 5 },
+      xAxis: { dataKey: widget.xAxisKey },
+      yAxis: { dataKey: widget.yAxisKey },
+      chartType: widget.chartType
     };
     
     fetch('/api/export-sheets', {
@@ -335,9 +338,14 @@ export default function AnalyticsPageClient() {
     .then(result => {
       if (result.spreadsheetUrl) {
         window.open(result.spreadsheetUrl, '_blank');
+      } else if (result.error) {
+        alert(`Export failed: ${result.message || result.error}`);
       }
     })
-    .catch(error => console.error('Export failed:', error));
+    .catch(error => {
+      console.error('Export failed:', error);
+      alert('Export failed. Please try again.');
+    });
   };
 
   const handleClearWidget = (widgetId: string) => {
@@ -537,15 +545,15 @@ export default function AnalyticsPageClient() {
                 <div className="h-80 relative bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
                   {widget.isActive && widget.data.length > 0 ? (
                     <>
-                      <div className="h-full w-full p-4">
+                      <div className="h-full w-full p-2">
                         <ChartDisplay
                           chartSpec={{
                             chartType: widget.chartType,
                             data: widget.data,
                             chartConfig: {
-                              width: 280,
-                              height: 180,
-                              margin: { top: 15, right: 20, left: 15, bottom: 35 },
+                              width: 320,
+                              height: 200,
+                              margin: { top: 10, right: 15, left: 10, bottom: 30 },
                               xAxis: { dataKey: widget.xAxisKey },
                               yAxis: { dataKey: widget.yAxisKey }
                             }
