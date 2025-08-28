@@ -545,15 +545,15 @@ export default function AnalyticsPageClient() {
                 <div className="h-80 relative bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
                   {widget.isActive && widget.data.length > 0 ? (
                     <>
-                      <div className="h-full w-full p-2">
+                      <div className="h-full w-full p-1">
                         <ChartDisplay
                           chartSpec={{
                             chartType: widget.chartType,
                             data: widget.data,
                             chartConfig: {
-                              width: 320,
-                              height: 200,
-                              margin: { top: 10, right: 15, left: 10, bottom: 30 },
+                              width: 360,
+                              height: 240,
+                              margin: { top: 8, right: 12, left: 8, bottom: 25 },
                               xAxis: { dataKey: widget.xAxisKey },
                               yAxis: { dataKey: widget.yAxisKey }
                             }
