@@ -43,7 +43,7 @@ type ChartDisplayProps = {
 export default function ChartDisplay({ chartSpec, narrative, onExport, onColorChange, onGoogleSheetsExport }: ChartDisplayProps) {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [currentColors, setCurrentColors] = useState([
-    '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#06b6d4'
+    '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'
   ]);
   
   console.log('📊 ChartDisplay received:', { chartSpec, narrative });
@@ -374,66 +374,68 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
   };
 
   return (
-    <div className="bg-white rounded-xl border border-[#d9d2c7] shadow-sm overflow-hidden" data-chart-export>
-      {/* Header */}
-      <div className="bg-gradient-to-r from-[#f3e89a]/20 to-[#efe076]/20 px-6 py-4 border-b border-[#d9d2c7]">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-[#f3e89a] to-[#efe076] rounded-lg">
-              {getChartIcon(normalizedChartType)}
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden" data-chart-export>
+      {/* Header - Only show for fullscreen charts */}
+      {chartConfig?.height > 300 && (
+        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="flex items-center justify-center w-8 h-8 bg-blue-100 rounded-lg">
+                {getChartIcon(normalizedChartType)}
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Chart Visualization</h3>
             </div>
-            <h3 className="text-lg font-semibold text-black">Chart Visualization</h3>
-          </div>
-          <div className="flex items-center space-x-4 text-sm text-[#d9d2c7]">
-            <span className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7]">
-              {normalizedChartType}
-            </span>
-            <span className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7]">
-              {data.length} data points
-            </span>
-            
-            {/* Color Picker Button */}
-            <button
-              onClick={() => setShowColorPicker(!showColorPicker)}
-              className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7] hover:bg-[#f3e89a]/10 transition-colors flex items-center gap-1"
-              title="Customize colors"
-            >
-              <Palette className="w-3 h-3" />
-              Colors
-            </button>
-            
-            {/* Export Buttons */}
-            <div className="flex items-center gap-2">
-              {onExport && (
-                <button
-                  onClick={() => onExport('png')}
-                  className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7] hover:bg-[#f3e89a]/10 transition-colors flex items-center gap-1"
-                  title="Export as PNG"
-                >
-                  <Download className="w-3 h-3" />
-                  PNG
-                </button>
-              )}
-              {onGoogleSheetsExport && (
-                <button
-                  onClick={() => onGoogleSheetsExport(data, chartConfig, `Chart - ${normalizedChartType}`)}
-                  className="bg-white px-3 py-1 rounded-full border border-[#d9d2c7] hover:bg-[#f3e89a]/10 transition-colors flex items-center gap-1"
-                  title="Export to Google Sheets"
-                >
-                  <FileSpreadsheet className="w-3 h-3" />
-                  Sheets
-                </button>
-              )}
+            <div className="flex items-center space-x-4 text-sm text-gray-600">
+              <span className="bg-white px-3 py-1 rounded-full border border-gray-200">
+                {normalizedChartType}
+              </span>
+              <span className="bg-white px-3 py-1 rounded-full border border-gray-200">
+                {data.length} data points
+              </span>
+              
+              {/* Color Picker Button */}
+              <button
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                className="bg-white px-3 py-1 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-1"
+                title="Customize colors"
+              >
+                <Palette className="w-3 h-3" />
+                Colors
+              </button>
+              
+              {/* Export Buttons */}
+              <div className="flex items-center gap-2">
+                {onExport && (
+                  <button
+                    onClick={() => onExport('png')}
+                    className="bg-white px-3 py-1 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-1"
+                    title="Export as PNG"
+                  >
+                    <Download className="w-3 h-3" />
+                    PNG
+                  </button>
+                )}
+                {onGoogleSheetsExport && (
+                  <button
+                    onClick={() => onGoogleSheetsExport(data, chartConfig, `Chart - ${normalizedChartType}`)}
+                    className="bg-white px-3 py-1 rounded-full border border-gray-200 hover:bg-gray-50 transition-colors flex items-center gap-1"
+                    title="Export to Google Sheets"
+                  >
+                    <FileSpreadsheet className="w-3 h-3" />
+                    Sheets
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
       
       {/* Chart */}
-      <div className="p-6">
+      <div className={chartConfig?.height > 300 ? "p-6" : "p-4"}>
         {/* Color Picker Dropdown */}
         {showColorPicker && (
-          <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-[#d9d2c7]">
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
             <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
               <Palette className="w-4 h-4" />
               Customize Chart Colors
@@ -461,14 +463,14 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
             </div>
             <div className="mt-3 flex gap-2">
               <button
-                onClick={() => setCurrentColors(['#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ef4444', '#06b6d4'])}
-                className="text-xs px-2 py-1 bg-white border border-[#d9d2c7] rounded hover:bg-[#f3e89a]/10 transition-colors"
+                onClick={() => setCurrentColors(['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ef4444', '#06b6d4'])}
+                className="text-xs px-2 py-1 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors"
               >
                 Reset to Default
               </button>
               <button
                 onClick={() => setShowColorPicker(false)}
-                className="text-xs px-2 py-1 bg-white border border-[#d9d2c7] rounded hover:bg-[#f3e89a]/10 transition-colors"
+                className="text-xs px-2 py-1 bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors"
               >
                 Close
               </button>
@@ -476,8 +478,8 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
           </div>
         )}
         
-        <div className="mb-6">
-          <ResponsiveContainer width="100%" height={chartConfig?.height < 200 ? 180 : 500}>
+        <div className={chartConfig?.height > 300 ? "mb-6" : "mb-0"}>
+          <ResponsiveContainer width="100%" height={chartConfig?.height < 200 ? 200 : (chartConfig?.height > 300 ? 500 : 250)}>
             {renderChart()}
           </ResponsiveContainer>
         </div>
@@ -488,14 +490,14 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
           style={{ display: 'none' }}
         />
         
-        {/* Insights */}
-        {narrative && (
-          <div className="bg-gradient-to-r from-[#f3e89a]/10 to-[#efe076]/10 border border-[#f3e89a]/20 rounded-xl p-4">
-            <h4 className="font-semibold text-black mb-2 flex items-center">
-              <TrendingUp className="w-4 h-4 mr-2 text-[#f3e89a]" />
+        {/* Insights - Only show for fullscreen charts */}
+        {narrative && chartConfig?.height > 300 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h4 className="font-semibold text-gray-900 mb-2 flex items-center">
+              <TrendingUp className="w-4 h-4 mr-2 text-blue-600" />
               Insights
             </h4>
-            <p className="text-black text-sm leading-relaxed">{narrative}</p>
+            <p className="text-gray-700 text-sm leading-relaxed">{narrative}</p>
           </div>
         )}
       </div>

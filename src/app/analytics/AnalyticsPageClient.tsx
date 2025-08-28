@@ -387,41 +387,58 @@ export default function AnalyticsPageClient() {
   }
 
   return (
-    <div className="min-h-screen bg-white p-4">
+    <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-4">
-          <h1 className="text-xl font-bold text-black mb-1 uppercase tracking-wide">Analytics Dashboard</h1>
-          <p className="text-sm text-[#d9d2c7]">Create custom charts from your CRM data</p>
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Analytics Dashboard</h1>
+              <p className="text-gray-600">Create custom charts from your CRM data</p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="bg-white px-4 py-2 rounded-lg border border-gray-200 shadow-sm">
+                <span className="text-sm text-gray-600">Auto-saving</span>
+                <div className="w-2 h-2 bg-green-500 rounded-full ml-2 inline-block animate-pulse"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Widgets Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {widgets.map((widget) => (
-            <Card key={widget.id} className="bg-white border-[#d9d2c7] shadow-sm">
-              <CardHeader className="pb-2">
+            <Card key={widget.id} className="bg-white border border-gray-200 shadow-sm hover:shadow-md transition-shadow duration-200">
+              <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-sm font-bold text-black uppercase tracking-wide">
-                    {widget.title || `Chart ${widget.id.split('-')[1]}`}
-                  </CardTitle>
-                  <div className="flex items-center space-x-1">
+                  <div>
+                    <CardTitle className="text-lg font-semibold text-gray-900 mb-1">
+                      {widget.title || `Chart ${widget.id.split('-')[1]}`}
+                    </CardTitle>
+                    {widget.isActive && (
+                      <p className="text-sm text-gray-500">
+                        Last updated: {widget.lastUpdated.toLocaleTimeString()}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center space-x-2">
                     {widget.isActive && (
                       <>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => handleRefreshWidget(widget.id)}
-                          className="text-[#d9d2c7] hover:text-black h-6 w-6 p-0"
+                          className="text-gray-500 hover:text-gray-700 h-8 w-8 p-0"
                         >
-                          <RefreshCw className="h-3 w-3" />
+                          <RefreshCw className="h-4 w-4" />
                         </Button>
                         <Button
                           size="sm"
                           variant="ghost"
                           onClick={() => handleExportWidget(widget)}
-                          className="text-[#d9d2c7] hover:text-black h-6 w-6 p-0"
+                          className="text-gray-500 hover:text-gray-700 h-8 w-8 p-0"
                         >
-                          <Download className="h-3 w-3" />
+                          <Download className="h-4 w-4" />
                         </Button>
                       </>
                     )}
@@ -429,23 +446,18 @@ export default function AnalyticsPageClient() {
                       size="sm"
                       variant="ghost"
                       onClick={() => setEditingWidget(widget.id)}
-                      className="text-[#d9d2c7] hover:text-black h-6 w-6 p-0"
+                      className="text-gray-500 hover:text-gray-700 h-8 w-8 p-0"
                     >
-                      <Settings className="h-3 w-3" />
+                      <Settings className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
-                {widget.isActive && (
-                  <p className="text-xs text-[#d9d2c7] text-xs">
-                    Last updated: {widget.lastUpdated.toLocaleTimeString()}
-                  </p>
-                )}
               </CardHeader>
               
-              <CardContent>
+              <CardContent className="pt-0">
                 {/* Widget Input */}
                 {editingWidget === widget.id ? (
-                  <div className="mb-4">
+                  <div className="mb-6">
                     <Textarea
                       value={widget.prompt}
                       onChange={(e) => {
@@ -454,20 +466,20 @@ export default function AnalyticsPageClient() {
                         ));
                       }}
                       placeholder="Describe the chart you want to see (e.g., 'deals by stage', 'contact growth over time', 'revenue trends')..."
-                      className="mb-2 text-sm"
-                      rows={2}
+                      className="mb-4 text-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                      rows={3}
                     />
-                    <div className="flex space-x-1">
+                    <div className="flex space-x-3">
                       <Button
                         size="sm"
                         onClick={() => handleCreateChart(widget.id, widget.prompt)}
                         disabled={!widget.prompt.trim() || isLoading}
-                        className="bg-[#f3e89a] hover:bg-[#f3e89a]/80 text-black text-xs h-8"
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2"
                       >
                         {isLoading ? (
-                          <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                         ) : (
-                          <Plus className="h-3 w-3 mr-1" />
+                          <Plus className="h-4 w-4 mr-2" />
                         )}
                         {widget.isActive ? 'Update' : 'Create'} Chart
                       </Button>
@@ -476,7 +488,7 @@ export default function AnalyticsPageClient() {
                           size="sm"
                           variant="outline"
                           onClick={() => handleClearWidget(widget.id)}
-                          className="text-xs h-8"
+                          className="border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2"
                         >
                           Clear
                         </Button>
@@ -485,14 +497,14 @@ export default function AnalyticsPageClient() {
                         size="sm"
                         variant="outline"
                         onClick={() => setEditingWidget(null)}
-                        className="text-xs h-8"
+                        className="border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2"
                       >
                         Cancel
                       </Button>
                     </div>
                   </div>
                 ) : (
-                  <div className="mb-3">
+                  <div className="mb-6">
                     <Input
                       value={widget.prompt}
                       onChange={(e) => {
@@ -500,7 +512,7 @@ export default function AnalyticsPageClient() {
                           w.id === widget.id ? { ...w, prompt: e.target.value } : w
                         ));
                       }}
-                      className="text-xs text-black bg-white border-[#d9d2c7] mb-2 h-8"
+                      className="text-sm border-gray-300 focus:border-blue-500 focus:ring-blue-500 mb-3"
                       placeholder="Enter a prompt to create a chart (e.g., 'deals by stage', 'contact growth over time')..."
                     />
                     {widget.prompt.trim() && (
@@ -508,12 +520,12 @@ export default function AnalyticsPageClient() {
                         size="sm"
                         onClick={() => handleCreateChart(widget.id, widget.prompt)}
                         disabled={isLoading}
-                        className="bg-[#f3e89a] hover:bg-[#f3e89a]/80 text-black text-xs h-8"
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2"
                       >
                         {isLoading ? (
-                          <RefreshCw className="h-3 w-3 mr-1 animate-spin" />
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                         ) : (
-                          <Plus className="h-3 w-3 mr-1" />
+                          <Plus className="h-4 w-4 mr-2" />
                         )}
                         Create Chart
                       </Button>
@@ -522,18 +534,18 @@ export default function AnalyticsPageClient() {
                 )}
 
                 {/* Chart Display */}
-                <div className="h-56 relative overflow-hidden">
+                <div className="h-80 relative bg-gray-50 rounded-lg border border-gray-200">
                   {widget.isActive && widget.data.length > 0 ? (
-                    <div className="h-full w-full">
-                      <div className="w-full h-full flex items-center justify-center overflow-hidden">
+                    <div className="h-full w-full p-4">
+                      <div className="w-full h-full flex items-center justify-center">
                         <ChartDisplay
                           chartSpec={{
                             chartType: widget.chartType,
                             data: widget.data,
                             chartConfig: {
-                              width: 220,
-                              height: 140,
-                              margin: { top: 8, right: 10, left: 8, bottom: 25 },
+                              width: 300,
+                              height: 200,
+                              margin: { top: 20, right: 30, left: 20, bottom: 40 },
                               xAxis: { dataKey: widget.xAxisKey },
                               yAxis: { dataKey: widget.yAxisKey }
                             }
@@ -545,17 +557,22 @@ export default function AnalyticsPageClient() {
                         size="sm"
                         variant="ghost"
                         onClick={() => handleFullscreenChart(widget)}
-                        className="absolute top-1 right-1 bg-white/80 hover:bg-white text-black border border-gray-200 h-6 w-6 p-0"
+                        className="absolute top-3 right-3 bg-white/90 hover:bg-white text-gray-700 border border-gray-300 h-8 w-8 p-0 shadow-sm"
                       >
-                        <Maximize2 className="h-3 w-3" />
+                        <Maximize2 className="h-4 w-4" />
                       </Button>
                     </div>
                   ) : (
-                    <div className="h-full flex items-center justify-center border-2 border-dashed border-[#d9d2c7] rounded-lg">
+                    <div className="h-full flex items-center justify-center">
                       <div className="text-center">
-                        <BarChart3 className="h-12 w-12 text-[#d9d2c7] mx-auto mb-2" />
-                        <p className="text-sm text-[#d9d2c7]">
-                          {widget.isActive ? 'No data available' : 'Click settings to create a chart'}
+                        <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                          <BarChart3 className="h-8 w-8 text-gray-400" />
+                        </div>
+                        <p className="text-gray-500 font-medium mb-1">
+                          {widget.isActive ? 'No data available' : 'Create your first chart'}
+                        </p>
+                        <p className="text-sm text-gray-400">
+                          {widget.isActive ? 'Try refreshing the data' : 'Click settings to get started'}
                         </p>
                       </div>
                     </div>
@@ -566,50 +583,48 @@ export default function AnalyticsPageClient() {
           ))}
         </div>
 
-        {/* Auto-save indicator */}
-        <div className="fixed bottom-2 right-2">
-          <div className="bg-[#f3e89a] text-black px-2 py-1 rounded text-xs">
-            Auto-saving...
-          </div>
-        </div>
+
 
         {/* Fullscreen Modal */}
         {fullscreenWidget && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
-              <div className="flex items-center justify-between p-6 border-b border-gray-200">
-                <h2 className="text-2xl font-bold text-black">
-                  {fullscreenWidget.title || `Chart ${fullscreenWidget.id.split('-')[1]}`}
-                </h2>
-                <div className="flex items-center space-x-4">
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-6">
+            <div className="bg-white rounded-xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gray-50">
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">
+                    {fullscreenWidget.title || `Chart ${fullscreenWidget.id.split('-')[1]}`}
+                  </h2>
+                  <p className="text-gray-600 mt-1">Full screen view</p>
+                </div>
+                <div className="flex items-center space-x-3">
                   <Button
                     size="sm"
-                    variant="ghost"
+                    variant="outline"
                     onClick={() => handleExportWidget(fullscreenWidget)}
-                    className="text-[#d9d2c7] hover:text-black"
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
                   >
                     <Download className="h-4 w-4 mr-2" />
                     Export
                   </Button>
                   <Button
                     size="sm"
-                    variant="ghost"
+                    variant="outline"
                     onClick={handleCloseFullscreen}
-                    className="text-[#d9d2c7] hover:text-black"
+                    className="border-gray-300 text-gray-700 hover:bg-gray-50"
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
-              <div className="p-6">
+              <div className="p-8 bg-white">
                 <ChartDisplay
                   chartSpec={{
                     chartType: fullscreenWidget.chartType,
                     data: fullscreenWidget.data,
                     chartConfig: {
-                      width: 800,
-                      height: 500,
-                      margin: { top: 20, right: 30, left: 20, bottom: 25 },
+                      width: 900,
+                      height: 600,
+                      margin: { top: 30, right: 40, left: 30, bottom: 50 },
                       xAxis: { dataKey: fullscreenWidget.xAxisKey },
                       yAxis: { dataKey: fullscreenWidget.yAxisKey }
                     }
