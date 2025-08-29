@@ -58,26 +58,44 @@ export default function AnalyticsPageClient() {
     teamId ? { teamId: teamId.toString() } : "skip"
   );
 
-  // Initialize 6 empty widgets
+  // Initialize widgets from localStorage or create empty ones
   useEffect(() => {
-    const emptyWidgets: ChartWidget[] = Array.from({ length: 6 }, (_, index) => ({
-      id: `widget-${index + 1}`,
-      title: '',
-      prompt: '',
-      chartType: 'bar',
-      data: [],
-      xAxisKey: 'stage',
-      yAxisKey: 'amount',
-      lastUpdated: new Date(),
-      isActive: false
-    }));
-    setWidgets(emptyWidgets);
-  }, []);
-
-  // Load saved widgets from localStorage
-  useEffect(() => {
-    // Clear localStorage to start fresh with empty widgets
-    localStorage.removeItem('analytics-widgets');
+    const savedWidgets = localStorage.getItem('analytics-widgets');
+    if (savedWidgets) {
+      try {
+        const parsedWidgets = JSON.parse(savedWidgets);
+        setWidgets(parsedWidgets);
+      } catch (error) {
+        console.error('Error parsing saved widgets:', error);
+        // Fallback to empty widgets if parsing fails
+        const emptyWidgets: ChartWidget[] = Array.from({ length: 6 }, (_, index) => ({
+          id: `widget-${index + 1}`,
+          title: '',
+          prompt: '',
+          chartType: 'bar',
+          data: [],
+          xAxisKey: 'stage',
+          yAxisKey: 'amount',
+          lastUpdated: new Date(),
+          isActive: false
+        }));
+        setWidgets(emptyWidgets);
+      }
+    } else {
+      // Create empty widgets if no saved data
+      const emptyWidgets: ChartWidget[] = Array.from({ length: 6 }, (_, index) => ({
+        id: `widget-${index + 1}`,
+        title: '',
+        prompt: '',
+        chartType: 'bar',
+        data: [],
+        xAxisKey: 'stage',
+        yAxisKey: 'amount',
+        lastUpdated: new Date(),
+        isActive: false
+      }));
+      setWidgets(emptyWidgets);
+    }
   }, []);
 
   // Data processing functions
@@ -277,7 +295,7 @@ export default function AnalyticsPageClient() {
     // Generate a title from the prompt
     const title = prompt.length > 30 ? prompt.substring(0, 30) + '...' : prompt;
     
-    setWidgets(prev => prev.map(widget => 
+    const updatedWidgets = widgets.map(widget => 
       widget.id === widgetId 
         ? { 
             ...widget, 
@@ -291,7 +309,12 @@ export default function AnalyticsPageClient() {
             isActive: true
           }
         : widget
-    ));
+    );
+    
+    setWidgets(updatedWidgets);
+    
+    // Auto-save immediately after creating chart
+    localStorage.setItem('analytics-widgets', JSON.stringify(updatedWidgets));
     
     setEditingWidget(null);
     setIsLoading(false);
@@ -301,11 +324,14 @@ export default function AnalyticsPageClient() {
     const widget = widgets.find(w => w.id === widgetId);
     if (widget && widget.prompt) {
       const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(widget.prompt);
-      setWidgets(prev => prev.map(w => 
+      const updatedWidgets = widgets.map(w => 
         w.id === widgetId 
           ? { ...w, data, chartType, xAxisKey, yAxisKey, lastUpdated: new Date() }
           : w
-      ));
+      );
+      setWidgets(updatedWidgets);
+      // Auto-save after refresh
+      localStorage.setItem('analytics-widgets', JSON.stringify(updatedWidgets));
     }
   };
 
@@ -346,7 +372,7 @@ export default function AnalyticsPageClient() {
   };
 
   const handleClearWidget = (widgetId: string) => {
-    setWidgets(prev => prev.map(widget => 
+    const updatedWidgets = widgets.map(widget => 
       widget.id === widgetId 
         ? { 
             ...widget, 
@@ -358,7 +384,10 @@ export default function AnalyticsPageClient() {
             isActive: false
           }
         : widget
-    ));
+    );
+    setWidgets(updatedWidgets);
+    // Auto-save after clear
+    localStorage.setItem('analytics-widgets', JSON.stringify(updatedWidgets));
     setEditingWidget(null);
   };
 
@@ -374,7 +403,14 @@ export default function AnalyticsPageClient() {
     localStorage.setItem('analytics-widgets', JSON.stringify(widgets));
   };
 
-  // Auto-save every 30 seconds
+  // Auto-save whenever widgets change (but not on initial load)
+  useEffect(() => {
+    if (widgets.length > 0) {
+      handleAutoSave();
+    }
+  }, [widgets]);
+
+  // Also auto-save every 30 seconds as backup
   useEffect(() => {
     const interval = setInterval(handleAutoSave, 30000);
     return () => clearInterval(interval);
