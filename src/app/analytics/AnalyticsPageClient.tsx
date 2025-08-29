@@ -130,7 +130,14 @@ export default function AnalyticsPageClient() {
         };
       }
     } else if (lowerPrompt.includes('deal') || lowerPrompt.includes('pipeline')) {
-      if (lowerPrompt.includes('stage')) {
+      if (lowerPrompt.includes('count')) {
+        return {
+          chartType: 'bar',
+          data: processDealsCountData(deals || []),
+          xAxisKey: 'stage',
+          yAxisKey: 'count'
+        };
+      } else if (lowerPrompt.includes('stage')) {
         return {
           chartType: 'bar',
           data: processDealsData(deals || []),
@@ -219,6 +226,39 @@ export default function AnalyticsPageClient() {
     ];
   };
 
+  const processDealsCountData = (deals: any[]) => {
+    if (!deals || deals.length === 0) {
+      // Return sample data if no deals exist
+      return [
+        { stage: 'PROSPECTING', count: 5 },
+        { stage: 'QUALIFICATION', count: 8 },
+        { stage: 'PROPOSAL', count: 12 },
+        { stage: 'NEGOTIATION', count: 6 },
+        { stage: 'CLOSED WON', count: 15 }
+      ];
+    }
+    
+    const stageData = deals.reduce((acc: any, deal) => {
+      const stage = deal.stage || 'unknown';
+      acc[stage] = (acc[stage] || 0) + 1; // Count deals instead of summing amounts
+      return acc;
+    }, {});
+
+    const result = Object.entries(stageData).map(([stage, count]) => ({
+      stage: stage.replace('_', ' ').toUpperCase(),
+      count
+    }));
+
+    // Return sample data if no real data was processed
+    return result.length > 0 ? result : [
+      { stage: 'PROSPECTING', count: 5 },
+      { stage: 'QUALIFICATION', count: 8 },
+      { stage: 'PROPOSAL', count: 12 },
+      { stage: 'NEGOTIATION', count: 6 },
+      { stage: 'CLOSED WON', count: 15 }
+    ];
+  };
+
   const processRevenueData = (deals: any[]) => {
     if (!deals) return [];
     
@@ -301,7 +341,9 @@ export default function AnalyticsPageClient() {
       yAxisKey, 
       prompt: currentPrompt,
       widgetId,
-      currentWidget: currentWidget?.prompt
+      currentWidget: currentWidget?.prompt,
+      dataLength: data.length,
+      firstDataItem: data[0]
     });
     
     // Generate a title from the prompt
@@ -565,6 +607,7 @@ export default function AnalyticsPageClient() {
                     <>
                       <div className="h-full w-full p-1">
                         <ChartDisplay
+                          key={`${widget.id}-${widget.lastUpdated.getTime()}`}
                           chartSpec={{
                             chartType: widget.chartType,
                             data: widget.data,
@@ -636,6 +679,7 @@ export default function AnalyticsPageClient() {
               </div>
               <div className="p-8 bg-white chart-card">
                 <ChartDisplay
+                  key={`fullscreen-${fullscreenWidget.id}-${fullscreenWidget.lastUpdated.getTime()}`}
                   chartSpec={{
                     chartType: fullscreenWidget.chartType,
                     data: fullscreenWidget.data,
