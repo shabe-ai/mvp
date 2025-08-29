@@ -283,24 +283,36 @@ export default function AnalyticsPageClient() {
   };
 
   // Widget actions
-  const handleCreateChart = (widgetId: string, prompt: string) => {
+  const handleCreateChart = (widgetId: string, prompt?: string) => {
     setIsLoading(true);
     
+    // Get the current widget to ensure we have the latest prompt
+    const currentWidget = widgets.find(w => w.id === widgetId);
+    const currentPrompt = prompt || currentWidget?.prompt || '';
+    
     // Process the prompt and generate chart data
-    const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(prompt);
+    const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(currentPrompt);
     
     // Debug: Log the generated data
-    console.log('Generated chart data:', { data, chartType, xAxisKey, yAxisKey, prompt });
+    console.log('Generated chart data:', { 
+      data, 
+      chartType, 
+      xAxisKey, 
+      yAxisKey, 
+      prompt: currentPrompt,
+      widgetId,
+      currentWidget: currentWidget?.prompt
+    });
     
     // Generate a title from the prompt
-    const title = prompt.length > 30 ? prompt.substring(0, 30) + '...' : prompt;
+    const title = currentPrompt.length > 30 ? currentPrompt.substring(0, 30) + '...' : currentPrompt;
     
     const updatedWidgets = widgets.map(widget => 
       widget.id === widgetId 
         ? { 
             ...widget, 
             title,
-            prompt, 
+            prompt: currentPrompt, 
             chartType,
             data,
             xAxisKey,
@@ -492,7 +504,7 @@ export default function AnalyticsPageClient() {
                     <div className="flex space-x-3">
                       <Button
                         variant="primary"
-                        onClick={() => handleCreateChart(widget.id, widget.prompt)}
+                        onClick={() => handleCreateChart(widget.id)}
                         disabled={!widget.prompt.trim() || isLoading}
                       >
                         {isLoading ? (
@@ -533,7 +545,7 @@ export default function AnalyticsPageClient() {
                     {widget.prompt.trim() && (
                       <Button
                         variant="primary"
-                        onClick={() => handleCreateChart(widget.id, widget.prompt)}
+                        onClick={() => handleCreateChart(widget.id)}
                         disabled={isLoading}
                       >
                         {isLoading ? (
