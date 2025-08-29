@@ -398,10 +398,6 @@ export default function AnalyticsPageClient() {
         <div className="mb-8 text-center">
           <h1 className="font-display text-4xl tracking-tight text-ink-900 mb-2">ANALYTICS DASHBOARD</h1>
           <p className="text-ink-700">Create custom charts from your CRM data</p>
-          <div className="mt-4 bg-white px-4 py-2 rounded-ctl border border-line-200 shadow-card">
-            <span className="text-sm text-ink-600">Auto-saving</span>
-            <div className="w-2 h-2 bg-success-500 rounded-full ml-2 inline-block animate-pulse"></div>
-          </div>
         </div>
 
         {/* Widgets Grid */}

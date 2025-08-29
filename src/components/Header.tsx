@@ -23,7 +23,7 @@ export default function Header() {
           {user ? (
             <>
               <Link href="/" className="hover:text-ink-900 transition-colors">Home</Link>
-              <Link href="/analytics" className="hover:text-ink-900 transition-colors">Analytics</Link>
+              <Link href="/analytics" className="hover:text-ink-900 transition-colors">Dashboards</Link>
               <Link href="/campaign-manager" className="hover:text-ink-900 transition-colors">Campaigns</Link>
               <Link href="/admin" className="hover:text-ink-900 transition-colors">Admin</Link>
               <SimpleTourButton />
