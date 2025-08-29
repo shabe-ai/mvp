@@ -64,7 +64,12 @@ export default function AnalyticsPageClient() {
     if (savedWidgets) {
       try {
         const parsedWidgets = JSON.parse(savedWidgets);
-        setWidgets(parsedWidgets);
+        // Ensure lastUpdated is a Date object
+        const hydratedWidgets = parsedWidgets.map((w: ChartWidget) => ({
+          ...w,
+          lastUpdated: new Date(w.lastUpdated)
+        }));
+        setWidgets(hydratedWidgets);
       } catch (error) {
         console.error('Error parsing saved widgets:', error);
         // Fallback to empty widgets if parsing fails
@@ -607,7 +612,7 @@ export default function AnalyticsPageClient() {
                     <>
                       <div className="h-full w-full p-1">
                         <ChartDisplay
-                          key={`${widget.id}-${widget.lastUpdated.getTime()}`}
+                          key={`${widget.id}-${widget.lastUpdated instanceof Date ? widget.lastUpdated.getTime() : new Date(widget.lastUpdated).getTime()}`}
                           chartSpec={{
                             chartType: widget.chartType,
                             data: widget.data,
@@ -679,7 +684,7 @@ export default function AnalyticsPageClient() {
               </div>
               <div className="p-8 bg-white chart-card">
                 <ChartDisplay
-                  key={`fullscreen-${fullscreenWidget.id}-${fullscreenWidget.lastUpdated.getTime()}`}
+                  key={`fullscreen-${fullscreenWidget.id}-${fullscreenWidget.lastUpdated instanceof Date ? fullscreenWidget.lastUpdated.getTime() : new Date(fullscreenWidget.lastUpdated).getTime()}`}
                   chartSpec={{
                     chartType: fullscreenWidget.chartType,
                     data: fullscreenWidget.data,
