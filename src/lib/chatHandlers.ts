@@ -219,22 +219,30 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       if (lowerMessage.includes('grouped by contact') || lowerMessage.includes('by contact')) {
         console.log('🚀 Generating activities grouped by contacts');
         dimension = 'contact';
+        console.log('🚀 Fetching activities data...');
         const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+        console.log('🚀 Activities fetched:', activities.length);
+        console.log('🚀 Fetching contacts data...');
         const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+        console.log('🚀 Contacts fetched:', contacts.length);
         
         // Create a map of contact IDs to contact names
+        console.log('🚀 Creating contact map...');
         const contactMap = new Map();
         contacts.forEach(contact => {
           contactMap.set(contact._id, `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Unknown Contact');
         });
+        console.log('🚀 Contact map created with', contactMap.size, 'contacts');
         
         // Group activities by contact
+        console.log('🚀 Grouping activities by contact...');
         const contactGroups: Record<string, number> = {};
         activities.forEach(activity => {
           const contactId = activity.contactId || 'unknown';
           const contactName = contactMap.get(contactId) || 'Unknown Contact';
           contactGroups[contactName] = (contactGroups[contactName] || 0) + 1;
         });
+        console.log('🚀 Contact groups created:', Object.keys(contactGroups).length, 'groups');
         
         chartData = Object.entries(contactGroups).map(([contactName, count]) => ({
           contact: contactName,
