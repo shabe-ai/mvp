@@ -732,8 +732,7 @@ export default function AnalyticsPageClient() {
                 </div>
               }
             >
-
-                {/* Chart Display */}
+                                                {/* Chart Display */}
                 <div className="h-64 relative bg-bg-soft rounded-ctl border border-line-200 overflow-hidden chart-card mb-4">
                   {widget.isActive && widget.data.length > 0 ? (
                     <>
@@ -776,6 +775,7 @@ export default function AnalyticsPageClient() {
                     </div>
                   )}
                 </div>
+                
 
                 {/* Widget Input - Now beneath the chart */}
                 {editingWidget === widget.id ? (
@@ -849,6 +849,7 @@ export default function AnalyticsPageClient() {
                     )}
                   </div>
                 )}
+
                 {/* Widget Input - Now beneath the chart */}
                 <div className="h-64 relative bg-bg-soft rounded-ctl border border-line-200 overflow-hidden chart-card mb-4">
                   {widget.isActive && widget.data.length > 0 ? (
