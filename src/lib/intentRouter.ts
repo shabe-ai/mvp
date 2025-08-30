@@ -118,16 +118,31 @@ class ChartIntentHandler implements IntentHandler {
     });
 
     try {
-      const { chartType, dataType, dimension } = intent.entities;
+      // Use the enhanced chart generation from chatHandlers.ts
+      const { handleChartGeneration } = await import('./chatHandlers');
       
-      // Generate chart using AI
-      const chartSpec = await this.generateChartSpec(chartType, dataType, dimension, context);
+      const result = await handleChartGeneration(
+        intent.originalMessage,
+        intent.entities,
+        [], // sessionFiles - empty for now
+        context.userId
+      );
       
-      return {
-        type: 'chart',
-        chartSpec,
-        hasData: true
-      };
+      if (result.chartSpec) {
+        return {
+          type: 'chart',
+          chartSpec: result.chartSpec,
+          hasData: true,
+          content: result.message,
+          message: result.message
+        };
+      } else {
+        return {
+          type: 'text',
+          content: result.message || 'I encountered an error while creating your chart. Please try again.',
+          hasData: false
+        };
+      }
       
     } catch (error) {
       logger.error('Error handling chart intent', error instanceof Error ? error : new Error(String(error)), {
