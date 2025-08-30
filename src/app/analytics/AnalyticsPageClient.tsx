@@ -688,13 +688,13 @@ export default function AnalyticsPageClient() {
     <div className="min-h-screen bg-bg p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8 text-center">
-          <h1 className="font-display text-4xl tracking-tight text-ink-900 mb-2">ANALYTICS DASHBOARD</h1>
-          <p className="text-ink-700">Create custom charts from your CRM data</p>
+        <div className="mb-6 text-center">
+          <h1 className="font-display text-2xl font-bold text-ink-900 mb-2">Analytics Dashboard</h1>
+          <p className="text-ink-600">Create custom charts from your CRM data</p>
         </div>
 
         {/* Widgets Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {widgets.map((widget) => (
             <Card 
               key={widget.id}
@@ -805,7 +805,7 @@ export default function AnalyticsPageClient() {
                 )}
 
                 {/* Chart Display */}
-                <div className="h-80 relative bg-bg-soft rounded-ctl border border-line-200 overflow-hidden chart-card">
+                <div className="h-64 relative bg-bg-soft rounded-ctl border border-line-200 overflow-hidden chart-card">
                   {widget.isActive && widget.data.length > 0 ? (
                     <>
                       <div className="h-full w-full p-1">
@@ -815,8 +815,8 @@ export default function AnalyticsPageClient() {
                             chartType: widget.chartType,
                             data: widget.data,
                             chartConfig: {
-                              width: 360,
-                              height: 240,
+                              width: 320,
+                              height: 200,
                               margin: { top: 8, right: 12, left: 8, bottom: 25 },
                               xAxis: { dataKey: widget.xAxisKey },
                               yAxis: { dataKey: widget.yAxisKey }
@@ -857,12 +857,12 @@ export default function AnalyticsPageClient() {
         {fullscreenWidget && (
           <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center p-6">
             <div className="bg-white rounded-card shadow-pop max-w-7xl w-full max-h-[95vh] overflow-hidden">
-              <div className="flex items-center justify-between p-6 border-b border-line-200 bg-bg-soft">
+              <div className="flex items-center justify-between p-4 border-b border-line-200 bg-bg-soft">
                 <div>
-                  <h2 className="font-display text-2xl font-bold text-ink-900">
+                  <h2 className="font-display text-xl font-bold text-ink-900">
                     {fullscreenWidget.title || `Chart ${fullscreenWidget.id.split('-')[1]}`}
                   </h2>
-                  <p className="text-ink-600 mt-1">Full screen view</p>
+                  <p className="text-ink-600 text-sm">Full screen view</p>
                 </div>
                 <div className="flex items-center space-x-3">
                   <Button
@@ -880,16 +880,16 @@ export default function AnalyticsPageClient() {
                   </Button>
                 </div>
               </div>
-              <div className="p-8 bg-white chart-card">
+              <div className="p-6 bg-white chart-card">
                 <ChartDisplay
                   key={`fullscreen-${fullscreenWidget.id}-${fullscreenWidget.lastUpdated instanceof Date ? fullscreenWidget.lastUpdated.getTime() : new Date(fullscreenWidget.lastUpdated).getTime()}`}
                   chartSpec={{
                     chartType: fullscreenWidget.chartType,
                     data: fullscreenWidget.data,
                     chartConfig: {
-                      width: 900,
-                      height: 600,
-                      margin: { top: 30, right: 40, left: 30, bottom: 50 },
+                      width: 800,
+                      height: 500,
+                      margin: { top: 20, right: 30, left: 20, bottom: 40 },
                       xAxis: { dataKey: fullscreenWidget.xAxisKey },
                       yAxis: { dataKey: fullscreenWidget.yAxisKey }
                     }
