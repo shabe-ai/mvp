@@ -733,6 +733,82 @@ export default function AnalyticsPageClient() {
               }
             >
                                                 {/* Chart Display */}
+                
+
+                {/* Widget Input - Now beneath the chart */}
+                {editingWidget === widget.id ? (
+                  <div className="mb-6">
+                    <Textarea
+                      value={widget.prompt}
+                      onChange={(e) => {
+                        setWidgets(prev => prev.map(w => 
+                          w.id === widget.id ? { ...w, prompt: e.target.value } : w
+                        ));
+                      }}
+                      placeholder="Describe the chart you want to see (e.g., 'deals by stage', 'contact growth over time', 'revenue trends')..."
+                      className="mb-4"
+                      rows={3}
+                    />
+                    <div className="flex space-x-3">
+                      <Button
+                        variant="primary"
+                        onClick={() => handleCreateChart(widget.id)}
+                        disabled={!widget.prompt.trim() || loadingWidgets.has(widget.id)}
+                      >
+                        {loadingWidgets.has(widget.id) ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Plus className="h-4 w-4 mr-2" />
+                        )}
+                        {widget.isActive ? 'Update' : 'Create'} Chart
+                      </Button>
+                      {widget.isActive && (
+                        <Button
+                          variant="subtle"
+                          onClick={() => handleClearWidget(widget.id)}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                      <Button
+                        variant="subtle"
+                        onClick={() => setEditingWidget(null)}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex space-x-2">
+                    <Input
+                      value={widget.prompt}
+                      onChange={(e) => {
+                        setWidgets(prev => prev.map(w => 
+                          w.id === widget.id ? { ...w, prompt: e.target.value } : w
+                        ));
+                      }}
+                      className="flex-1"
+                      placeholder="Enter a prompt to create a chart (e.g., 'deals by stage')..."
+                    />
+                    {widget.prompt.trim() && (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleCreateChart(widget.id)}
+                        disabled={loadingWidgets.has(widget.id)}
+                        className="h-10 w-10 p-0 flex-shrink-0"
+                      >
+                        {loadingWidgets.has(widget.id) ? (
+                          <RefreshCw className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                )}
+
+                {/* Widget Input - Now beneath the chart */}
                 <div className="h-64 relative bg-bg-soft rounded-ctl border border-line-200 overflow-hidden chart-card mb-4">
                   {widget.isActive && widget.data.length > 0 ? (
                     <>
@@ -774,28 +850,24 @@ export default function AnalyticsPageClient() {
                       </div>
                     </div>
                   )}
-                </div>
-                
-
-                {/* Widget Input - Now beneath the chart */}
-                {/* Widget Input - Always visible beneath the chart */}
-                <div className="flex space-x-2">
-                  <Input
-                    value={widget.prompt}
-                    onChange={(e) => {
-                      setWidgets(prev => prev.map(w => 
-                        w.id === widget.id ? { ...w, prompt: e.target.value } : w
-                      ));
-                    }}
-                    className="flex-1"
-                    placeholder="Enter a prompt to create a chart (e.g., 'deals by stage')..."
-                  />
-                  {widget.prompt.trim() && (
+                {/* Simple input section */}
+                <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
+                  <div className="flex space-x-2">
+                    <Input
+                      value={widget.prompt}
+                      onChange={(e) => {
+                        setWidgets(prev => prev.map(w => 
+                          w.id === widget.id ? { ...w, prompt: e.target.value } : w
+                        ));
+                      }}
+                      className="flex-1"
+                      placeholder="Enter a prompt to create a chart (e.g., 'deals by stage')..."
+                    />
                     <Button
                       variant="primary"
                       size="sm"
                       onClick={() => handleCreateChart(widget.id)}
-                      disabled={loadingWidgets.has(widget.id)}
+                      disabled={loadingWidgets.has(widget.id) || !widget.prompt.trim()}
                       className="h-10 w-10 p-0 flex-shrink-0"
                     >
                       {loadingWidgets.has(widget.id) ? (
@@ -804,51 +876,8 @@ export default function AnalyticsPageClient() {
                         <Send className="h-4 w-4" />
                       )}
                     </Button>
-                  )}
+                  </div>
                 </div>
-
-                {/* Widget Input - Now beneath the chart */}
-                <div className="h-64 relative bg-bg-soft rounded-ctl border border-line-200 overflow-hidden chart-card mb-4">
-                  {widget.isActive && widget.data.length > 0 ? (
-                    <>
-                      <div className="h-full w-full p-1">
-                        <ChartDisplay
-                          key={`${widget.id}-${widget.lastUpdated instanceof Date ? widget.lastUpdated.getTime() : new Date(widget.lastUpdated).getTime()}`}
-                          chartSpec={{
-                            chartType: widget.chartType,
-                            data: widget.data,
-                            chartConfig: {
-                              width: 320,
-                              height: 200,
-                              margin: { top: 8, right: 12, left: 8, bottom: 25 },
-                              xAxis: { dataKey: widget.xAxisKey },
-                              yAxis: { dataKey: widget.yAxisKey }
-                            }
-                          }}
-                          narrative={widget.prompt}
-                        />
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleFullscreenChart(widget)}
-                        className="absolute top-3 right-3 bg-white/90 hover:bg-white text-ink-700 border border-line-200 h-8 w-8 p-0 shadow-card"
-                      >
-                        <Maximize2 className="h-4 w-4" />
-                      </Button>
-                    </>
-                  ) : (
-                    <div className="h-full flex items-center justify-center">
-                      <div className="text-center text-ink-500">
-                        <div className="mx-auto mb-3 h-8 w-8 text-accent-500">
-                          <BarChart3 className="h-8 w-8" />
-                        </div>
-                        <p className="text-sm">
-                          {widget.isActive ? 'No data available' : 'Enter prompt below to create chart'}
-                        </p>
-                      </div>
-                    </div>
-                  )}
                 </div></Card>
           ))}
         </div>
