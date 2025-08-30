@@ -385,8 +385,6 @@ export default function AnalyticsPageClient() {
         return;
       }
 
-      console.log('🤖 Using AI system for chart generation:', currentPrompt);
-
       // Use the existing AI system via /api/chat
       const response = await fetch('/api/chat', {
         method: 'POST',
@@ -416,7 +414,6 @@ export default function AnalyticsPageClient() {
       }
 
       const result = await response.json();
-      console.log('🤖 AI response:', result);
       
       // Extract chart specification from the AI response
       let chartSpec = result.chartSpec;
@@ -436,7 +433,6 @@ export default function AnalyticsPageClient() {
 
       // Fallback to rigid system if AI fails
       if (!chartSpec) {
-        console.log('🤖 AI chart generation failed, falling back to rigid system');
         const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(currentPrompt);
         chartSpec = { data, chartType, xAxisKey, yAxisKey };
       }
@@ -510,8 +506,6 @@ export default function AnalyticsPageClient() {
     const widget = widgets.find(w => w.id === widgetId);
     if (widget && widget.prompt) {
       try {
-        console.log('🤖 Refreshing widget with AI system:', widget.prompt);
-
         // Use the existing AI system via /api/chat for refresh
         const response = await fetch('/api/chat', {
           method: 'POST',
@@ -554,7 +548,6 @@ export default function AnalyticsPageClient() {
 
           // Fallback to rigid system if AI fails
           if (!chartSpec) {
-            console.log('🤖 AI refresh failed, falling back to rigid system');
             const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(widget.prompt);
             chartSpec = { data, chartType, xAxisKey, yAxisKey };
           }

@@ -153,7 +153,6 @@ export default function CampaignManagerPage() {
 
   const saveAsset = (assetId: string) => {
     setEditingAsset(null);
-    console.log('Saving asset:', assetId);
   };
 
   const publishAsset = (assetId: string) => {
@@ -176,8 +175,6 @@ export default function CampaignManagerPage() {
           : asset
       )
     );
-    
-    console.log('Publishing LinkedIn post:', assetId);
   };
 
   const MetricCard = ({ 

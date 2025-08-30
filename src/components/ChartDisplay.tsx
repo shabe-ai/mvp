@@ -46,8 +46,6 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
     '#E4B200', '#6B7280', '#D9A400', '#F0C63A', '#2DBE7E', '#E05656'
   ]);
   
-  console.log('📊 ChartDisplay received:', { chartSpec, narrative });
-  
   if (!chartSpec) {
     return (
       <div className="bg-white rounded-xl border border-[#d9d2c7] shadow-sm overflow-hidden">
@@ -67,8 +65,6 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
   }
 
   const { chartType, data, chartConfig } = chartSpec;
-
-  console.log('📊 ChartDisplay processing:', { chartType, dataLength: data?.length, chartConfig });
 
   // Normalize chart type to handle both short and full names
   const normalizedChartType = chartType.toLowerCase();
@@ -138,14 +134,11 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
     const xAxisDataKey = (chartConfig?.xAxis?.dataKey as string) || defaultConfig.xAxis.dataKey;
     
     // For LineChart, we need to handle multiple data series
-    console.log('📊 ChartDisplay rendering with:', { chartType: normalizedChartType, xAxisDataKey, dataSample: data.slice(0, 2), chartConfig });
-
     switch (normalizedChartType) {
       case "line":
       case "linechart":
         // Check if we have multiple data series (sales, orders, etc.)
         const dataKeys = data.length > 0 ? Object.keys(data[0]).filter(key => key !== xAxisDataKey) : [];
-        console.log('📊 Available data keys:', dataKeys);
         
         return (
           <LineChart {...commonProps}>
@@ -186,7 +179,6 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
       case "barchart":
         // Check if we have multiple data series or single value data
         const barDataKeys = data.length > 0 ? Object.keys(data[0]).filter(key => key !== xAxisDataKey) : [];
-        console.log('📊 BarChart data keys:', barDataKeys);
         
         // For single value data (like deals by stage), use the first non-x-axis key
         const primaryDataKey = barDataKeys[0] || 'value';
@@ -244,7 +236,6 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
       case "areachart":
         // Check if we have multiple data series
         const areaDataKeys = data.length > 0 ? Object.keys(data[0]).filter(key => key !== xAxisDataKey) : [];
-        console.log('📊 AreaChart data keys:', areaDataKeys);
         
         return (
           <AreaChart {...commonProps}>
@@ -286,8 +277,6 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
         const pieDataKey: string = data.length > 0 
           ? Object.keys(data[0]).find(key => key !== xAxisDataKey) || (chartConfig.yAxis?.dataKey as string) || 'value'
           : 'value';
-        console.log('📊 PieChart data key:', pieDataKey);
-        console.log('📊 PieChart data structure:', data[0]);
         
         return (
           <PieChart {...commonProps}>
@@ -332,7 +321,6 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
         // For scatter charts, we need two data keys for x and y
         const scatterDataKeys = data.length > 0 ? Object.keys(data[0]).filter(key => key !== xAxisDataKey) : [];
         const scatterYKey = scatterDataKeys[0] || 'value';
-        console.log('📊 ScatterChart data keys:', { x: xAxisDataKey, y: scatterYKey });
         
         return (
           <ScatterChart {...commonProps}>

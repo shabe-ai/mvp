@@ -161,18 +161,6 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
   };
 
   // Filter data based on search term
-  console.log('🔍 LiveTables current state:', {
-    dataLength: data.length,
-    activeTable,
-    searchTerm,
-    loading,
-    error
-  });
- 
-  // Debug: Log raw data from Convex to verify freshness
-  console.log('🔍 Raw Convex data for', activeTable, ':', data);
-  console.log('🔍 Sample contact record:', data[0]);
-  
   const filteredData = data.filter(record => {
     if (!searchTerm) return true;
     
