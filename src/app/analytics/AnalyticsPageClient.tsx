@@ -4,14 +4,11 @@ import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import { Card, Button, Input, Textarea, inputClass } from "@/components/shabe-ui";
+import { Button, Input } from "@/components/shabe-ui";
 import ChartDisplay from "@/components/ChartDisplay";
 import { 
   RefreshCw,
   Download,
-  Save,
-  Settings,
-  Plus,
   BarChart3,
   Maximize2,
   X,
@@ -32,7 +29,7 @@ interface ChartWidget {
 export default function AnalyticsPageClient() {
   const { user } = useUser();
   const [widgets, setWidgets] = useState<ChartWidget[]>([]);
-  const [editingWidget, setEditingWidget] = useState<string | null>(null);
+
   const [loadingWidgets, setLoadingWidgets] = useState<Set<string>>(new Set());
   const [fullscreenWidget, setFullscreenWidget] = useState<ChartWidget | null>(null);
 
@@ -462,8 +459,6 @@ export default function AnalyticsPageClient() {
       // Auto-save immediately after creating chart
       localStorage.setItem('analytics-widgets', JSON.stringify(updatedWidgets));
       
-      setEditingWidget(null);
-      
     } catch (error) {
       console.error('Chart generation error:', error);
       
@@ -492,7 +487,6 @@ export default function AnalyticsPageClient() {
       
       setWidgets(updatedWidgets);
       localStorage.setItem('analytics-widgets', JSON.stringify(updatedWidgets));
-      setEditingWidget(null);
     }
     
     setLoadingWidgets(prev => {
@@ -621,25 +615,7 @@ export default function AnalyticsPageClient() {
     });
   };
 
-  const handleClearWidget = (widgetId: string) => {
-    const updatedWidgets = widgets.map(widget => 
-      widget.id === widgetId 
-        ? { 
-            ...widget, 
-            title: '',
-            prompt: '', 
-            data: [],
-            xAxisKey: 'stage',
-            yAxisKey: 'amount',
-            isActive: false
-          }
-        : widget
-    );
-    setWidgets(updatedWidgets);
-    // Auto-save after clear
-    localStorage.setItem('analytics-widgets', JSON.stringify(updatedWidgets));
-    setEditingWidget(null);
-  };
+
 
   const handleFullscreenChart = (widget: ChartWidget) => {
     setFullscreenWidget(widget);
@@ -678,21 +654,29 @@ export default function AnalyticsPageClient() {
   }
 
   return (
-    <div className="min-h-screen bg-bg p-6">
-      <div className="max-w-7xl mx-auto">
+    <div className="flex flex-col bg-bg w-full h-screen min-h-0">
+      <div className="flex-1 min-h-0 w-full bg-bg flex flex-col p-0 m-0 overflow-hidden">
         {/* Header */}
-        <div className="mb-6 text-center">
-          <h1 className="font-display text-2xl font-bold text-ink-900 mb-2">Analytics Dashboard</h1>
-          <p className="text-ink-600">Create custom charts from your CRM data</p>
+        <div className="text-center py-8 w-full max-w-4xl mx-auto px-6">
+          <h1 className="font-display text-3xl font-bold text-ink-900 mb-4">
+            Analytics Dashboard
+          </h1>
+          <p className="text-lg text-ink-700">
+            Create custom charts from your CRM data
+          </p>
         </div>
 
-        {/* Widgets Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Content Area */}
+        <div className="flex-1 min-h-0 w-full max-w-7xl mx-auto px-6 pb-8">
+          {/* Widgets Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {widgets.map((widget) => (
-            <Card 
-              key={widget.id}
-              title={widget.title || `Chart ${widget.id.split('-')[1]}`}
-              toolbar={
+            <div key={widget.id} className="bg-white rounded-card shadow-card p-6 space-y-4">
+              {/* Widget Header */}
+              <div className="flex items-center justify-between">
+                <h3 className="font-display text-lg font-semibold text-ink-900">
+                  {widget.title || `Chart ${widget.id.split('-')[1]}`}
+                </h3>
                 <div className="flex items-center space-x-2">
                   {widget.isActive && (
                     <>
@@ -700,7 +684,7 @@ export default function AnalyticsPageClient() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRefreshWidget(widget.id)}
-                        className="h-8 w-8 p-0"
+                        className="h-8 w-8 p-0 text-ink-500 hover:text-ink-700"
                       >
                         <RefreshCw className="h-4 w-4" />
                       </Button>
@@ -708,176 +692,92 @@ export default function AnalyticsPageClient() {
                         variant="ghost"
                         size="sm"
                         onClick={() => handleExportWidget(widget)}
-                        className="h-8 w-8 p-0"
+                        className="h-8 w-8 p-0 text-ink-500 hover:text-ink-700"
                       >
                         <Download className="h-4 w-4" />
                       </Button>
                     </>
                   )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setEditingWidget(widget.id)}
-                    className="h-8 w-8 p-0"
-                  >
-                    <Settings className="h-4 w-4" />
-                  </Button>
                 </div>
-              }
-            >
-                                                {/* Chart Display */}
-                
+              </div>
 
-                {/* Widget Input - Now beneath the chart */}
-                {editingWidget === widget.id ? (
-                  <div className="mb-6">
-                    <Textarea
-                      value={widget.prompt}
-                      onChange={(e) => {
-                        setWidgets(prev => prev.map(w => 
-                          w.id === widget.id ? { ...w, prompt: e.target.value } : w
-                        ));
-                      }}
-                      placeholder="Describe the chart you want to see (e.g., 'deals by stage', 'contact growth over time', 'revenue trends')..."
-                      className="mb-4"
-                      rows={3}
-                    />
-                    <div className="flex space-x-3">
-                      <Button
-                        variant="primary"
-                        onClick={() => handleCreateChart(widget.id)}
-                        disabled={!widget.prompt.trim() || loadingWidgets.has(widget.id)}
-                      >
-                        {loadingWidgets.has(widget.id) ? (
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Plus className="h-4 w-4 mr-2" />
-                        )}
-                        {widget.isActive ? 'Update' : 'Create'} Chart
-                      </Button>
-                      {widget.isActive && (
-                        <Button
-                          variant="subtle"
-                          onClick={() => handleClearWidget(widget.id)}
-                        >
-                          Clear
-                        </Button>
-                      )}
-                      <Button
-                        variant="subtle"
-                        onClick={() => setEditingWidget(null)}
-                      >
-                        Cancel
-                      </Button>
+              {/* Chart Display */}
+              <div className="h-64 relative bg-bg-soft rounded-ctl border border-line-200 overflow-hidden">
+                {widget.isActive && widget.data.length > 0 ? (
+                  <>
+                    <div className="h-full w-full p-4">
+                      <ChartDisplay
+                        key={`${widget.id}-${widget.lastUpdated instanceof Date ? widget.lastUpdated.getTime() : new Date(widget.lastUpdated).getTime()}`}
+                        chartSpec={{
+                          chartType: widget.chartType,
+                          data: widget.data,
+                          chartConfig: {
+                            width: 400,
+                            height: 200,
+                            margin: { top: 20, right: 20, left: 20, bottom: 30 },
+                            xAxis: { dataKey: widget.xAxisKey },
+                            yAxis: { dataKey: widget.yAxisKey }
+                          }
+                        }}
+                        narrative={widget.prompt}
+                      />
                     </div>
-                  </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleFullscreenChart(widget)}
+                      className="absolute top-3 right-3 bg-white/90 hover:bg-white text-ink-700 border border-line-200 h-8 w-8 p-0 shadow-card"
+                    >
+                      <Maximize2 className="h-4 w-4" />
+                    </Button>
+                  </>
                 ) : (
-                  <div className="flex space-x-2">
-                    <Input
-                      value={widget.prompt}
-                      onChange={(e) => {
-                        setWidgets(prev => prev.map(w => 
-                          w.id === widget.id ? { ...w, prompt: e.target.value } : w
-                        ));
-                      }}
-                      className="flex-1"
-                      placeholder="Enter a prompt to create a chart (e.g., 'deals by stage')..."
-                    />
-                    {widget.prompt.trim() && (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handleCreateChart(widget.id)}
-                        disabled={loadingWidgets.has(widget.id)}
-                        className="h-10 w-10 p-0 flex-shrink-0"
-                      >
-                        {loadingWidgets.has(widget.id) ? (
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center text-ink-500">
+                      <div className="mx-auto mb-3 h-8 w-8 text-accent-500">
+                        <BarChart3 className="h-8 w-8" />
+                      </div>
+                      <p className="text-sm">
+                        {widget.isActive ? 'No data available' : 'Enter prompt below to create chart'}
+                      </p>
+                    </div>
                   </div>
                 )}
+              </div>
 
-                {/* Widget Input - Now beneath the chart */}
-                <div className="h-64 relative bg-bg-soft rounded-ctl border border-line-200 overflow-hidden chart-card mb-4">
-                  {widget.isActive && widget.data.length > 0 ? (
-                    <>
-                      <div className="h-full w-full p-1">
-                        <ChartDisplay
-                          key={`${widget.id}-${widget.lastUpdated instanceof Date ? widget.lastUpdated.getTime() : new Date(widget.lastUpdated).getTime()}`}
-                          chartSpec={{
-                            chartType: widget.chartType,
-                            data: widget.data,
-                            chartConfig: {
-                              width: 320,
-                              height: 200,
-                              margin: { top: 8, right: 12, left: 8, bottom: 25 },
-                              xAxis: { dataKey: widget.xAxisKey },
-                              yAxis: { dataKey: widget.yAxisKey }
-                            }
-                          }}
-                          narrative={widget.prompt}
-                        />
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleFullscreenChart(widget)}
-                        className="absolute top-3 right-3 bg-white/90 hover:bg-white text-ink-700 border border-line-200 h-8 w-8 p-0 shadow-card"
-                      >
-                        <Maximize2 className="h-4 w-4" />
-                      </Button>
-                    </>
+              {/* Input Section */}
+              <div className="flex space-x-3">
+                <Input
+                  value={widget.prompt}
+                  onChange={(e) => {
+                    setWidgets(prev => prev.map(w => 
+                      w.id === widget.id ? { ...w, prompt: e.target.value } : w
+                    ));
+                  }}
+                  className="flex-1"
+                  placeholder="Enter a prompt to create a chart (e.g., 'deals by stage')..."
+                />
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => handleCreateChart(widget.id)}
+                  disabled={loadingWidgets.has(widget.id) || !widget.prompt.trim()}
+                  className="h-10 w-10 p-0 flex-shrink-0"
+                >
+                  {loadingWidgets.has(widget.id) ? (
+                    <RefreshCw className="h-4 w-4 animate-spin" />
                   ) : (
-                    <div className="h-full flex items-center justify-center">
-                      <div className="text-center text-ink-500">
-                        <div className="mx-auto mb-3 h-8 w-8 text-accent-500">
-                          <BarChart3 className="h-8 w-8" />
-                        </div>
-                        <p className="text-sm">
-                          {widget.isActive ? 'No data available' : 'Enter prompt below to create chart'}
-                        </p>
-                      </div>
-                    </div>
+                    <Send className="h-4 w-4" />
                   )}
-                {/* Simple input section */}
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg border">
-                  <div className="flex space-x-2">
-                    <Input
-                      value={widget.prompt}
-                      onChange={(e) => {
-                        setWidgets(prev => prev.map(w => 
-                          w.id === widget.id ? { ...w, prompt: e.target.value } : w
-                        ));
-                      }}
-                      className="flex-1"
-                      placeholder="Enter a prompt to create a chart (e.g., 'deals by stage')..."
-                    />
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => handleCreateChart(widget.id)}
-                      disabled={loadingWidgets.has(widget.id) || !widget.prompt.trim()}
-                      className="h-10 w-10 p-0 flex-shrink-0"
-                    >
-                      {loadingWidgets.has(widget.id) ? (
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-                </div></Card>
+                </Button>
+              </div>
+            </div>
           ))}
+          </div>
         </div>
+      </div>
 
-
-
-        {/* Fullscreen Modal */}
+      {/* Fullscreen Modal */}
         {fullscreenWidget && (
           <div className="fixed inset-0 bg-black/20 z-50 flex items-center justify-center p-6">
             <div className="bg-white rounded-card shadow-pop max-w-7xl w-full max-h-[95vh] overflow-hidden">
@@ -924,7 +824,6 @@ export default function AnalyticsPageClient() {
             </div>
           </div>
         )}
-      </div>
     </div>
   );
 }
