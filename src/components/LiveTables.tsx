@@ -11,7 +11,8 @@ import {
   Plus,
   Loader2,
   Search,
-  ChevronDown
+  ChevronDown,
+  RefreshCw
 } from "lucide-react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -177,26 +178,6 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
     <div className="flex flex-col h-full bg-bg">
       {/* Header */}
       <div className="p-4 border-b border-line-200 bg-accent-50">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-lg font-semibold text-ink-900">
-            Hi {user?.firstName || 'there'}
-          </h2>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              // Re-fetch data when refreshing
-              setActiveTable(activeTable); // Keep activeTable as is
-            }}
-            disabled={loading}
-          >
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              'Refresh'
-            )}
-          </Button>
-        </div>
 
         {/* Table Type Selector */}
         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -230,14 +211,32 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
         </div>
 
         {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink-500" />
-          <Input
-            placeholder={`Search ${currentConfig.label.toLowerCase()}...`}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-9 text-sm"
-          />
+        <div className="relative flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-ink-500" />
+            <Input
+              placeholder={`Search ${currentConfig.label.toLowerCase()}...`}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-9 text-sm"
+            />
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              // Re-fetch data when refreshing
+              setActiveTable(activeTable); // Keep activeTable as is
+            }}
+            disabled={loading}
+            className="p-2"
+          >
+            {loading ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+          </Button>
         </div>
       </div>
 
