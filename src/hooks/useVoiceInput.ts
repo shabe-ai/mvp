@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 
 // Extend Window interface for TypeScript
 declare global {
@@ -33,6 +33,11 @@ export const useVoiceInput = () => {
     setState(prev => ({ ...prev, isSupported }));
     return isSupported;
   }, []);
+
+  // Check support on mount
+  useEffect(() => {
+    checkSupport();
+  }, [checkSupport]);
 
   // Initialize speech recognition
   const initializeRecognition = useCallback(() => {

@@ -2,9 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button, Input } from "@/components/shabe-ui";
 
 import { 
   Send, 
@@ -560,7 +558,7 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
             type="button"
             onClick={handleUploadClick}
             className="bg-accent-primary text-text-on-accent-primary hover:bg-accent-primary-hover"
-            size="icon"
+            size="sm"
             disabled={isLoading}
           >
             <Upload className="h-4 w-4" />
