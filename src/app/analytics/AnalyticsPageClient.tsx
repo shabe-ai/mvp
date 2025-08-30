@@ -778,77 +778,34 @@ export default function AnalyticsPageClient() {
                 
 
                 {/* Widget Input - Now beneath the chart */}
-                {editingWidget === widget.id ? (
-                  <div className="mb-6">
-                    <Textarea
-                      value={widget.prompt}
-                      onChange={(e) => {
-                        setWidgets(prev => prev.map(w => 
-                          w.id === widget.id ? { ...w, prompt: e.target.value } : w
-                        ));
-                      }}
-                      placeholder="Describe the chart you want to see (e.g., 'deals by stage', 'contact growth over time', 'revenue trends')..."
-                      className="mb-4"
-                      rows={3}
-                    />
-                    <div className="flex space-x-3">
-                      <Button
-                        variant="primary"
-                        onClick={() => handleCreateChart(widget.id)}
-                        disabled={!widget.prompt.trim() || loadingWidgets.has(widget.id)}
-                      >
-                        {loadingWidgets.has(widget.id) ? (
-                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                        ) : (
-                          <Plus className="h-4 w-4 mr-2" />
-                        )}
-                        {widget.isActive ? 'Update' : 'Create'} Chart
-                      </Button>
-                      {widget.isActive && (
-                        <Button
-                          variant="subtle"
-                          onClick={() => handleClearWidget(widget.id)}
-                        >
-                          Clear
-                        </Button>
+                {/* Widget Input - Always visible beneath the chart */}
+                <div className="flex space-x-2">
+                  <Input
+                    value={widget.prompt}
+                    onChange={(e) => {
+                      setWidgets(prev => prev.map(w => 
+                        w.id === widget.id ? { ...w, prompt: e.target.value } : w
+                      ));
+                    }}
+                    className="flex-1"
+                    placeholder="Enter a prompt to create a chart (e.g., 'deals by stage')..."
+                  />
+                  {widget.prompt.trim() && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleCreateChart(widget.id)}
+                      disabled={loadingWidgets.has(widget.id)}
+                      className="h-10 w-10 p-0 flex-shrink-0"
+                    >
+                      {loadingWidgets.has(widget.id) ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
                       )}
-                      <Button
-                        variant="subtle"
-                        onClick={() => setEditingWidget(null)}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex space-x-2">
-                    <Input
-                      value={widget.prompt}
-                      onChange={(e) => {
-                        setWidgets(prev => prev.map(w => 
-                          w.id === widget.id ? { ...w, prompt: e.target.value } : w
-                        ));
-                      }}
-                      className="flex-1"
-                      placeholder="Enter a prompt to create a chart (e.g., 'deals by stage')..."
-                    />
-                    {widget.prompt.trim() && (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={() => handleCreateChart(widget.id)}
-                        disabled={loadingWidgets.has(widget.id)}
-                        className="h-10 w-10 p-0 flex-shrink-0"
-                      >
-                        {loadingWidgets.has(widget.id) ? (
-                          <RefreshCw className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Send className="h-4 w-4" />
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                )}
+                    </Button>
+                  )}
+                </div>
 
                 {/* Widget Input - Now beneath the chart */}
                 <div className="h-64 relative bg-bg-soft rounded-ctl border border-line-200 overflow-hidden chart-card mb-4">
