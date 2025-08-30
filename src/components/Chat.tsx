@@ -1088,6 +1088,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Email Draft Modal */}

@@ -549,6 +549,7 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
             </div>
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input Container */}
