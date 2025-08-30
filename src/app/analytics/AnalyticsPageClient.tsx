@@ -33,7 +33,7 @@ export default function AnalyticsPageClient() {
   const { user } = useUser();
   const [widgets, setWidgets] = useState<ChartWidget[]>([]);
   const [editingWidget, setEditingWidget] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingWidgets, setLoadingWidgets] = useState<Set<string>>(new Set());
   const [fullscreenWidget, setFullscreenWidget] = useState<ChartWidget | null>(null);
 
   // Get user's team data
@@ -369,7 +369,7 @@ export default function AnalyticsPageClient() {
 
   // Widget actions
   const handleCreateChart = async (widgetId: string, prompt?: string) => {
-    setIsLoading(true);
+    setLoadingWidgets(prev => new Set(prev).add(widgetId));
     
     try {
       // Get the current widget to ensure we have the latest prompt
@@ -377,7 +377,11 @@ export default function AnalyticsPageClient() {
       const currentPrompt = prompt || currentWidget?.prompt || '';
       
       if (!currentPrompt.trim()) {
-        setIsLoading(false);
+        setLoadingWidgets(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(widgetId);
+          return newSet;
+        });
         return;
       }
 
@@ -495,7 +499,11 @@ export default function AnalyticsPageClient() {
       setEditingWidget(null);
     }
     
-    setIsLoading(false);
+    setLoadingWidgets(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(widgetId);
+      return newSet;
+    });
   };
 
   const handleRefreshWidget = async (widgetId: string) => {
@@ -742,9 +750,9 @@ export default function AnalyticsPageClient() {
                       <Button
                         variant="primary"
                         onClick={() => handleCreateChart(widget.id)}
-                        disabled={!widget.prompt.trim() || isLoading}
+                        disabled={!widget.prompt.trim() || loadingWidgets.has(widget.id)}
                       >
-                        {isLoading ? (
+                        {loadingWidgets.has(widget.id) ? (
                           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                         ) : (
                           <Plus className="h-4 w-4 mr-2" />
@@ -783,9 +791,9 @@ export default function AnalyticsPageClient() {
                       <Button
                         variant="primary"
                         onClick={() => handleCreateChart(widget.id)}
-                        disabled={isLoading}
+                        disabled={loadingWidgets.has(widget.id)}
                       >
-                        {isLoading ? (
+                        {loadingWidgets.has(widget.id) ? (
                           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                         ) : (
                           <Plus className="h-4 w-4 mr-2" />
