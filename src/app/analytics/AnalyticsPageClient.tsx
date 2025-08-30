@@ -162,12 +162,22 @@ export default function AnalyticsPageClient() {
         };
       }
     } else if (lowerPrompt.includes('activity')) {
-      return {
-        chartType: 'bar',
-        data: processActivitiesData(activities || []),
-        xAxisKey: 'type',
-        yAxisKey: 'count'
-      };
+      // Check if user wants activities grouped by contacts
+      if (lowerPrompt.includes('grouped by contact') || lowerPrompt.includes('by contact')) {
+        return {
+          chartType: 'bar',
+          data: processActivitiesByContactData(activities || [], contacts || []),
+          xAxisKey: 'contact',
+          yAxisKey: 'count'
+        };
+      } else {
+        return {
+          chartType: 'bar',
+          data: processActivitiesData(activities || []),
+          xAxisKey: 'type',
+          yAxisKey: 'count'
+        };
+      }
     } else if (lowerPrompt.includes('account') || lowerPrompt.includes('industry')) {
       return {
         chartType: 'pie',
@@ -346,6 +356,30 @@ export default function AnalyticsPageClient() {
     return Object.entries(typeCounts).map(([type, count]) => ({
       type: type.charAt(0).toUpperCase() + type.slice(1),
       count
+    }));
+  };
+
+  const processActivitiesByContactData = (activities: any[], contacts: any[]) => {
+    if (!activities || !contacts) return [];
+    
+    // Create a map of contact IDs to contact names
+    const contactMap = new Map();
+    contacts.forEach(contact => {
+      contactMap.set(contact._id, `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Unknown Contact');
+    });
+    
+    // Group activities by contact
+    const contactGroups: Record<string, number> = {};
+    activities.forEach(activity => {
+      const contactId = activity.contactId || 'unknown';
+      const contactName = contactMap.get(contactId) || 'Unknown Contact';
+      contactGroups[contactName] = (contactGroups[contactName] || 0) + 1;
+    });
+    
+    return Object.entries(contactGroups).map(([contactName, count]) => ({
+      contact: contactName,
+      count,
+      name: contactName
     }));
   };
 

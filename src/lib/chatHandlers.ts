@@ -324,22 +324,30 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       }
     };
     
-    // Generate AI insights for the chart
+    // Generate AI insights for the chart (with timeout)
     try {
       const { enhancedAnalytics } = await import('@/lib/enhancedAnalytics');
-      const insights = await enhancedAnalytics.generateInsights(
+      
+      // Add timeout to insights generation to prevent chart generation from timing out
+      const insightsPromise = enhancedAnalytics.generateInsights(
         chartData,
         chartType,
         'database',
         userMessage
       );
       
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Insights generation timeout')), 10000); // 10 second timeout
+      });
+      
+      const insights = await Promise.race([insightsPromise, timeoutPromise]);
+      
       enhancedChartSpec.insights = insights;
       
       console.log('🚀 Generated AI insights:', insights.length);
     } catch (error) {
-      console.error('❌ Error generating insights:', error);
-      // Continue without insights if there's an error
+      console.error('❌ Error generating insights (continuing without insights):', error);
+      // Continue without insights if there's an error or timeout
     }
     
     // Log successful chart generation for RAG learning
