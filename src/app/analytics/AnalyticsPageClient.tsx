@@ -654,8 +654,8 @@ export default function AnalyticsPageClient() {
   }
 
   return (
-    <div className="flex flex-col bg-bg w-full h-screen min-h-0">
-      <div className="flex-1 min-h-0 w-full bg-bg flex flex-col p-0 m-0 overflow-hidden">
+    <div className="min-h-screen bg-bg w-full">
+      <div className="w-full bg-bg flex flex-col p-0 m-0">
         {/* Header */}
         <div className="text-center py-8 w-full max-w-4xl mx-auto px-6">
           <h1 className="font-display text-3xl font-bold text-ink-900 mb-4">
@@ -667,9 +667,9 @@ export default function AnalyticsPageClient() {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 min-h-0 w-full max-w-7xl mx-auto px-6 pb-8">
+        <div className="w-full max-w-7xl mx-auto px-6 pb-8">
           {/* Widgets Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
           {widgets.map((widget) => (
             <div key={widget.id} className="bg-white rounded-card shadow-card p-6 space-y-4">
               {/* Widget Header */}
