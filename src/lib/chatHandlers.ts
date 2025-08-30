@@ -108,10 +108,10 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     // Determine what data to fetch based on user request
     const lowerMessage = userMessage.toLowerCase();
     
-    // Check if user specifically wants CRM data (deals, contacts, accounts)
+    // Check if user specifically wants CRM data (deals, contacts, accounts, activities)
     const wantsCrmData = lowerMessage.includes('deal') || lowerMessage.includes('contact') || 
-                        lowerMessage.includes('account') || lowerMessage.includes('crm') ||
-                        lowerMessage.includes('sales') || lowerMessage.includes('pipeline');
+                        lowerMessage.includes('account') || lowerMessage.includes('activity') ||
+                        lowerMessage.includes('crm') || lowerMessage.includes('sales') || lowerMessage.includes('pipeline');
     
     // Check if we have uploaded files and user wants file data
     if (sessionFiles && sessionFiles.length > 0 && !wantsCrmData) {
@@ -125,7 +125,7 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     // Get user's team and data
     const teams = await convex.query(api.crm.getTeamsByUser, { userId });
     const teamId = teams.length > 0 ? teams[0]._id : 'default';
-    let chartData: Array<{ stage?: string; status?: string; industry?: string; count: number; name: string }> = [];
+    let chartData: Array<{ stage?: string; status?: string; industry?: string; type?: string; count: number; name: string }> = [];
     let chartType = 'bar';
     let title = 'Chart';
     let dataType = 'deals';
@@ -210,12 +210,34 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       
       title = 'Accounts by Industry';
       
+    } else if (lowerMessage.includes('activity') || lowerMessage.includes('activities')) {
+      // Activities chart
+      console.log('🚀 Generating activities chart');
+      dataType = 'activities';
+      dimension = 'type';
+      const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+      
+      // Group activities by type
+      const typeGroups: Record<string, number> = {};
+      activities.forEach(activity => {
+        const type = activity.type || 'unknown';
+        typeGroups[type] = (typeGroups[type] || 0) + 1;
+      });
+      
+      chartData = Object.entries(typeGroups).map(([type, count]) => ({
+        type,
+        count,
+        name: type
+      }));
+      
+      title = 'Activities by Type';
+      
     } else {
       // Ask for clarification when chart type is unclear
       console.log('🚀 Chart request unclear, asking for clarification');
       
       return {
-        message: "I'd be happy to create an enhanced chart for you! To provide the most relevant visualization with AI-powered insights, could you please specify what type of data you'd like to see? For example:\n\n• **Deals by stage** - Shows your sales pipeline with trend analysis\n• **Contacts by status** - Shows lead progression with conversion insights\n• **Accounts by industry** - Shows customer distribution with market analysis\n\nOr feel free to describe any other data you'd like visualized from your CRM. I'll provide AI-powered insights and interactive features!",
+        message: "I'd be happy to create an enhanced chart for you! To provide the most relevant visualization with AI-powered insights, could you please specify what type of data you'd like to see? For example:\n\n• **Deals by stage** - Shows your sales pipeline with trend analysis\n• **Contacts by status** - Shows lead progression with conversion insights\n• **Accounts by industry** - Shows customer distribution with market analysis\n• **Activities by type** - Shows task distribution with productivity insights\n\nOr feel free to describe any other data you'd like visualized from your CRM. I'll provide AI-powered insights and interactive features!",
         needsClarification: true,
         action: 'chart_clarification'
       };
@@ -232,7 +254,7 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     
     // Determine the appropriate data key for X-axis
     const xAxisDataKey = chartType === 'bar' ? 
-      (chartData[0].stage ? 'stage' : chartData[0].status ? 'status' : chartData[0].industry ? 'industry' : 'name') : 
+      (chartData[0].stage ? 'stage' : chartData[0].status ? 'status' : chartData[0].industry ? 'industry' : chartData[0].type ? 'type' : 'name') : 
       'name';
     
     // Create enhanced chart specification with AI insights
