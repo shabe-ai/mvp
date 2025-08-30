@@ -375,6 +375,41 @@ class CrudIntentHandler implements IntentHandler {
           result = { success: false, error: 'Contact not found' };
           message = `Contact "${contactName}" not found. Please check the name and try again.`;
         }
+      }
+      // Handle update operations
+      else if (intent.action === 'update_contact') {
+        const { contactName, field, value } = intent.entities;
+        
+        if (!contactName || !field || !value) {
+          result = { success: false, error: 'Missing required fields' };
+          message = 'Please provide contact name, field to update, and new value.';
+        } else {
+          // Get user's team ID
+          const teams = await convex.query(api.crm.getTeamsByUser, { userId: context.userId });
+          const teamId = teams.length > 0 ? teams[0]._id : 'default';
+          
+          // Find the contact by name
+          const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+          const contact = contacts.find((c: any) => {
+            const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
+            return fullName === contactName.toLowerCase() || 
+                   c.firstName?.toLowerCase() === contactName.toLowerCase() ||
+                   c.lastName?.toLowerCase() === contactName.toLowerCase();
+          });
+          
+          if (contact) {
+            // Update the contact
+            await convex.mutation(api.crm.updateContact, {
+              contactId: contact._id,
+              updates: { [field]: value }
+            });
+            result = { success: true, updatedContact: { ...contact, [field]: value } };
+            message = `Successfully updated ${contactName}'s ${field} to "${value}".`;
+          } else {
+            result = { success: false, error: 'Contact not found' };
+            message = `Contact "${contactName}" not found. Please check the name and try again.`;
+          }
+        }
       } else {
         // For other CRUD operations, return a placeholder
         result = { success: true, message: `${intent.action} operation completed` };
