@@ -9,11 +9,11 @@ interface CardProps {
 
 export function Card({ title, children, toolbar, className = "" }: CardProps) {
   return (
-    <section className={`rounded-card border border-line-200 bg-white shadow-card ${className}`}>
+    <section className={`rounded-card border border-line-200 bg-white shadow-card depth-2 ${className}`}>
       {title && (
         <>
           <header className="flex items-center justify-between px-5 py-4">
-            <h3 className="text-[15px] font-semibold tracking-tight text-ink-900">{title}</h3>
+            <h3 className="font-display text-[15px] font-bold tracking-tight text-ink-900">{title}</h3>
             {toolbar && <div className="text-ink-500">{toolbar}</div>}
           </header>
           <div className="border-t border-line-100" />

@@ -17,7 +17,7 @@ export default function Header() {
       <div className="mx-auto max-w-7xl px-6 h-14 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Logo />
-          <span className="font-semibold text-base tracking-tight text-ink-900">Shabe ai</span>
+          <span className="font-display font-bold text-base tracking-tight text-ink-900">Shabe ai</span>
         </div>
         <nav className="flex items-center gap-4 text-sm text-ink-700">
           {user ? (
@@ -40,4 +40,4 @@ export default function Header() {
       </div>
     </header>
   );
-} 
+}

@@ -35,11 +35,7 @@
   --shadow-card: 0 8px 24px rgba(10,10,10,0.06);
   --shadow-pop: 0 12px 32px rgba(10,10,10,0.10);
   --shadow-none: none;
-
-
 }
-
-
 
 @layer base {
   
@@ -55,7 +51,7 @@
     background: rgba(228, 178, 0, 0.2);
   }
   
-  /* Shabe Typography - Consistent sizing */
+  /* Shabe Typography - Consistent sizing with proper hierarchy */
   h1 {
     font-family: 'Playfair Display', Georgia, Times, serif;
     font-weight: 700;
@@ -94,13 +90,19 @@
     line-height: 1.5;
   }
   
-  /* Consistent spacing scale */
+  /* Enhanced spacing scale for better hierarchy */
   .space-y-1 > * + * { margin-top: 0.25rem; }
   .space-y-2 > * + * { margin-top: 0.5rem; }
   .space-y-3 > * + * { margin-top: 0.75rem; }
   .space-y-4 > * + * { margin-top: 1rem; }
   .space-y-6 > * + * { margin-top: 1.5rem; }
   .space-y-8 > * + * { margin-top: 2rem; }
+  
+  /* Enhanced depth and visual hierarchy */
+  .depth-1 { box-shadow: 0 2px 8px rgba(10,10,10,0.04); }
+  .depth-2 { box-shadow: 0 4px 16px rgba(10,10,10,0.06); }
+  .depth-3 { box-shadow: 0 8px 24px rgba(10,10,10,0.08); }
+  .depth-4 { box-shadow: 0 12px 32px rgba(10,10,10,0.10); }
 }
 
 /* Force Tailwind to generate these classes */
@@ -127,6 +129,12 @@
   .font-display { font-family: 'Playfair Display', Georgia, Times, serif; }
   .font-ui { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; }
   .ease-shabe { transition-timing-function: cubic-bezier(.2,.7,.2,1); }
+  
+  /* Enhanced depth utilities */
+  .depth-1 { box-shadow: 0 2px 8px rgba(10,10,10,0.04); }
+  .depth-2 { box-shadow: 0 4px 16px rgba(10,10,10,0.06); }
+  .depth-3 { box-shadow: 0 8px 24px rgba(10,10,10,0.08); }
+  .depth-4 { box-shadow: 0 12px 32px rgba(10,10,10,0.10); }
 }
 
 /* Chart Theme */

@@ -11,34 +11,37 @@ import TeamManagement from '@/components/TeamManagement';
 import DebugDashboard from '@/components/DebugDashboard';
 import ConvexProviderWrapper from '@/components/ConvexProvider';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { Card } from '@/components/shabe-ui';
 
 // LinkedIn Integration Fallback Component
 function LinkedInIntegrationFallback({ error, resetError }: { error?: Error; resetError: () => void }) {
   return (
-    <div className="bg-neutral-primary rounded-lg shadow-sm border border-neutral-secondary p-6">
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-semibold text-text-primary font-heading">LinkedIn Integration</h3>
-          <p className="text-sm text-text-secondary mt-1 font-body">
-            Connect your LinkedIn account to create and schedule posts
-          </p>
+    <Card>
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h3 className="font-display text-lg font-bold text-ink-900">LinkedIn Integration</h3>
+            <p className="text-sm text-ink-600 mt-1">
+              Connect your LinkedIn account to create and schedule posts
+            </p>
+          </div>
+          <span className="px-2 py-1 text-xs bg-accent-100 text-ink-700 rounded-pill">Not Connected</span>
         </div>
-        <span className="px-2 py-1 text-xs bg-neutral-secondary text-text-secondary rounded">Not Connected</span>
-      </div>
-      <div className="space-y-4">
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-md">
-          <p className="text-sm text-blue-800 font-body">
-            Connect your LinkedIn account to enable AI-powered post creation and scheduling.
-          </p>
+        <div className="space-y-4">
+          <div className="p-4 bg-accent-50 border border-line-200 rounded-ctl">
+            <p className="text-sm text-ink-700">
+              Connect your LinkedIn account to enable AI-powered post creation and scheduling.
+            </p>
+          </div>
+          <button
+            onClick={() => window.location.href = '/api/auth/linkedin'}
+            className="bg-accent-500 hover:bg-accent-600 text-black px-4 py-2 rounded-ctl text-sm font-medium transition-colors"
+          >
+            Connect LinkedIn Account
+          </button>
         </div>
-        <button
-          onClick={() => window.location.href = '/api/auth/linkedin'}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium"
-        >
-          Connect LinkedIn Account
-        </button>
       </div>
-    </div>
+    </Card>
   );
 }
 
@@ -54,9 +57,9 @@ function LinkedInIntegrationWithErrorBoundary() {
 // Debug Dashboard Fallback Component
 function DebugDashboardFallback({ error, resetError }: { error?: Error; resetError: () => void }) {
   return (
-    <div className="p-4 bg-red-50 border border-red-200 rounded-md">
-      <p className="text-sm text-red-800 font-body">❌ Debug Dashboard failed to load</p>
-      {error && <p className="text-xs text-red-600 mt-1">Error: {error.message}</p>}
+    <div className="p-4 bg-danger-50 border border-danger-500 rounded-ctl">
+      <p className="text-sm text-danger-500">❌ Debug Dashboard failed to load</p>
+      {error && <p className="text-xs text-danger-500 mt-1">Error: {error.message}</p>}
     </div>
   );
 }
@@ -66,21 +69,21 @@ function AdminPageContent() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-neutral-secondary/20 flex items-center justify-center">
+      <div className="min-h-screen bg-bg flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-text-primary mb-4 font-heading">Access Denied</h1>
-          <p className="text-text-secondary font-body">Please sign in to access the admin panel.</p>
+          <h1 className="font-display text-2xl font-bold text-ink-900 mb-4">Access Denied</h1>
+          <p className="text-ink-600">Please sign in to access the admin panel.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-secondary/20">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="min-h-screen bg-bg">
+      <div className="max-w-6xl mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-text-primary font-heading">Admin Dashboard</h1>
-          <p className="text-text-secondary mt-2 font-body">Manage your workspace and integrations</p>
+          <h1 className="font-display text-3xl font-bold text-ink-900">Admin Dashboard</h1>
+          <p className="text-ink-600 mt-2">Manage your workspace and integrations</p>
         </div>
 
         {/* Profile Management Section - Now at the top */}
@@ -89,13 +92,13 @@ function AdminPageContent() {
         </div>
 
         {/* Integration Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <GoogleWorkspaceIntegrationSection />
           <LinkedInIntegrationWithErrorBoundary />
         </div>
 
         {/* Monitoring and Analytics Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           <MonitoringDashboard />
           <AnalyticsDashboard />
         </div>
@@ -112,8 +115,8 @@ function AdminPageContent() {
 
         {/* Debug Dashboard Section */}
         <div className="mb-8">
-          <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-md mb-4">
-            <p className="text-sm text-yellow-800 font-body">
+          <div className="p-4 bg-warning-50 border border-warning-500 rounded-ctl mb-4">
+            <p className="text-sm text-warning-500">
               🔍 Debug: Debug Dashboard should appear below this message
             </p>
           </div>
@@ -123,13 +126,13 @@ function AdminPageContent() {
         </div>
 
         {/* Regular User Message */}
-        <div className="mt-8 p-6 bg-neutral-secondary/10 rounded-lg">
-          <h3 className="text-lg font-medium text-text-primary mb-2 font-heading">Workspace Management</h3>
-          <p className="text-text-secondary mb-4 font-body">
+        <div className="mt-8 p-6 bg-accent-50 rounded-card border border-line-200">
+          <h3 className="font-display text-lg font-bold text-ink-900 mb-2">Workspace Management</h3>
+          <p className="text-ink-600 mb-4">
             Use the sections above to manage your profile, company settings, integrations, and monitor your platform usage.
           </p>
-          <div className="bg-accent-primary/10 border border-accent-primary/20 rounded-lg p-4">
-            <p className="text-sm text-text-primary font-body">
+          <div className="bg-accent-100 border border-accent-500 rounded-ctl p-4">
+            <p className="text-sm text-ink-900">
               💡 <strong>Tip:</strong> Connect your Google Workspace and LinkedIn accounts to enable calendar events, email sending, and AI-powered post creation. Monitor your usage and costs in the analytics sections above.
             </p>
           </div>
@@ -145,4 +148,4 @@ export default function AdminPage() {
       <AdminPageContent />
     </ConvexProviderWrapper>
   );
-} 
+}
