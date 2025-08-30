@@ -732,50 +732,8 @@ export default function AnalyticsPageClient() {
                 </div>
               }
             >
-
-                {/* Chart Display */}
-                <div className="h-64 relative bg-bg-soft rounded-ctl border border-line-200 overflow-hidden chart-card mb-4">
-                  {widget.isActive && widget.data.length > 0 ? (
-                    <>
-                      <div className="h-full w-full p-1">
-                        <ChartDisplay
-                          key={`${widget.id}-${widget.lastUpdated instanceof Date ? widget.lastUpdated.getTime() : new Date(widget.lastUpdated).getTime()}`}
-                          chartSpec={{
-                            chartType: widget.chartType,
-                            data: widget.data,
-                            chartConfig: {
-                              width: 320,
-                              height: 200,
-                              margin: { top: 8, right: 12, left: 8, bottom: 25 },
-                              xAxis: { dataKey: widget.xAxisKey },
-                              yAxis: { dataKey: widget.yAxisKey }
-                            }
-                          }}
-                          narrative={widget.prompt}
-                        />
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleFullscreenChart(widget)}
-                        className="absolute top-3 right-3 bg-white/90 hover:bg-white text-ink-700 border border-line-200 h-8 w-8 p-0 shadow-card"
-                      >
-                        <Maximize2 className="h-4 w-4" />
-                      </Button>
-                    </>
-                  ) : (
-                    <div className="h-full flex items-center justify-center">
-                      <div className="text-center text-ink-500">
-                        <div className="mx-auto mb-3 h-8 w-8 text-accent-500">
-                          <BarChart3 className="h-8 w-8" />
-                        </div>
-                        <p className="text-sm">
-                          {widget.isActive ? 'No data available' : 'Enter prompt below to create chart'}
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                                                {/* Chart Display */}
+                
 
                 {/* Widget Input - Now beneath the chart */}
                 {editingWidget === widget.id ? (
@@ -849,6 +807,7 @@ export default function AnalyticsPageClient() {
                     )}
                   </div>
                 )}
+
                 {/* Widget Input - Now beneath the chart */}
                 <div className="h-64 relative bg-bg-soft rounded-ctl border border-line-200 overflow-hidden chart-card mb-4">
                   {widget.isActive && widget.data.length > 0 ? (
