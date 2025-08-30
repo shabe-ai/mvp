@@ -125,7 +125,7 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     // Get user's team and data
     const teams = await convex.query(api.crm.getTeamsByUser, { userId });
     const teamId = teams.length > 0 ? teams[0]._id : 'default';
-    let chartData: Array<{ stage?: string; status?: string; industry?: string; type?: string; count: number; name: string }> = [];
+    let chartData: Array<{ stage?: string; status?: string; industry?: string; type?: string; contact?: string; count: number; name: string }> = [];
     let chartType = 'bar';
     let title = 'Chart';
     let dataType = 'deals';
@@ -214,23 +214,56 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
       // Activities chart
       console.log('🚀 Generating activities chart');
       dataType = 'activities';
-      dimension = 'type';
-      const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
       
-      // Group activities by type
-      const typeGroups: Record<string, number> = {};
-      activities.forEach(activity => {
-        const type = activity.type || 'unknown';
-        typeGroups[type] = (typeGroups[type] || 0) + 1;
-      });
-      
-      chartData = Object.entries(typeGroups).map(([type, count]) => ({
-        type,
-        count,
-        name: type
-      }));
-      
-      title = 'Activities by Type';
+      // Check if user wants activities grouped by contacts
+      if (lowerMessage.includes('grouped by contact') || lowerMessage.includes('by contact')) {
+        console.log('🚀 Generating activities grouped by contacts');
+        dimension = 'contact';
+        const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+        const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
+        
+        // Create a map of contact IDs to contact names
+        const contactMap = new Map();
+        contacts.forEach(contact => {
+          contactMap.set(contact._id, `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || 'Unknown Contact');
+        });
+        
+        // Group activities by contact
+        const contactGroups: Record<string, number> = {};
+        activities.forEach(activity => {
+          const contactId = activity.contactId || 'unknown';
+          const contactName = contactMap.get(contactId) || 'Unknown Contact';
+          contactGroups[contactName] = (contactGroups[contactName] || 0) + 1;
+        });
+        
+        chartData = Object.entries(contactGroups).map(([contactName, count]) => ({
+          contact: contactName,
+          count,
+          name: contactName
+        }));
+        
+        title = 'Activities by Contact';
+      } else {
+        // Default: group activities by type
+        console.log('🚀 Generating activities grouped by type');
+        dimension = 'type';
+        const activities = await convex.query(api.crm.getActivitiesByTeam, { teamId });
+        
+        // Group activities by type
+        const typeGroups: Record<string, number> = {};
+        activities.forEach(activity => {
+          const type = activity.type || 'unknown';
+          typeGroups[type] = (typeGroups[type] || 0) + 1;
+        });
+        
+        chartData = Object.entries(typeGroups).map(([type, count]) => ({
+          type,
+          count,
+          name: type
+        }));
+        
+        title = 'Activities by Type';
+      }
       
     } else {
       // Ask for clarification when chart type is unclear
@@ -254,7 +287,7 @@ async function handleChart(userMessage: string, sessionFiles: Array<{ name: stri
     
     // Determine the appropriate data key for X-axis
     const xAxisDataKey = chartType === 'bar' ? 
-      (chartData[0].stage ? 'stage' : chartData[0].status ? 'status' : chartData[0].industry ? 'industry' : chartData[0].type ? 'type' : 'name') : 
+      (chartData[0].stage ? 'stage' : chartData[0].status ? 'status' : chartData[0].industry ? 'industry' : chartData[0].type ? 'type' : chartData[0].contact ? 'contact' : 'name') : 
       'name';
     
     // Create enhanced chart specification with AI insights
