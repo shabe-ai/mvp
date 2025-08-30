@@ -988,8 +988,8 @@ export default function Chat({ onAction }: ChatProps = {}) {
             <div
               className={`max-w-[80%] rounded-md p-3 ${
                 message.role === "user"
-                  ? "bg-accent-primary text-text-on-accent-primary"
-                  : "bg-neutral-secondary/20 text-text-primary"
+                  ? "bg-gray-100 text-gray-800"
+                  : "bg-yellow-50 text-gray-800"
               }`}
             >
               <div className="whitespace-pre-wrap font-body">{message.content}</div>
@@ -1080,7 +1080,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
         
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-neutral-secondary/20 text-text-primary rounded-md p-3">
+            <div className="bg-yellow-50 text-gray-800 rounded-md p-3">
               <div className="flex items-center space-x-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="font-body">Thinking...</span>
