@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import Chat from "@/components/Chat";
+import ChatWithVoice from "@/components/ChatWithVoice";
 import SidebarLayout from "@/components/SidebarLayout";
 import LiveTables from "@/components/LiveTables";
 // import TourTrigger from "@/components/TourTrigger";
@@ -82,7 +82,7 @@ export default function ChatWithSidebar() {
     >
       <div className="flex flex-col h-full">
         {/* <TourTrigger /> */}
-        <Chat onAction={handleChatAction} />
+        <ChatWithVoice onAction={handleChatAction} />
       </div>
     </SidebarLayout>
   );
