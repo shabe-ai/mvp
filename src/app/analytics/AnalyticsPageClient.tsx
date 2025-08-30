@@ -368,69 +368,219 @@ export default function AnalyticsPageClient() {
   };
 
   // Widget actions
-  const handleCreateChart = (widgetId: string, prompt?: string) => {
+  const handleCreateChart = async (widgetId: string, prompt?: string) => {
     setIsLoading(true);
     
-    // Get the current widget to ensure we have the latest prompt
-    const currentWidget = widgets.find(w => w.id === widgetId);
-    const currentPrompt = prompt || currentWidget?.prompt || '';
-    
-    // Process the prompt and generate chart data
-    const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(currentPrompt);
-    
-    // Debug: Log the generated data
-    console.log('Generated chart data:', { 
-      data, 
-      chartType, 
-      xAxisKey, 
-      yAxisKey, 
-      prompt: currentPrompt,
-      widgetId,
-      currentWidget: currentWidget?.prompt,
-      dataLength: data.length,
-      firstDataItem: data[0]
-    });
-    
-    // Generate a title from the prompt
-    const title = currentPrompt.length > 30 ? currentPrompt.substring(0, 30) + '...' : currentPrompt;
-    
-    const updatedWidgets = widgets.map(widget => 
-      widget.id === widgetId 
-        ? { 
-            ...widget, 
-            title,
-            prompt: currentPrompt, 
-            chartType,
-            data,
-            xAxisKey,
-            yAxisKey,
-            lastUpdated: new Date(),
-            isActive: true
+    try {
+      // Get the current widget to ensure we have the latest prompt
+      const currentWidget = widgets.find(w => w.id === widgetId);
+      const currentPrompt = prompt || currentWidget?.prompt || '';
+      
+      if (!currentPrompt.trim()) {
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('🤖 Using AI system for chart generation:', currentPrompt);
+
+      // Use the existing AI system via /api/chat
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'user',
+              content: `Create a chart: ${currentPrompt}`
+            }
+          ],
+          userId: user?.id,
+          sessionFiles: [],
+          companyData: {},
+          userData: {
+            name: user?.fullName || 'User',
+            email: user?.primaryEmailAddress?.emailAddress || 'user@example.com',
+            company: 'Shabe AI'
           }
-        : widget
-    );
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate chart');
+      }
+
+      const result = await response.json();
+      console.log('🤖 AI response:', result);
+      
+      // Extract chart specification from the AI response
+      let chartSpec = result.chartSpec;
+      
+      // If no chartSpec in response, try to parse from message
+      if (!chartSpec && result.message) {
+        try {
+          // Look for JSON in the message
+          const jsonMatch = result.message.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            chartSpec = JSON.parse(jsonMatch[0]);
+          }
+        } catch (parseError) {
+          console.error('Failed to parse chart spec from message:', parseError);
+        }
+      }
+
+      // Fallback to rigid system if AI fails
+      if (!chartSpec) {
+        console.log('🤖 AI chart generation failed, falling back to rigid system');
+        const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(currentPrompt);
+        chartSpec = { data, chartType, xAxisKey, yAxisKey };
+      }
+
+      // Generate a title from the prompt or AI response
+      const title = result.title || 
+                   (currentPrompt.length > 30 ? currentPrompt.substring(0, 30) + '...' : currentPrompt);
+      
+      const updatedWidgets = widgets.map(widget => 
+        widget.id === widgetId 
+          ? { 
+              ...widget, 
+              title,
+              prompt: currentPrompt, 
+              chartType: chartSpec.chartType || 'bar',
+              data: chartSpec.data || [],
+              xAxisKey: chartSpec.xAxisKey || 'name',
+              yAxisKey: chartSpec.yAxisKey || 'value',
+              lastUpdated: new Date(),
+              isActive: true
+            }
+          : widget
+      );
+      
+      setWidgets(updatedWidgets);
+      
+      // Auto-save immediately after creating chart
+      localStorage.setItem('analytics-widgets', JSON.stringify(updatedWidgets));
+      
+      setEditingWidget(null);
+      
+    } catch (error) {
+      console.error('Chart generation error:', error);
+      
+      // Fallback to rigid system on error
+      const currentWidget = widgets.find(w => w.id === widgetId);
+      const currentPrompt = prompt || currentWidget?.prompt || '';
+      const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(currentPrompt);
+      
+      const title = currentPrompt.length > 30 ? currentPrompt.substring(0, 30) + '...' : currentPrompt;
+      
+      const updatedWidgets = widgets.map(widget => 
+        widget.id === widgetId 
+          ? { 
+              ...widget, 
+              title,
+              prompt: currentPrompt, 
+              chartType,
+              data,
+              xAxisKey,
+              yAxisKey,
+              lastUpdated: new Date(),
+              isActive: true
+            }
+          : widget
+      );
+      
+      setWidgets(updatedWidgets);
+      localStorage.setItem('analytics-widgets', JSON.stringify(updatedWidgets));
+      setEditingWidget(null);
+    }
     
-    setWidgets(updatedWidgets);
-    
-    // Auto-save immediately after creating chart
-    localStorage.setItem('analytics-widgets', JSON.stringify(updatedWidgets));
-    
-    setEditingWidget(null);
     setIsLoading(false);
   };
 
-  const handleRefreshWidget = (widgetId: string) => {
+  const handleRefreshWidget = async (widgetId: string) => {
     const widget = widgets.find(w => w.id === widgetId);
     if (widget && widget.prompt) {
-      const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(widget.prompt);
-      const updatedWidgets = widgets.map(w => 
-        w.id === widgetId 
-          ? { ...w, data, chartType, xAxisKey, yAxisKey, lastUpdated: new Date() }
-          : w
-      );
-      setWidgets(updatedWidgets);
-      // Auto-save after refresh
-      localStorage.setItem('analytics-widgets', JSON.stringify(updatedWidgets));
+      try {
+        console.log('🤖 Refreshing widget with AI system:', widget.prompt);
+
+        // Use the existing AI system via /api/chat for refresh
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            messages: [
+              {
+                role: 'user',
+                content: `Create a chart: ${widget.prompt}`
+              }
+            ],
+            userId: user?.id,
+            sessionFiles: [],
+            companyData: {},
+            userData: {
+              name: user?.fullName || 'User',
+              email: user?.primaryEmailAddress?.emailAddress || 'user@example.com',
+              company: 'Shabe AI'
+            }
+          })
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          let chartSpec = result.chartSpec;
+          
+          // If no chartSpec in response, try to parse from message
+          if (!chartSpec && result.message) {
+            try {
+              const jsonMatch = result.message.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                chartSpec = JSON.parse(jsonMatch[0]);
+              }
+            } catch (parseError) {
+              console.error('Failed to parse chart spec from message:', parseError);
+            }
+          }
+
+          // Fallback to rigid system if AI fails
+          if (!chartSpec) {
+            console.log('🤖 AI refresh failed, falling back to rigid system');
+            const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(widget.prompt);
+            chartSpec = { data, chartType, xAxisKey, yAxisKey };
+          }
+
+          const updatedWidgets = widgets.map(w => 
+            w.id === widgetId 
+              ? { 
+                  ...w, 
+                  chartType: chartSpec.chartType || 'bar',
+                  data: chartSpec.data || [],
+                  xAxisKey: chartSpec.xAxisKey || 'name',
+                  yAxisKey: chartSpec.yAxisKey || 'value',
+                  lastUpdated: new Date() 
+                }
+              : w
+          );
+          setWidgets(updatedWidgets);
+          localStorage.setItem('analytics-widgets', JSON.stringify(updatedWidgets));
+        } else {
+          throw new Error('Failed to refresh chart');
+        }
+      } catch (error) {
+        console.error('Refresh error:', error);
+        
+        // Fallback to rigid system on error
+        const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(widget.prompt);
+        const updatedWidgets = widgets.map(w => 
+          w.id === widgetId 
+            ? { ...w, data, chartType, xAxisKey, yAxisKey, lastUpdated: new Date() }
+            : w
+        );
+        setWidgets(updatedWidgets);
+        localStorage.setItem('analytics-widgets', JSON.stringify(updatedWidgets));
+      }
     }
   };
 
