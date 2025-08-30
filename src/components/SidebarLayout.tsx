@@ -53,9 +53,9 @@ export default function SidebarLayout({
         `}
       >
         {sidebarOpen ? (
-          <ChevronLeft className="h-4 w-4 text-ink-900" />
+          <ChevronLeft className="h-5 w-5 text-ink-900" />
         ) : (
-          <ChevronRight className="h-4 w-4 text-ink-900" />
+          <ChevronRight className="h-5 w-5 text-ink-900" />
         )}
       </Button>
       

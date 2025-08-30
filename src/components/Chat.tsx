@@ -986,7 +986,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
             }`}
           >
             <div
-              className={`max-w-[80%] rounded-md p-3 ${
+              className={`max-w-[80%] rounded-xl p-3 ${
                 message.role === "user"
                   ? "bg-gray-100 text-gray-800"
                   : "bg-yellow-50 text-gray-800"
@@ -1080,7 +1080,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
         
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-yellow-50 text-gray-800 rounded-md p-3">
+            <div className="bg-yellow-50 text-gray-800 rounded-xl p-3">
               <div className="flex items-center space-x-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 <span className="font-body">Thinking...</span>
@@ -1164,7 +1164,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
       )}
 
       {/* Input Container */}
-      <div className="border-t border-neutral-secondary p-4">
+      <div className="border-t border-line-200 p-4">
         <form onSubmit={handleSubmit} className="flex space-x-2">
           <Button
             type="button"

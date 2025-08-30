@@ -178,7 +178,9 @@ export default function LiveTables({ onRecordSelect, highlightedRecordId }: Live
       {/* Header */}
       <div className="p-4 border-b border-line-200 bg-accent-50">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-display text-lg font-semibold text-ink-900">Live Tables</h2>
+          <h2 className="font-display text-lg font-semibold text-ink-900">
+            Hi {user?.firstName || 'there'}
+          </h2>
           <Button
             variant="ghost"
             size="sm"
