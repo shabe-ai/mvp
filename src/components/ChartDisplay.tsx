@@ -203,7 +203,9 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
               }}
               formatter={(value, name, props) => {
-                const formattedValue = typeof value === 'number' ? `$${value.toLocaleString()}` : value;
+                // Don't add dollar sign for count-based charts
+                const isCountChart = xAxisDataKey === 'contact' || xAxisDataKey === 'type' || xAxisDataKey === 'status' || xAxisDataKey === 'industry';
+                const formattedValue = typeof value === 'number' && !isCountChart ? `$${value.toLocaleString()}` : value;
                 return [formattedValue, primaryDataKey];
               }}
             />
@@ -309,7 +311,9 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
               }}
               formatter={(value, name, props) => {
                 const stageName = props.payload[xAxisDataKey] || props.payload.name || 'Unknown';
-                const formattedValue = typeof value === 'number' ? `$${value.toLocaleString()}` : value;
+                // Don't add dollar sign for count-based charts
+                const isCountChart = xAxisDataKey === 'contact' || xAxisDataKey === 'type' || xAxisDataKey === 'status' || xAxisDataKey === 'industry';
+                const formattedValue = typeof value === 'number' && !isCountChart ? `$${value.toLocaleString()}` : value;
                 return [formattedValue, stageName];
               }}
             />

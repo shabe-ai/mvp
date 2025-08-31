@@ -362,6 +362,13 @@ export default function AnalyticsPageClient() {
   const processActivitiesByContactData = (activities: any[], contacts: any[]) => {
     if (!activities || !contacts) return [];
     
+    console.log('🔍 Processing activities by contact data:', {
+      activitiesCount: activities.length,
+      contactsCount: contacts.length,
+      sampleActivity: activities[0],
+      sampleContact: contacts[0]
+    });
+    
     // Create a map of contact IDs to contact names
     const contactMap = new Map();
     contacts.forEach(contact => {
@@ -376,11 +383,15 @@ export default function AnalyticsPageClient() {
       contactGroups[contactName] = (contactGroups[contactName] || 0) + 1;
     });
     
-    return Object.entries(contactGroups).map(([contactName, count]) => ({
+    const result = Object.entries(contactGroups).map(([contactName, count]) => ({
       contact: contactName,
       count,
       name: contactName
     }));
+    
+    console.log('🔍 Activities by contact result:', result);
+    
+    return result;
   };
 
   const processAccountsData = (accounts: any[]) => {
@@ -466,6 +477,9 @@ export default function AnalyticsPageClient() {
       if (!chartSpec) {
         const { data, chartType, xAxisKey, yAxisKey } = processDataFromPrompt(currentPrompt);
         chartSpec = { data, chartType, xAxisKey, yAxisKey };
+        console.log('🔍 Using fallback chart spec:', { data, chartType, xAxisKey, yAxisKey });
+      } else {
+        console.log('🔍 Using AI chart spec:', chartSpec);
       }
 
       // Generate a title from the prompt or AI response
