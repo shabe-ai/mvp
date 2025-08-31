@@ -290,27 +290,44 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
       console.log('Full response data:', JSON.stringify(data, null, 2));
 
       // Handle email draft response
-      if (data.type === 'email_draft' && data.emailDraft) {
-        console.log('Setting email draft:', {
-          type: data.type,
-          emailDraft: data.emailDraft,
-          to: data.emailDraft.to,
-          subject: data.emailDraft.subject,
-          content: data.emailDraft.content
-        });
+      if (data.type === 'email_draft') {
+        // Handle both nested and top-level email draft formats
+        const emailDraftData = data.emailDraft || {
+          to: data.emailDraftTo,
+          subject: data.emailDraftSubject,
+          content: data.emailDraftContent || data.message || data.content
+        };
         
-        setEmailDraft({
-          to: data.emailDraft.to,
-          subject: data.emailDraft.subject,
-          content: data.emailDraft.content,
-          aiMessage: {
-            id: (Date.now() + 1).toString(),
-            role: "assistant",
-            content: data.content || data.message,
-            timestamp: new Date(),
-          },
-          activityData: {}
-        });
+        if (emailDraftData.to && emailDraftData.subject) {
+          console.log('Setting email draft:', {
+            type: data.type,
+            emailDraftData,
+            to: emailDraftData.to,
+            subject: emailDraftData.subject,
+            content: emailDraftData.content
+          });
+          
+          setEmailDraft({
+            to: emailDraftData.to,
+            subject: emailDraftData.subject,
+            content: emailDraftData.content,
+            aiMessage: {
+              id: (Date.now() + 1).toString(),
+              role: "assistant",
+              content: data.content || data.message,
+              timestamp: new Date(),
+            },
+            activityData: {}
+          });
+        } else {
+          console.log('Email draft data incomplete:', {
+            type: data.type,
+            emailDraftData,
+            hasTo: !!emailDraftData.to,
+            hasSubject: !!emailDraftData.subject,
+            hasContent: !!emailDraftData.content
+          });
+        }
       } else {
         console.log('No email draft data:', {
           type: data.type,
