@@ -15,7 +15,8 @@ import ChartDisplay from "@/components/ChartDisplay";
 import EnhancedChartDisplay from "@/components/EnhancedChartDisplay";
 import CalendarPreviewModal from "@/components/CalendarPreviewModal";
 import LinkedInPostPreviewModal from './LinkedInPostPreviewModal';
-import VoiceInputButton from './VoiceInputButton';
+// Voice input hidden for v2 launch
+// import VoiceInputButton from './VoiceInputButton';
 import { logger } from "@/lib/logger";
 
 interface Message {
@@ -456,20 +457,20 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
     }
   };
 
-  // Handle voice input transcript
-  const handleVoiceTranscript = (transcript: string) => {
-    if (transcript.trim()) {
-      setInput(transcript);
-      // Auto-submit the voice input
-      setTimeout(() => {
-        const formEvent = new Event('submit', { bubbles: true, cancelable: true });
-        const form = document.querySelector('form');
-        if (form) {
-          form.dispatchEvent(formEvent);
-        }
-      }, 100);
-    }
-  };
+  // Voice input hidden for v2 launch
+  // const handleVoiceTranscript = (transcript: string) => {
+  //   if (transcript.trim()) {
+  //     setInput(transcript);
+  //     // Auto-submit the voice input
+  //     setTimeout(() => {
+  //       const formEvent = new Event('submit', { bubbles: true, cancelable: true });
+  //       const form = document.querySelector('form );
+  //       if (form) {
+  //         form.dispatchEvent(formEvent);
+  //       }
+  //     }, 100);
+  //   }
+  // };
 
   const handleUploadClick = () => {
     logger.debug('Upload button clicked', { userId: user?.id });
@@ -597,10 +598,12 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
             className="font-body"
           />
           
+          {/* Voice button hidden for v2 launch
           <VoiceInputButton
             onTranscript={handleVoiceTranscript}
             disabled={isLoading}
           />
+          */}
           
           <Button type="submit" disabled={isLoading || !input.trim()} className="bg-accent-primary text-text-on-accent-primary hover:bg-accent-primary-hover">
             {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

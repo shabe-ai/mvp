@@ -8,7 +8,8 @@ import MonitoringDashboard from '@/components/MonitoringDashboard';
 import AnalyticsDashboard from '@/components/AnalyticsDashboard';
 import RAGEvaluationDashboard from '@/components/RAGEvaluationDashboard';
 import TeamManagement from '@/components/TeamManagement';
-import DebugDashboard from '@/components/DebugDashboard';
+// Debug dashboard removed - not used
+// import DebugDashboard from '@/components/DebugDashboard';
 import ConvexProviderWrapper from '@/components/ConvexProvider';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { Card } from '@/components/shabe-ui';
@@ -54,15 +55,15 @@ function LinkedInIntegrationWithErrorBoundary() {
   );
 }
 
-// Debug Dashboard Fallback Component
-function DebugDashboardFallback({ error, resetError }: { error?: Error; resetError: () => void }) {
-  return (
-    <div className="p-4 bg-danger-50 border border-danger-500 rounded-ctl">
-      <p className="text-sm text-danger-500">❌ Debug Dashboard failed to load</p>
-      {error && <p className="text-xs text-danger-500 mt-1">Error: {error.message}</p>}
-    </div>
-  );
-}
+// Debug Dashboard Fallback Component - removed
+// function DebugDashboardFallback({ error, resetError }: { error?: Error; resetError: () => void }) {
+//   return (
+//     <div className="p-4 bg-danger-50 border border-danger-500 rounded-ctl">
+//       <p className="text-sm text-danger-500">❌ Debug Dashboard failed to load</p>
+//       {error && <p className="text-xs text-danger-500 mt-1">Error: {error.message}</p>}
+//     </div>
+//   );
+// }
 
 function AdminPageContent() {
   const { user } = useUser();
@@ -113,8 +114,8 @@ function AdminPageContent() {
           <TeamManagement />
         </div>
 
-        {/* Debug Dashboard Section */}
-        <div className="mb-8">
+        {/* Debug Dashboard Section - removed for v2 launch */}
+        {/* <div className="mb-8">
           <div className="p-4 bg-warning-50 border border-warning-500 rounded-ctl mb-4">
             <p className="text-sm text-warning-500">
               🔍 Debug: Debug Dashboard should appear below this message
@@ -123,7 +124,7 @@ function AdminPageContent() {
           <ErrorBoundary fallback={DebugDashboardFallback}>
             <DebugDashboard />
           </ErrorBoundary>
-        </div>
+        </div> */}
 
         {/* Regular User Message */}
         <div className="mt-8 p-6 bg-accent-50 rounded-card border border-line-200">
