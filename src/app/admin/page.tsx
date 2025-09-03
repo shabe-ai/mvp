@@ -80,37 +80,34 @@ function AdminPageContent() {
   }
 
   return (
-    <div className="min-h-screen bg-bg">
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        <div className="mb-8">
-          <h1 className="font-display text-3xl font-bold text-ink-900">Admin Dashboard</h1>
-          <p className="text-ink-600 mt-2">Manage your workspace and integrations</p>
-        </div>
+          <div className="min-h-screen bg-bg">
+        <div className="max-w-6xl mx-auto px-6 py-6">
+        {/* Header removed for cleaner design */}
 
-        {/* Profile Management Section - Now at the top */}
-        <div className="mb-8">
+        {/* Profile Management Section */}
+        <div className="mb-6">
           <ProfileManagement />
         </div>
 
         {/* Integration Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <GoogleWorkspaceIntegrationSection />
           <LinkedInIntegrationWithErrorBoundary />
         </div>
 
         {/* Monitoring and Analytics Sections */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <MonitoringDashboard />
           <AnalyticsDashboard />
         </div>
 
         {/* RAG Evaluation Section */}
-        <div className="mb-8">
+        <div className="mb-6">
           <RAGEvaluationDashboard />
         </div>
 
         {/* Team Management Section */}
-        <div className="mb-8">
+        <div className="mb-6">
           <TeamManagement />
         </div>
 
@@ -126,18 +123,7 @@ function AdminPageContent() {
           </ErrorBoundary>
         </div> */}
 
-        {/* Regular User Message */}
-        <div className="mt-8 p-6 bg-accent-50 rounded-card border border-line-200">
-          <h3 className="font-display text-lg font-bold text-ink-900 mb-2">Workspace Management</h3>
-          <p className="text-ink-600 mb-4">
-            Use the sections above to manage your profile, company settings, integrations, and monitor your platform usage.
-          </p>
-          <div className="bg-accent-100 border border-accent-500 rounded-ctl p-4">
-            <p className="text-sm text-ink-900">
-              💡 <strong>Tip:</strong> Connect your Google Workspace and LinkedIn accounts to enable calendar events, email sending, and AI-powered post creation. Monitor your usage and costs in the analytics sections above.
-            </p>
-          </div>
-        </div>
+        {/* Workspace management section removed for cleaner design */}
       </div>
     </div>
   );
