@@ -95,6 +95,11 @@ function AdminPageContent() {
           <LinkedInIntegrationWithErrorBoundary />
         </div>
 
+        {/* Team Management Section */}
+        <div className="mb-6">
+          <TeamManagement />
+        </div>
+
         {/* Monitoring and Analytics Sections */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <MonitoringDashboard />
@@ -104,11 +109,6 @@ function AdminPageContent() {
         {/* RAG Evaluation Section */}
         <div className="mb-6">
           <RAGEvaluationDashboard />
-        </div>
-
-        {/* Team Management Section */}
-        <div className="mb-6">
-          <TeamManagement />
         </div>
 
         {/* Debug Dashboard Section - removed for v2 launch */}
