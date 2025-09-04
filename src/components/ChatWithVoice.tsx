@@ -513,6 +513,64 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
     }
   };
 
+  const handleSendEmail = async () => {
+    if (!emailDraft || !user) return;
+    
+    setSendingEmail(true);
+    try {
+      const response = await fetch("/api/send-email", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: emailDraft.to,
+          subject: emailDraft.subject,
+          content: emailDraft.content,
+          userId: user.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      // Add success message
+      const successMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: `✅ Email sent successfully to ${emailDraft.to}!`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, successMessage]);
+      
+      // Clear email draft
+      setEmailDraft(null);
+
+    } catch (error) {
+      logger.error("Error sending email", error instanceof Error ? error : new Error(String(error)), {
+        userId: user.id,
+        emailTo: emailDraft.to
+      });
+      
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "I'm sorry, I encountered an error while sending the email. Please try again.",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Messages Container */}
@@ -591,6 +649,66 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Email Draft Modal */}
+      {emailDraft && (() => {
+        console.log('🎯🎯🎯 RENDERING EMAIL DRAFT MODAL WITH DATA - LATEST VERSION:', emailDraft);
+        console.log('🎯🎯🎯 MODAL RENDERING CONDITIONS:', {
+          hasEmailDraft: !!emailDraft,
+          emailDraftTo: emailDraft?.to,
+          emailDraftSubject: emailDraft?.subject,
+          emailDraftContent: emailDraft?.content?.substring(0, 100) + '...'
+        });
+        return (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 border-2 border-gray-300 shadow-2xl">
+            <h3 className="text-lg font-semibold mb-4 font-heading text-black">Email Preview</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1 font-body text-black">To:</label>
+                <input
+                  value={emailDraft.to}
+                  onChange={(e) => setEmailDraft(prev => prev ? {...prev, to: e.target.value} : null)}
+                  className="w-full p-2 border border-gray-300 rounded-md font-body text-black bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 font-body text-black">Subject:</label>
+                <input
+                  value={emailDraft.subject}
+                  onChange={(e) => setEmailDraft(prev => prev ? {...prev, subject: e.target.value} : null)}
+                  className="w-full p-2 border border-gray-300 rounded-md font-body text-black bg-white"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1 font-body text-black">Content:</label>
+                <textarea
+                  value={emailDraft.content}
+                  onChange={(e) => setEmailDraft(prev => prev ? {...prev, content: e.target.value} : null)}
+                  className="w-full p-2 border border-gray-300 rounded-md h-32 font-body text-black bg-white"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end space-x-2 mt-4">
+              <Button
+                onClick={() => setEmailDraft(null)}
+                variant="outline"
+                className="font-button"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSendEmail}
+                disabled={sendingEmail}
+                className="font-button"
+              >
+                {sendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Email"}
+              </Button>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
 
       {/* Input Container */}
       <div className="border-t border-line-200 p-4">
