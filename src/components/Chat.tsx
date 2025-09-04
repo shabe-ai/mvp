@@ -291,7 +291,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
       console.log('Full response data:', JSON.stringify(data, null, 2));
 
       // Handle email draft response
-      if (data.type === 'email_draft') {
+      if (data.type === 'email_draft' || data.finalType === 'email_draft' || data.hasEmailDraft) {
         // Handle both nested and top-level email draft formats
         const emailDraftData = data.emailDraft || {
           to: data.emailDraftTo,
