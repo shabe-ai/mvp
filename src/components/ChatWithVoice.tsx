@@ -729,9 +729,9 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
   const handleModifyCalendarEvent = (field: string, value: any) => {
     if (calendarPreview) {
       setCalendarPreview(prev => ({
-        ...prev,
+        ...prev!,
         eventDetails: {
-          ...prev.eventDetails,
+          ...prev!.eventDetails,
           [field]: value
         },
         isVisible: true
