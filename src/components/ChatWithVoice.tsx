@@ -669,6 +669,75 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
     }
   };
 
+  // Calendar event handlers
+  const handleCreateCalendarEvent = async (eventDetails: any) => {
+    if (!user) return;
+    
+    setCreatingEvent(true);
+    try {
+      const response = await fetch("/api/create-event", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          ...eventDetails,
+          userId: user.id,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (result.error) {
+        throw new Error(result.error);
+      }
+
+      // Add success message
+      const successMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: `✅ Calendar event created successfully!`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, successMessage]);
+      
+      // Clear calendar preview
+      setCalendarPreview(null);
+
+    } catch (error) {
+      logger.error("Error creating calendar event", error instanceof Error ? error : new Error(String(error)), {
+        userId: user.id,
+        eventDetails
+      });
+      
+      const errorMessage: Message = {
+        id: Date.now().toString(),
+        role: "assistant",
+        content: "I'm sorry, I encountered an error while creating the calendar event. Please try again.",
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setCreatingEvent(false);
+    }
+  };
+
+  const handleModifyCalendarEvent = (field: string, value: any) => {
+    if (calendarPreview) {
+      setCalendarPreview(prev => ({
+        ...prev,
+        eventDetails: {
+          ...prev.eventDetails,
+          [field]: value
+        }
+      }));
+    }
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Messages Container */}
@@ -807,6 +876,27 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
         </div>
         );
       })()}
+
+      {/* Calendar Preview Modal */}
+      {calendarPreview && (
+        <CalendarPreviewModal
+          eventPreview={calendarPreview.eventDetails}
+          onConfirm={handleCreateCalendarEvent}
+          onModify={handleModifyCalendarEvent}
+          onCancel={() => setCalendarPreview(null)}
+        />
+      )}
+
+      {/* LinkedIn Post Preview Modal */}
+      {linkedinPostPreview && (
+        <LinkedInPostPreviewModal
+          isVisible={linkedinPostPreview.isVisible}
+          postPreview={linkedinPostPreview.postPreview}
+          onConfirm={() => {}}
+          onCancel={() => setLinkedInPostPreview(null)}
+          onEdit={() => {}}
+        />
+      )}
 
       {/* Input Container */}
       <div className="border-t border-line-200 p-4">
