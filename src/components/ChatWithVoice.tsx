@@ -164,7 +164,11 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
       processedContent = processedContent
         .replace(/\[Your Name\]/g, userFullName)
         .replace(/\[Your Position\]/g, userPosition)
-        .replace(/\[Your Contact Information\]/g, userContact);
+        .replace(/\[Your Contact Information\]/g, userContact)
+        .replace(/\[Your contact details\]/g, userContact) // Handle lowercase variation
+        .replace(/\[Your Contact Details\]/g, userContact) // Handle title case variation
+        .replace(/\[contact details\]/g, userContact) // Handle without brackets
+        .replace(/\[Contact Details\]/g, userContact); // Handle title case without brackets
       
       console.log('🔧 Content before placeholder replacement:', beforePlaceholders.substring(beforePlaceholders.length - 200));
       console.log('🔧 Content after placeholder replacement:', processedContent.substring(processedContent.length - 200));
