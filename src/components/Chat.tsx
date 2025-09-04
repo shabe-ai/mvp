@@ -80,7 +80,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
 
   // Debug: Monitor emailDraft state changes
   useEffect(() => {
-    console.log('Email draft state changed:', emailDraft ? {
+    console.log('🔄 EMAIL DRAFT STATE CHANGED:', emailDraft ? {
       to: emailDraft.to,
       subject: emailDraft.subject,
       contentLength: emailDraft.content?.length,
@@ -298,8 +298,8 @@ export default function Chat({ onAction }: ChatProps = {}) {
       }
 
       // Debug: Log the entire response data
-      console.log('Full response data:', JSON.stringify(data, null, 2));
-      console.log('Email draft detection check:', {
+      console.log('🚀 FULL RESPONSE DATA:', JSON.stringify(data, null, 2));
+      console.log('🔍 EMAIL DRAFT DETECTION CHECK:', {
         'data.type': data.type,
         'data.finalType': data.finalType,
         'data.hasEmailDraft': data.hasEmailDraft,
@@ -340,15 +340,15 @@ export default function Chat({ onAction }: ChatProps = {}) {
             activityData: {}
           };
           
-          console.log('About to set email draft state:', newEmailDraft);
+          console.log('📧 ABOUT TO SET EMAIL DRAFT STATE:', newEmailDraft);
           setEmailDraft(newEmailDraft);
-          console.log('Email draft state set successfully:', {
+          console.log('✅ EMAIL DRAFT STATE SET SUCCESSFULLY:', {
             to: emailDraftData.to,
             subject: emailDraftData.subject,
             contentLength: emailDraftData.content?.length
           });
         } else {
-          console.log('Email draft data incomplete:', {
+          console.log('❌ EMAIL DRAFT DATA INCOMPLETE:', {
             type: data.type,
             emailDraftData,
             hasTo: !!emailDraftData.to,
@@ -357,7 +357,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
           });
         }
       } else {
-        console.log('No email draft data:', {
+        console.log('❌ NO EMAIL DRAFT DATA:', {
           type: data.type,
           hasEmailDraft: !!data.emailDraft,
           emailDraft: data.emailDraft
@@ -1143,7 +1143,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
 
       {/* Email Draft Modal */}
       {emailDraft && (() => {
-        console.log('Rendering email draft modal with data:', emailDraft);
+        console.log('🎯 RENDERING EMAIL DRAFT MODAL WITH DATA:', emailDraft);
         return (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 border-2 border-gray-300 shadow-2xl">
