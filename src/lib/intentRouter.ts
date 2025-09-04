@@ -212,7 +212,7 @@ class DataIntentHandler implements IntentHandler {
     });
 
     try {
-      const { dataType, query, company } = intent.entities;
+      const { dataType, query, company, contactName } = intent.entities;
       
       // Fetch data from Convex
       const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
@@ -224,6 +224,25 @@ class DataIntentHandler implements IntentHandler {
       
       if (dataType === 'contacts') {
         data = await convex.query(api.crm.getContactsByTeam, { teamId });
+        
+        // Filter by contact name if specified
+        if (contactName) {
+          const searchName = contactName.toLowerCase().trim();
+          data = data.filter((contact: any) => {
+            const fullName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim().toLowerCase();
+            const firstName = (contact.firstName || '').toLowerCase();
+            const lastName = (contact.lastName || '').toLowerCase();
+            
+            // Check for exact match, partial match, or individual name parts
+            return fullName === searchName || 
+                   fullName.includes(searchName) ||
+                   searchName.includes(fullName) ||
+                   firstName.includes(searchName) ||
+                   lastName.includes(searchName) ||
+                   searchName.split(' ').some((part: string) => fullName.includes(part)) ||
+                   fullName.split(' ').some((part: string) => searchName.includes(part));
+          });
+        }
       } else if (dataType === 'deals') {
         data = await convex.query(api.crm.getDealsByTeam, { teamId });
       } else if (dataType === 'accounts') {
@@ -239,16 +258,34 @@ class DataIntentHandler implements IntentHandler {
       } else {
         // Format the data into a readable list
         if (dataType === 'contacts') {
-          const contactNames = data.map((contact: any) => {
-            const firstName = contact.firstName || '';
-            const lastName = contact.lastName || '';
-            return `${firstName} ${lastName}`.trim();
-          }).filter((name: string) => name.length > 0);
-          
-          if (contactNames.length > 0) {
-            message = `Here are your contacts:\n\n${contactNames.join('\n')}`;
+          if (contactName && data.length === 0) {
+            // Specific contact not found
+            message = `Contact "${contactName}" not found. Please check the name and try again.`;
+          } else if (contactName && data.length > 0) {
+            // Specific contact found - show detailed info
+            const contact = data[0];
+            const fullName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim();
+            message = `**Contact Details:**\n\n`;
+            message += `**Name:** ${fullName}\n`;
+            if (contact.email) message += `**Email:** ${contact.email}\n`;
+            if (contact.leadStatus) message += `**Status:** ${contact.leadStatus}\n`;
+            if (contact.contactType) message += `**Type:** ${contact.contactType}\n`;
+            if (contact.company) message += `**Company:** ${contact.company}\n`;
+            if (contact.phone) message += `**Phone:** ${contact.phone}\n`;
+            if (contact.title) message += `**Title:** ${contact.title}\n`;
           } else {
-            message = 'You have no contacts in your database.';
+            // Show all contacts
+            const contactNames = data.map((contact: any) => {
+              const firstName = contact.firstName || '';
+              const lastName = contact.lastName || '';
+              return `${firstName} ${lastName}`.trim();
+            }).filter((name: string) => name.length > 0);
+            
+            if (contactNames.length > 0) {
+              message = `Here are your contacts:\n\n${contactNames.join('\n')}`;
+            } else {
+              message = 'You have no contacts in your database.';
+            }
           }
         } else if (dataType === 'deals') {
           const dealNames = data.map((deal: any) => deal.name || 'Unnamed Deal').filter((name: string) => name.length > 0);
