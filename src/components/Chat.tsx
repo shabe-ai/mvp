@@ -327,19 +327,21 @@ export default function Chat({ onAction }: ChatProps = {}) {
             content: emailDraftData.content
           });
           
-          setEmailDraft({
+          const newEmailDraft = {
             to: emailDraftData.to,
             subject: emailDraftData.subject,
             content: emailDraftData.content,
             aiMessage: {
               id: (Date.now() + 1).toString(),
-              role: "assistant",
+              role: "assistant" as const,
               content: data.content || data.message,
               timestamp: new Date(),
             },
             activityData: {}
-          });
+          };
           
+          console.log('About to set email draft state:', newEmailDraft);
+          setEmailDraft(newEmailDraft);
           console.log('Email draft state set successfully:', {
             to: emailDraftData.to,
             subject: emailDraftData.subject,
@@ -1140,7 +1142,9 @@ export default function Chat({ onAction }: ChatProps = {}) {
       </div>
 
       {/* Email Draft Modal */}
-      {emailDraft && (
+      {emailDraft && (() => {
+        console.log('Rendering email draft modal with data:', emailDraft);
+        return (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 border-2 border-gray-300 shadow-2xl">
             <h3 className="text-lg font-semibold mb-4 font-heading text-black">Email Preview</h3>
@@ -1188,7 +1192,8 @@ export default function Chat({ onAction }: ChatProps = {}) {
             </div>
           </div>
         </div>
-      )}
+        );
+      })()}
 
       {/* Calendar Preview Modal */}
       {calendarPreview && (
