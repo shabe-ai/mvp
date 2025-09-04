@@ -518,7 +518,7 @@ class EmailIntentHandler implements IntentHandler {
         emailDraftTo: emailAddress,
         emailDraftSubject: emailContent.subject,
         emailDraftContent: emailContent.body,
-        hasData: true
+        hasEmailDraft: true
       };
       
     } catch (error) {
