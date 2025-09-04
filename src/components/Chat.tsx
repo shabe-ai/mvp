@@ -78,15 +78,20 @@ export default function Chat({ onAction }: ChatProps = {}) {
     activityData: Record<string, unknown>;
   } | null>(null);
 
-  // Debug: Monitor emailDraft state changes
+  // Debug: Monitor emailDraft state changes - FORCE DEPLOYMENT TEST
   useEffect(() => {
-    console.log('🔄 EMAIL DRAFT STATE CHANGED:', emailDraft ? {
+    console.log('🔄🔄🔄 EMAIL DRAFT STATE CHANGED - LATEST VERSION:', emailDraft ? {
       to: emailDraft.to,
       subject: emailDraft.subject,
       contentLength: emailDraft.content?.length,
       hasAiMessage: !!emailDraft.aiMessage
     } : null);
   }, [emailDraft]);
+
+  // Test: Verify frontend is running latest code
+  useEffect(() => {
+    console.log('🔥🔥🔥 FRONTEND VERSION TEST - IF YOU SEE THIS, LATEST CODE IS RUNNING! 🔥🔥🔥');
+  }, []);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [calendarPreview, setCalendarPreview] = useState<{
     eventDetails: any;
@@ -297,9 +302,9 @@ export default function Chat({ onAction }: ChatProps = {}) {
         throw new Error(data.error);
       }
 
-      // Debug: Log the entire response data
-      console.log('🚀 FULL RESPONSE DATA:', JSON.stringify(data, null, 2));
-      console.log('🔍 EMAIL DRAFT DETECTION CHECK:', {
+      // Debug: Log the entire response data - FORCE DEPLOYMENT TEST
+      console.log('🚀🚀🚀 FULL RESPONSE DATA - LATEST VERSION:', JSON.stringify(data, null, 2));
+      console.log('🔍🔍🔍 EMAIL DRAFT DETECTION CHECK - LATEST VERSION:', {
         'data.type': data.type,
         'data.finalType': data.finalType,
         'data.hasEmailDraft': data.hasEmailDraft,
@@ -340,9 +345,9 @@ export default function Chat({ onAction }: ChatProps = {}) {
             activityData: {}
           };
           
-          console.log('📧 ABOUT TO SET EMAIL DRAFT STATE:', newEmailDraft);
+          console.log('📧📧📧 ABOUT TO SET EMAIL DRAFT STATE - LATEST VERSION:', newEmailDraft);
           setEmailDraft(newEmailDraft);
-          console.log('✅ EMAIL DRAFT STATE SET SUCCESSFULLY:', {
+          console.log('✅✅✅ EMAIL DRAFT STATE SET SUCCESSFULLY - LATEST VERSION:', {
             to: emailDraftData.to,
             subject: emailDraftData.subject,
             contentLength: emailDraftData.content?.length
@@ -1143,7 +1148,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
 
       {/* Email Draft Modal */}
       {emailDraft && (() => {
-        console.log('🎯 RENDERING EMAIL DRAFT MODAL WITH DATA:', emailDraft);
+        console.log('🎯🎯🎯 RENDERING EMAIL DRAFT MODAL WITH DATA - LATEST VERSION:', emailDraft);
         return (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 border-2 border-gray-300 shadow-2xl">
