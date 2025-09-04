@@ -602,7 +602,12 @@ class EmailIntentHandler implements IntentHandler {
         userId: routerContext.userId
       });
 
-      const response = await openaiClient.chatCompletionsCreate({
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Email generation timeout after 30 seconds')), 30000);
+      });
+
+      const responsePromise = openaiClient.chatCompletionsCreate({
         model: "gpt-4",
         messages: [
           {
@@ -622,6 +627,8 @@ class EmailIntentHandler implements IntentHandler {
         model: 'gpt-4'
       });
 
+      const response = await Promise.race([responsePromise, timeoutPromise]) as any;
+
       const content = response.choices[0]?.message?.content || '';
       const lines = content.split('\n');
       const subject = lines[0] || `Email to ${recipient}`;
@@ -640,7 +647,9 @@ class EmailIntentHandler implements IntentHandler {
         recipient,
         contentType,
         context,
-        userId: routerContext.userId
+        userId: routerContext.userId,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined
       });
       throw error;
     }
