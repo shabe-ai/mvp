@@ -96,6 +96,46 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
   const [conversationContext, setConversationContext] = useState<any>(null);
   const [pendingEmailRecipient, setPendingEmailRecipient] = useState<string | null>(null);
 
+  // Function to process and format email draft content
+  const processEmailDraftContent = useCallback((emailDraftData: any, userData: any, companyData: any) => {
+    let processedSubject = emailDraftData.subject || '';
+    let processedContent = emailDraftData.content || '';
+    
+    // 1. Remove "Subject:" prefix from subject
+    if (processedSubject.startsWith('Subject:')) {
+      processedSubject = processedSubject.replace(/^Subject:\s*/i, '').trim();
+    }
+    
+    // 2. Process content to fix greeting and placeholders
+    if (processedContent) {
+      // Get recipient's first name from email address
+      const recipientEmail = emailDraftData.to || '';
+      const recipientFirstName = recipientEmail.split('@')[0] || 'there';
+      
+      // Fix greeting - change from "Dear [Full Name/Team]," to "Dear [FirstName],"
+      processedContent = processedContent.replace(
+        /Dear\s+[^,]+,\s*/g, 
+        `Dear ${recipientFirstName},\n\n`
+      );
+      
+      // Replace placeholders with actual user/company data
+      const userFullName = userData.name || 'Your Name';
+      const userPosition = companyData.name ? `${companyData.name} Team` : 'Your Position';
+      const userContact = userData.email || 'Your Contact Information';
+      
+      processedContent = processedContent
+        .replace(/\[Your Name\]/g, userFullName)
+        .replace(/\[Your Position\]/g, userPosition)
+        .replace(/\[Your Contact Information\]/g, userContact);
+    }
+    
+    return {
+      ...emailDraftData,
+      subject: processedSubject,
+      content: processedContent
+    };
+  }, []);
+
   // Auto-create team for new users
   const checkAndCreateDefaultTeam = useCallback(async () => {
     if (!user) return;
@@ -316,18 +356,22 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
         };
         
         if (emailDraftData.to && emailDraftData.subject) {
+          // Process the email draft content to fix formatting issues
+          const processedEmailDraft = processEmailDraftContent(emailDraftData, userData, parsedCompanyData);
+          
           console.log('Setting email draft:', {
             type: data.type,
-            emailDraftData,
-            to: emailDraftData.to,
-            subject: emailDraftData.subject,
-            content: emailDraftData.content
+            originalEmailDraft: emailDraftData,
+            processedEmailDraft,
+            to: processedEmailDraft.to,
+            subject: processedEmailDraft.subject,
+            content: processedEmailDraft.content
           });
           
           setEmailDraft({
-            to: emailDraftData.to,
-            subject: emailDraftData.subject,
-            content: emailDraftData.content,
+            to: processedEmailDraft.to,
+            subject: processedEmailDraft.subject,
+            content: processedEmailDraft.content,
             aiMessage: {
               id: (Date.now() + 1).toString(),
               role: "assistant",
