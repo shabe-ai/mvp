@@ -733,7 +733,8 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
         eventDetails: {
           ...prev.eventDetails,
           [field]: value
-        }
+        },
+        isVisible: true
       }));
     }
   };
