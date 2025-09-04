@@ -77,6 +77,16 @@ export default function Chat({ onAction }: ChatProps = {}) {
     aiMessage: Message;
     activityData: Record<string, unknown>;
   } | null>(null);
+
+  // Debug: Monitor emailDraft state changes
+  useEffect(() => {
+    console.log('Email draft state changed:', emailDraft ? {
+      to: emailDraft.to,
+      subject: emailDraft.subject,
+      contentLength: emailDraft.content?.length,
+      hasAiMessage: !!emailDraft.aiMessage
+    } : null);
+  }, [emailDraft]);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [calendarPreview, setCalendarPreview] = useState<{
     eventDetails: any;
@@ -328,6 +338,12 @@ export default function Chat({ onAction }: ChatProps = {}) {
               timestamp: new Date(),
             },
             activityData: {}
+          });
+          
+          console.log('Email draft state set successfully:', {
+            to: emailDraftData.to,
+            subject: emailDraftData.subject,
+            contentLength: emailDraftData.content?.length
           });
         } else {
           console.log('Email draft data incomplete:', {
