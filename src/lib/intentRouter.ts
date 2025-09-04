@@ -672,12 +672,13 @@ class CalendarIntentHandler implements IntentHandler {
     try {
       const { attendee, date, time } = intent.entities;
       
-      // Create calendar event
-      const eventDetails = await this.createCalendarEvent(attendee, date, time, context);
+      // Create calendar event preview
+      const eventPreview = await this.createCalendarEvent(attendee, date, time, context);
       
       return {
-        type: 'calendar_event',
-        eventDetails,
+        type: 'calendar_preview',
+        eventPreview,
+        message: 'I\'ve prepared a calendar event for you. Please review the details below.',
         hasData: true
       };
       
@@ -697,32 +698,47 @@ class CalendarIntentHandler implements IntentHandler {
 
   private async createCalendarEvent(attendee: string, date: string, time: string, context: IntentRouterContext): Promise<any> {
     try {
-      const response = await openaiClient.chatCompletionsCreate({
-        model: "gpt-4",
-        messages: [
-          {
-            role: "system",
-            content: `You are a calendar assistant. Create calendar event details for meetings.`
-          },
-          {
-            role: "user",
-            content: `Create a calendar event with ${attendee} on ${date} at ${time}`
-          }
-        ],
-        temperature: 0.7,
-        max_tokens: 300
-      }, {
-        userId: context.userId,
-        operation: 'calendar_event_creation',
-        model: 'gpt-4'
-      });
-
-        return {
-        attendee,
-        date,
-        time,
-        details: response.choices[0]?.message?.content || 'Meeting scheduled'
+      // Parse date and time to create proper event details
+      const now = new Date();
+      let eventDate: Date;
+      
+      // Handle "tomorrow" date
+      if (date.toLowerCase().includes('tomorrow')) {
+        eventDate = new Date(now);
+        eventDate.setDate(eventDate.getDate() + 1);
+      } else {
+        // For other dates, use today as fallback
+        eventDate = new Date(now);
+      }
+      
+      // Parse time (assuming 9am format)
+      const timeMatch = time.match(/(\d+)(am|pm)/i);
+      let hours = 9; // Default to 9am
+      if (timeMatch) {
+        hours = parseInt(timeMatch[1]);
+        if (timeMatch[2].toLowerCase() === 'pm' && hours !== 12) {
+          hours += 12;
+        } else if (timeMatch[2].toLowerCase() === 'am' && hours === 12) {
+          hours = 0;
+        }
+      }
+      
+      eventDate.setHours(hours, 0, 0, 0);
+      const endDate = new Date(eventDate);
+      endDate.setHours(hours + 1, 0, 0, 0); // 1 hour duration
+      
+      // Create event preview object
+      const eventPreview = {
+        title: `Meeting with ${attendee}`,
+        description: `Meeting scheduled with ${attendee}`,
+        start: eventDate.toISOString(),
+        end: endDate.toISOString(),
+        attendees: [attendee],
+        location: '',
+        allDay: false
       };
+
+      return eventPreview;
     } catch (error) {
       logger.error('Error creating calendar event', error instanceof Error ? error : new Error(String(error)), {
         attendee,
