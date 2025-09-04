@@ -153,21 +153,6 @@ export default function CalendarPreviewModal({
             </div>
           </div>
 
-          {/* Duration */}
-          {isEditing && (
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700">Duration (minutes)</label>
-              <input
-                type="number"
-                value={editedPreview.duration}
-                onChange={(e) => handleFieldChange('duration', parseInt(e.target.value))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                min="15"
-                max="480"
-                step="15"
-              />
-            </div>
-          )}
 
           {/* Attendees */}
           <div className="space-y-2">
