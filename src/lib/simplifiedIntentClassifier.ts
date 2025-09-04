@@ -217,6 +217,18 @@ IMPORTANT: When the user mentions scheduling, booking, or setting up meetings or
 
 IMPORTANT: When the user asks about their own information, company information, or profile details, this should be classified as "query_profile", NOT "view_data". Profile queries are about the user's own data, while view_data is about CRM records.
 
+CRITICAL PRONOUN RESOLUTION RULES:
+1. **PRONOUN RESOLUTION**: If the user uses pronouns (it, her, him, them, this, that), you MUST look at the conversation context to understand what they're referring to.
+   - Example: If previous message was "create a new contact Sundus Nadeem email sundus.nad05@gmail.com" and current message is "update her title to Revenue Operations Manager", then "her" = "Sundus Nadeem"
+   - Example: If previous message was about creating a contact "John Smith" and current message is "update his phone number", then "his" = "John Smith"
+
+2. **CONTACT REFERENCE RESOLUTION**: When updating contact information, extract the contact name from context if not explicitly provided:
+   - If user says "update her title" and context shows a recently created contact "Sundus Nadeem", then contactName = "Sundus Nadeem"
+   - If user says "update his email" and context shows a recently created contact "John Smith", then contactName = "John Smith"
+
+3. **ENTITY EXTRACTION WITH CONTEXT**: Always include the resolved contact name in entities when using pronouns:
+   - "update her title to Revenue Operations Manager" → entities: {"contactName": "Sundus Nadeem", "field": "title", "value": "Revenue Operations Manager"}
+
 Conversation context: ${conversationContext}
 
 Return ONLY a JSON object with this exact structure:
@@ -252,13 +264,15 @@ If the user's intent is unclear or ambiguous, set needsClarification to true and
     const isInDataCollection = lastAssistantMessage?.conversationContext?.phase === 'data_collection';
     const currentAction = lastAssistantMessage?.conversationContext?.action;
 
+    // Build context with actual message content, not just action types
     const contextParts = recentMessages.map((msg: any) => {
       const role = msg.role === 'user' ? 'User' : 'Assistant';
+      const content = msg.content || msg.message || 'No content';
       const action = msg.conversationContext?.action || 'general';
-      return `${role}: ${action}`;
+      return `${role} (${action}): "${content}"`;
     });
 
-    let contextString = `Recent context: ${contextParts.join(', ')}`;
+    let contextString = `Recent conversation context:\n${contextParts.join('\n')}`;
     
     // Add specific context for data collection phases
     if (isInDataCollection && currentAction) {
