@@ -290,8 +290,24 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
       // Debug: Log the entire response data
       console.log('Full response data:', JSON.stringify(data, null, 2));
 
-      // Handle email draft response
-      if (data.type === 'email_draft' || data.finalType === 'email_draft' || data.hasEmailDraft) {
+      // Handle email draft response - Enhanced detection logic
+      const isEmailDraft = data.type === 'email_draft' || 
+                          data.finalType === 'email_draft' || 
+                          data.hasEmailDraft ||
+                          (data.emailDraftTo && data.emailDraftSubject) ||
+                          (data.emailDraft && data.emailDraft.to && data.emailDraft.subject);
+      
+      console.log('📧📧📧 EMAIL DRAFT DETECTION RESULT:', {
+        isEmailDraft,
+        type: data.type,
+        finalType: data.finalType,
+        hasEmailDraft: data.hasEmailDraft,
+        hasEmailDraftTo: !!data.emailDraftTo,
+        hasEmailDraftSubject: !!data.emailDraftSubject,
+        hasEmailDraftObject: !!(data.emailDraft && data.emailDraft.to && data.emailDraft.subject)
+      });
+
+      if (isEmailDraft) {
         // Handle both nested and top-level email draft formats
         const emailDraftData = data.emailDraft || {
           to: data.emailDraftTo,
