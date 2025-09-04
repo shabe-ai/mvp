@@ -802,6 +802,8 @@ Analyze this user message and extract structured information for CRM actions.
         hasEmailDraft: !!finalResponse.emailDraft,
         emailDraftTo: finalResponse.emailDraft?.to,
         emailDraftSubject: finalResponse.emailDraft?.subject,
+        emailDraftContent: finalResponse.emailDraftContent,
+        hasEmailDraftContent: !!finalResponse.emailDraftContent,
         userId: context.userId
       });
       

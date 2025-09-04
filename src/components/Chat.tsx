@@ -345,7 +345,9 @@ export default function Chat({ onAction }: ChatProps = {}) {
             emailDraftData,
             to: emailDraftData.to,
             subject: emailDraftData.subject,
-            content: emailDraftData.content
+            content: emailDraftData.content,
+            contentLength: emailDraftData.content?.length,
+            hasContent: !!emailDraftData.content
           });
           
           const newEmailDraft = {
@@ -1165,6 +1167,12 @@ export default function Chat({ onAction }: ChatProps = {}) {
       {/* Email Draft Modal */}
       {emailDraft && (() => {
         console.log('🎯🎯🎯 RENDERING EMAIL DRAFT MODAL WITH DATA - LATEST VERSION:', emailDraft);
+        console.log('🎯🎯🎯 MODAL RENDERING CONDITIONS:', {
+          hasEmailDraft: !!emailDraft,
+          emailDraftTo: emailDraft?.to,
+          emailDraftSubject: emailDraft?.subject,
+          emailDraftContent: emailDraft?.content?.substring(0, 100) + '...'
+        });
         return (
         <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 border-2 border-gray-300 shadow-2xl">
