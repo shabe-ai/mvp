@@ -289,6 +289,15 @@ export default function Chat({ onAction }: ChatProps = {}) {
 
       // Debug: Log the entire response data
       console.log('Full response data:', JSON.stringify(data, null, 2));
+      console.log('Email draft detection check:', {
+        'data.type': data.type,
+        'data.finalType': data.finalType,
+        'data.hasEmailDraft': data.hasEmailDraft,
+        'data.emailDraft': data.emailDraft,
+        'data.emailDraftTo': data.emailDraftTo,
+        'data.emailDraftSubject': data.emailDraftSubject,
+        'data.emailDraftContent': data.emailDraftContent
+      });
 
       // Handle email draft response
       if (data.type === 'email_draft' || data.finalType === 'email_draft' || data.hasEmailDraft) {
