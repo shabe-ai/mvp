@@ -595,6 +595,13 @@ class EmailIntentHandler implements IntentHandler {
 
   private async generateEmailContent(recipient: string, contentType: string, context: string, routerContext: IntentRouterContext): Promise<any> {
     try {
+      logger.info('Starting email content generation', {
+        recipient,
+        contentType,
+        context,
+        userId: routerContext.userId
+      });
+
       const response = await openaiClient.chatCompletionsCreate({
         model: "gpt-4",
         messages: [
@@ -619,6 +626,13 @@ class EmailIntentHandler implements IntentHandler {
       const lines = content.split('\n');
       const subject = lines[0] || `Email to ${recipient}`;
       const body = lines.slice(1).join('\n') || content;
+
+      logger.info('Email content generation completed', {
+        recipient,
+        subject,
+        bodyLength: body.length,
+        userId: routerContext.userId
+      });
 
       return { subject, body };
     } catch (error) {
