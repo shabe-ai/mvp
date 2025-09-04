@@ -1003,7 +1003,8 @@ export async function handleGeneralConversation(message: string, messages: Messa
     }
     
     // Get conversation manager for personality features
-    const convManager = getConversationManager(actualUserId, 'session-' + Date.now());
+    // Use a consistent session ID to maintain conversation context across requests
+    const convManager = getConversationManager(actualUserId, actualUserId);
     
     // Analyze sentiment
     const sentiment = await convManager.analyzeSentiment(message, 'general conversation');
