@@ -335,8 +335,10 @@ class DataIntentHandler implements IntentHandler {
 // CRUD Intent Handler
 class CrudIntentHandler implements IntentHandler {
   canHandle(intent: SimplifiedIntent): boolean {
-    // Exclude LinkedIn post creation from CRUD handler
-    if (intent.action === 'create_linkedin_post') {
+    // Exclude specific actions that have dedicated handlers
+    if (intent.action === 'create_linkedin_post' || 
+        intent.action === 'create_calendar_event' ||
+        intent.action === 'send_email') {
       return false;
     }
     return intent.action.includes('create_') || intent.action.includes('update_') || intent.action.includes('delete_');
