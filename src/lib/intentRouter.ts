@@ -565,10 +565,15 @@ class EmailIntentHandler implements IntentHandler {
             return true;
           }
           
-          // Check if any part of search name matches first or last name
+          // Check if full name is contained in search name
+          if (searchName.includes(fullName) && fullName.length >= 3) {
+            return true;
+          }
+          
+          // Check if any part of search name matches first or last name (but be more specific)
           const searchParts = searchName.split(' ');
           return searchParts.some((part: string) => {
-            if (part.length >= 2) {
+            if (part.length >= 3) { // Increased minimum length to 3 characters
               return firstName.includes(part) || lastName.includes(part);
             }
             return false;
