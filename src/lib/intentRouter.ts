@@ -514,6 +514,10 @@ class EmailIntentHandler implements IntentHandler {
           subject: emailContent.subject,
           content: emailContent.body
         },
+        // Also provide top-level properties for backward compatibility
+        emailDraftTo: emailAddress,
+        emailDraftSubject: emailContent.subject,
+        emailDraftContent: emailContent.body,
         hasData: true
       };
       
@@ -539,16 +543,44 @@ class EmailIntentHandler implements IntentHandler {
       const teams = await convex.query(api.crm.getTeamsByUser, { userId });
       const teamId = teams.length > 0 ? teams[0]._id : 'default';
       
-      // Find the contact by name
+      // Find the contact by name with improved matching logic
       const contacts = await convex.query(api.crm.getContactsByTeam, { teamId });
-      const contact = contacts.find((c: any) => {
+      const searchName = recipientName.toLowerCase().trim();
+      
+      // First try exact match
+      let contact = contacts.find((c: any) => {
         const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
-        const searchName = recipientName.toLowerCase();
-        
-        return fullName.includes(searchName) || 
-               searchName.includes(fullName) ||
-               fullName.split(' ').some((part: string) => searchName.includes(part)) ||
-               searchName.split(' ').some((part: string) => fullName.includes(part));
+        return fullName === searchName;
+      });
+      
+      // If no exact match, try more specific partial matching
+      if (!contact) {
+        contact = contacts.find((c: any) => {
+          const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim().toLowerCase();
+          const firstName = (c.firstName || '').toLowerCase();
+          const lastName = (c.lastName || '').toLowerCase();
+          
+          // Check if search name is contained in full name (but not too broad)
+          if (fullName.includes(searchName) && searchName.length >= 3) {
+            return true;
+          }
+          
+          // Check if any part of search name matches first or last name
+          const searchParts = searchName.split(' ');
+          return searchParts.some((part: string) => {
+            if (part.length >= 2) {
+              return firstName.includes(part) || lastName.includes(part);
+            }
+            return false;
+          });
+        });
+      }
+      
+      logger.info('Contact email lookup result', {
+        recipientName,
+        foundContact: contact ? `${contact.firstName} ${contact.lastName}` : null,
+        email: contact?.email || null,
+        totalContacts: contacts.length
       });
       
       return contact?.email || null;
