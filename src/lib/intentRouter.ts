@@ -560,13 +560,8 @@ class EmailIntentHandler implements IntentHandler {
           const firstName = (c.firstName || '').toLowerCase();
           const lastName = (c.lastName || '').toLowerCase();
           
-          // Check if search name is contained in full name (but not too broad)
-          if (fullName.includes(searchName) && searchName.length >= 3) {
-            return true;
-          }
-          
-          // Check if full name is contained in search name
-          if (searchName.includes(fullName) && fullName.length >= 3) {
+          // Check if search name is contained in full name (but require at least 4 characters to avoid false matches)
+          if (fullName.includes(searchName) && searchName.length >= 4) {
             return true;
           }
           
