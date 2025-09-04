@@ -778,6 +778,11 @@ Analyze this user message and extract structured information for CRM actions.
         ...response,
         type: response.type, // Preserve the response type
         emailDraft: response.emailDraft, // Preserve email draft data
+        // Preserve top-level email draft fields for backward compatibility
+        emailDraftTo: response.emailDraftTo,
+        emailDraftSubject: response.emailDraftSubject,
+        emailDraftContent: response.emailDraftContent,
+        hasEmailDraft: response.hasEmailDraft,
         conversationContext: response.conversationContext, // Preserve conversation context from response
         message: finalMessage,
         // For LinkedIn post preview, preserve the content object
