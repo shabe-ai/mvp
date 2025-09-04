@@ -4,17 +4,12 @@ import { Calendar, Clock, Users, MapPin, FileText, X, Check, Edit3 } from 'lucid
 interface CalendarPreviewProps {
   eventPreview: {
     title: string;
-    date: string;
-    time: string;
-    duration: number;
-    attendees: Array<{
-      name: string;
-      email: string;
-      contactId: string | null;
-      resolved: boolean;
-    }>;
-    location: string;
     description: string;
+    start: string;
+    end: string;
+    attendees: string[];
+    location: string;
+    allDay: boolean;
   };
   onConfirm: (eventPreview: any) => void;
   onModify: (field: string, value: any) => void;
@@ -53,23 +48,33 @@ export default function CalendarPreviewModal({
     setIsEditing(!isEditing);
   };
 
-  const formatDate = (dateStr: string) => {
-    if (dateStr === 'today') return 'Today';
-    if (dateStr === 'tomorrow') return 'Tomorrow';
-    if (dateStr.includes('next')) return dateStr;
-    return dateStr;
+  const formatDate = (isoString: string) => {
+    if (!isoString) return 'No date';
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleDateString('en-US', { 
+        weekday: 'long', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    } catch (error) {
+      return 'Invalid date';
+    }
   };
 
-  const formatTime = (timeStr: string) => {
-    // Convert 24h to 12h format if needed
-    if (timeStr.includes(':')) {
-      const [hours, minutes] = timeStr.split(':');
-      const hour = parseInt(hours);
-      const ampm = hour >= 12 ? 'PM' : 'AM';
-      const displayHour = hour % 12 || 12;
-      return `${displayHour}:${minutes} ${ampm}`;
+  const formatTime = (isoString: string) => {
+    if (!isoString) return 'No time';
+    try {
+      const date = new Date(isoString);
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    } catch (error) {
+      return 'Invalid time';
     }
-    return timeStr;
   };
 
   return (
@@ -121,14 +126,13 @@ export default function CalendarPreviewModal({
               </label>
               {isEditing ? (
                 <input
-                  type="text"
-                  value={editedPreview.date}
-                  onChange={(e) => handleFieldChange('date', e.target.value)}
+                  type="datetime-local"
+                  value={editedPreview.start}
+                  onChange={(e) => handleFieldChange('start', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., tomorrow, next Friday"
                 />
               ) : (
-                <p className="text-gray-900">{formatDate(eventPreview.date)}</p>
+                <p className="text-gray-900">{formatDate(eventPreview.start)}</p>
               )}
             </div>
             <div className="space-y-2">
@@ -138,14 +142,13 @@ export default function CalendarPreviewModal({
               </label>
               {isEditing ? (
                 <input
-                  type="text"
-                  value={editedPreview.time}
-                  onChange={(e) => handleFieldChange('time', e.target.value)}
+                  type="datetime-local"
+                  value={editedPreview.end}
+                  onChange={(e) => handleFieldChange('end', e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., 2:00 PM"
                 />
               ) : (
-                <p className="text-gray-900">{formatTime(eventPreview.time)} ({eventPreview.duration} min)</p>
+                <p className="text-gray-900">{formatTime(eventPreview.end)}</p>
               )}
             </div>
           </div>
@@ -176,14 +179,8 @@ export default function CalendarPreviewModal({
               <div className="space-y-2">
                 {eventPreview.attendees.map((attendee, index) => (
                   <div key={index} className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${attendee.resolved ? 'bg-green-500' : 'bg-yellow-500'}`} />
-                    <span className="text-gray-900">{attendee.name}</span>
-                    {attendee.email && (
-                      <span className="text-gray-500 text-sm">({attendee.email})</span>
-                    )}
-                    {!attendee.resolved && (
-                      <span className="text-yellow-600 text-xs">(not found in contacts)</span>
-                    )}
+                    <div className="w-2 h-2 rounded-full bg-blue-500" />
+                    <span className="text-gray-900">{attendee}</span>
                   </div>
                 ))}
               </div>

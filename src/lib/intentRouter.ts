@@ -674,8 +674,20 @@ class CalendarIntentHandler implements IntentHandler {
     try {
       const { attendee, date, time } = intent.entities;
       
+      logger.info('Creating calendar event preview', {
+        attendee,
+        date,
+        time,
+        userId: context.userId
+      });
+      
       // Create calendar event preview
       const eventPreview = await this.createCalendarEvent(attendee, date, time, context);
+      
+      logger.info('Calendar event preview created successfully', {
+        eventPreview,
+        userId: context.userId
+      });
       
       return {
         type: 'calendar_preview',
