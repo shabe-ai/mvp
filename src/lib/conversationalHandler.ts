@@ -750,6 +750,15 @@ Analyze this user message and extract structured information for CRM actions.
       if (response.type === 'linkedin_post_preview') {
         // For LinkedIn posts, use a simple message and keep the content object separate
         finalMessage = "I've created a LinkedIn post for you. Here's the preview:";
+      } else if (response.type === 'email_draft') {
+        // For email drafts, don't enhance the message - let the frontend handle the modal
+        finalMessage = response.content || response.message || adaptiveResponse.message;
+        
+        logger.info('Email draft response - preserving original message', {
+          responseMessage: finalMessage,
+          source: response.content ? 'response.content' : (response.message ? 'response.message' : 'adaptiveResponse.message'),
+          userId: context.userId
+        });
       } else {
         // Use response.content if available (from DataIntentHandler), otherwise use adaptiveResponse.message
         const responseMessage = response.content || adaptiveResponse.message;
