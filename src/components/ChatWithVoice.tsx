@@ -98,12 +98,23 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
 
   // Function to process and format email draft content
   const processEmailDraftContent = useCallback((emailDraftData: any, userData: any, companyData: any) => {
+    console.log('🔧🔧🔧 PROCESSING EMAIL DRAFT CONTENT - START:', {
+      originalSubject: emailDraftData.subject,
+      originalContent: emailDraftData.content?.substring(0, 100) + '...',
+      userData,
+      companyData
+    });
+
     let processedSubject = emailDraftData.subject || '';
     let processedContent = emailDraftData.content || '';
     
     // 1. Remove "Subject:" prefix from subject
     if (processedSubject.startsWith('Subject:')) {
+      console.log('🔧 Removing Subject: prefix from:', processedSubject);
       processedSubject = processedSubject.replace(/^Subject:\s*/i, '').trim();
+      console.log('🔧 Subject after removal:', processedSubject);
+    } else {
+      console.log('🔧 Subject does not start with "Subject:"', processedSubject);
     }
     
     // 2. Process content to fix greeting and placeholders
@@ -111,29 +122,56 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
       // Get recipient's first name from email address
       const recipientEmail = emailDraftData.to || '';
       const recipientFirstName = recipientEmail.split('@')[0] || 'there';
+      console.log('🔧 Recipient email:', recipientEmail, 'First name:', recipientFirstName);
       
       // Fix greeting - change from "Dear [Full Name/Team]," to "Dear [FirstName],"
+      const originalGreeting = processedContent.match(/Dear\s+[^,]+,\s*/g);
+      console.log('🔧 Original greeting found:', originalGreeting);
+      
       processedContent = processedContent.replace(
         /Dear\s+[^,]+,\s*/g, 
         `Dear ${recipientFirstName},\n\n`
       );
+      
+      const newGreeting = processedContent.match(/Dear\s+[^,]+,\s*/g);
+      console.log('🔧 New greeting after replacement:', newGreeting);
       
       // Replace placeholders with actual user/company data
       const userFullName = userData.name || 'Your Name';
       const userPosition = companyData.name ? `${companyData.name} Team` : 'Your Position';
       const userContact = userData.email || 'Your Contact Information';
       
+      console.log('🔧 Placeholder replacements:', {
+        userFullName,
+        userPosition,
+        userContact
+      });
+      
+      const beforePlaceholders = processedContent;
       processedContent = processedContent
         .replace(/\[Your Name\]/g, userFullName)
         .replace(/\[Your Position\]/g, userPosition)
         .replace(/\[Your Contact Information\]/g, userContact);
+      
+      console.log('🔧 Content before placeholder replacement:', beforePlaceholders.substring(beforePlaceholders.length - 200));
+      console.log('🔧 Content after placeholder replacement:', processedContent.substring(processedContent.length - 200));
     }
     
-    return {
+    const result = {
       ...emailDraftData,
       subject: processedSubject,
       content: processedContent
     };
+    
+    console.log('🔧🔧🔧 PROCESSING EMAIL DRAFT CONTENT - FINAL RESULT:', {
+      originalSubject: emailDraftData.subject,
+      processedSubject: result.subject,
+      originalContentLength: emailDraftData.content?.length,
+      processedContentLength: result.content?.length,
+      contentPreview: result.content?.substring(0, 200) + '...'
+    });
+    
+    return result;
   }, []);
 
   // Auto-create team for new users
@@ -356,6 +394,12 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
         };
         
         if (emailDraftData.to && emailDraftData.subject) {
+          console.log('🔧🔧🔧 ABOUT TO PROCESS EMAIL DRAFT:', {
+            emailDraftData,
+            userData,
+            parsedCompanyData
+          });
+          
           // Process the email draft content to fix formatting issues
           const processedEmailDraft = processEmailDraftContent(emailDraftData, userData, parsedCompanyData);
           
