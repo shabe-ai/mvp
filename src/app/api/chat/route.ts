@@ -505,6 +505,11 @@ export async function POST(request: NextRequest) {
           content: (response as any).content, // Add content for LinkedIn post previews
           eventPreview: (response as any).eventPreview, // Add eventPreview for calendar events
           emailDraft: response.emailDraft,
+          // Add top-level email draft fields for backward compatibility
+          hasEmailDraft: (response as any).hasEmailDraft,
+          emailDraftTo: (response as any).emailDraftTo,
+          emailDraftSubject: (response as any).emailDraftSubject,
+          emailDraftContent: (response as any).emailDraftContent,
           chartSpec: response.chartSpec,
           enhancedChart: response.enhancedChart,
           data: response.data,
