@@ -692,7 +692,7 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
             <div className="flex justify-end space-x-2 mt-4">
               <Button
                 onClick={() => setEmailDraft(null)}
-                variant="outline"
+                variant="subtle"
                 className="font-button"
               >
                 Cancel
