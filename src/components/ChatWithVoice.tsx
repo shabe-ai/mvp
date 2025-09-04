@@ -517,16 +517,9 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
         });
       }
 
-      // Handle email draft if present
-      if (data.emailDraft) {
-        setEmailDraft({
-          to: data.emailDraft.to,
-          subject: data.emailDraft.subject,
-          content: data.emailDraft.content,
-          aiMessage: assistantMessage,
-          activityData: data.emailDraft.activityData || {}
-        });
-      }
+      // REMOVED: Duplicate email draft handling that was overriding our processed version
+      // This was the bug! The duplicate section was setting unprocessed email draft data
+      // after we had already processed it, causing the formatting fixes to be lost.
 
       // Handle calendar preview if present
       console.log('Checking for calendar preview:', {
