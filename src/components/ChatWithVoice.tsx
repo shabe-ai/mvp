@@ -139,15 +139,14 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
       // Replace placeholders with actual user/company data
       const userFullName = userData.name || 'Your Name';
       
-      // Improved position logic - try multiple fallbacks
-      let userPosition = 'Your Position';
+      // Position logic - use "CEO" as the default position
+      let userPosition = 'CEO'; // Default to CEO
       if (companyData.name && companyData.name.trim()) {
-        userPosition = `${companyData.name} Team`;
+        // If we have company data, use "CEO" (not company name + Team)
+        userPosition = 'CEO';
       } else if (userData.company && userData.company.trim()) {
-        userPosition = `${userData.company} Team`;
-      } else if (userData.name) {
-        // Fallback to user's name + "Team" if no company data
-        userPosition = `${userData.name} Team`;
+        // If we have user company data, still use "CEO"
+        userPosition = 'CEO';
       }
       
       const userContact = userData.email || 'Your Contact Information';
