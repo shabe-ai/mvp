@@ -138,13 +138,27 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
       
       // Replace placeholders with actual user/company data
       const userFullName = userData.name || 'Your Name';
-      const userPosition = companyData.name ? `${companyData.name} Team` : 'Your Position';
+      
+      // Improved position logic - try multiple fallbacks
+      let userPosition = 'Your Position';
+      if (companyData.name && companyData.name.trim()) {
+        userPosition = `${companyData.name} Team`;
+      } else if (userData.company && userData.company.trim()) {
+        userPosition = `${userData.company} Team`;
+      } else if (userData.name) {
+        // Fallback to user's name + "Team" if no company data
+        userPosition = `${userData.name} Team`;
+      }
+      
       const userContact = userData.email || 'Your Contact Information';
       
       console.log('🔧 Placeholder replacements:', {
         userFullName,
         userPosition,
-        userContact
+        userContact,
+        companyDataName: companyData.name,
+        userDataCompany: userData.company,
+        companyDataFull: companyData
       });
       
       const beforePlaceholders = processedContent;
@@ -543,7 +557,7 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
       });
       
       const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: Date.now().toString(),
         role: "assistant",
         content: "I'm sorry, I encountered an error while processing your message. Please try again.",
         timestamp: new Date(),
