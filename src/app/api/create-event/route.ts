@@ -199,19 +199,35 @@ export async function POST(request: NextRequest) {
     
     const calendar = google.calendar({ version: 'v3', auth: oauth2Client });
 
-    // Parse date and time
+    // Parse date and time - handle both ISO date format and separate date/time fields
     logger.info('Parsing event date/time', {
       userId,
+      start: eventPreview.start,
+      end: eventPreview.end,
       date: eventPreview.date,
       time: eventPreview.time,
       duration: eventPreview.duration
     });
     
-    const eventDateTime = parseEventDateTime(eventPreview.date, eventPreview.time);
-    const endDateTime = new Date(eventDateTime.getTime() + (eventPreview.duration * 60000));
+    let eventDateTime: Date;
+    let endDateTime: Date;
+    
+    // If we have ISO date strings (from calendar preview modal), use them directly
+    if (eventPreview.start && eventPreview.end) {
+      eventDateTime = new Date(eventPreview.start);
+      endDateTime = new Date(eventPreview.end);
+    } else if (eventPreview.date && eventPreview.time) {
+      // Fallback to parsing separate date/time fields
+      eventDateTime = parseEventDateTime(eventPreview.date, eventPreview.time);
+      endDateTime = new Date(eventDateTime.getTime() + (eventPreview.duration * 60000));
+    } else {
+      throw new Error('Invalid event data: missing start/end dates or date/time fields');
+    }
     
     logger.info('Parsed event date/time', {
       userId,
+      originalStart: eventPreview.start,
+      originalEnd: eventPreview.end,
       originalDate: eventPreview.date,
       originalTime: eventPreview.time,
       parsedDateTime: eventDateTime.toISOString(),
@@ -225,6 +241,8 @@ export async function POST(request: NextRequest) {
     if (isNaN(eventDateTime.getTime())) {
       logger.error('Invalid parsed date/time', new Error('Invalid date/time format'), {
         userId,
+        start: eventPreview.start,
+        end: eventPreview.end,
         date: eventPreview.date,
         time: eventPreview.time,
         parsedDateTime: eventDateTime
@@ -232,14 +250,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         error: 'Invalid date/time format',
         message: 'Could not parse the event date and time. Please try again with a different format.',
-        details: `Date: ${eventPreview.date}, Time: ${eventPreview.time}`
+        details: `Start: ${eventPreview.start}, End: ${eventPreview.end}, Date: ${eventPreview.date}, Time: ${eventPreview.time}`
       }, { status: 400 });
     }
 
-    // Prepare attendees
+    // Prepare attendees - handle both string array and object array formats
     const attendees = eventPreview.attendees
-      .filter((attendee: any) => attendee.email && attendee.resolved)
-      .map((attendee: any) => ({ email: attendee.email }));
+      .filter((attendee: any) => {
+        // If attendee is a string, treat it as an email
+        if (typeof attendee === 'string') {
+          return attendee.trim().length > 0;
+        }
+        // If attendee is an object, check for email and resolved properties
+        return attendee.email && attendee.resolved;
+      })
+      .map((attendee: any) => {
+        // If attendee is a string, use it as the email
+        if (typeof attendee === 'string') {
+          return { email: attendee.trim() };
+        }
+        // If attendee is an object, extract the email
+        return { email: attendee.email };
+      });
 
     // Create calendar event
     const event = {
