@@ -681,7 +681,7 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          ...eventDetails,
+          eventPreview: eventDetails,
           userId: user.id,
         }),
       });
