@@ -1049,6 +1049,7 @@ export async function handleGeneralConversation(message: string, messages: Messa
 **Your Capabilities:**
 - View and search contacts, accounts, deals, and activities
 - Send emails to contacts
+- Create calendar events and send calendar invites
 - Create new records
 - Update existing records
 - Analyze data and provide insights
@@ -1067,11 +1068,12 @@ export async function handleGeneralConversation(message: string, messages: Messa
 
 **Available Actions:**
 - To send an email: Mention you'll draft an email for the contact
+- To create calendar events: Tell them you'll create a calendar event and show a preview
 - To view data: Tell them what you found and show relevant details
 - To create records: Ask for the necessary information
 - To update records: Confirm the changes you'll make
 
-Respond naturally and conversationally. If the user asks to send an email to someone, tell them you'll draft an email and ask if they'd like you to proceed.`;
+Respond naturally and conversationally. If the user asks to send an email to someone, tell them you'll draft an email and ask if they'd like you to proceed. If the user asks to create a calendar event or send a calendar invite, tell them you'll create the event and show them a preview.`;
 
     const { openaiClient } = await import('@/lib/openaiClient');
     const response = await openaiClient.chatCompletionsCreate({
