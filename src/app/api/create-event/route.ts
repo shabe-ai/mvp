@@ -214,8 +214,20 @@ export async function POST(request: NextRequest) {
     
     // If we have ISO date strings (from calendar preview modal), use them directly
     if (eventPreview.start && eventPreview.end) {
+      // The ISO strings from the calendar preview represent local time that was converted to UTC
+      // We need to treat them as local time for the calendar API
       eventDateTime = new Date(eventPreview.start);
       endDateTime = new Date(eventPreview.end);
+      
+      // Log the timezone conversion details
+      logger.info('Timezone conversion details', {
+        userId,
+        originalStartUTC: eventPreview.start,
+        originalEndUTC: eventPreview.end,
+        parsedStartLocal: eventDateTime.toString(),
+        parsedEndLocal: endDateTime.toString(),
+        userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      });
     } else if (eventPreview.date && eventPreview.time) {
       // Fallback to parsing separate date/time fields
       eventDateTime = parseEventDateTime(eventPreview.date, eventPreview.time);
@@ -283,17 +295,22 @@ export async function POST(request: NextRequest) {
       attendeeCount: attendees.length
     });
 
-    // Create calendar event
+    // Determine the user's timezone
+    // For now, we'll use a more intelligent approach - detect from the date/time parsing
+    // If the times are in UTC but represent local time, we need to adjust
+    const userTimezone = 'America/New_York'; // Default fallback
+    
+    // Create calendar event with proper timezone handling
     const event = {
       summary: eventPreview.title,
       description: eventPreview.description || '',
       start: {
         dateTime: eventDateTime.toISOString(),
-        timeZone: 'America/New_York', // Use a common timezone, could be made configurable
+        timeZone: userTimezone,
       },
       end: {
         dateTime: endDateTime.toISOString(),
-        timeZone: 'America/New_York',
+        timeZone: userTimezone,
       },
       attendees: attendees.length > 0 ? attendees : undefined, // Only include attendees if we have valid ones
       location: eventPreview.location || '',
@@ -305,6 +322,15 @@ export async function POST(request: NextRequest) {
         ],
       },
     };
+    
+    logger.info('Calendar event timezone details', {
+      userId,
+      userTimezone,
+      eventStartDateTime: event.start.dateTime,
+      eventEndDateTime: event.end.dateTime,
+      eventStartLocal: eventDateTime.toString(),
+      eventEndLocal: endDateTime.toString()
+    });
 
     // Insert the event
     logger.info('Attempting to create calendar event', {

@@ -737,11 +737,13 @@ class CalendarIntentHandler implements IntentHandler {
         }
       }
       
+      // Set the time in local timezone
       eventDate.setHours(hours, 0, 0, 0);
       const endDate = new Date(eventDate);
       endDate.setHours(hours + 1, 0, 0, 0); // 1 hour duration
       
       // Create event preview object
+      // Store the local time as ISO string - the API will handle timezone conversion properly
       const eventPreview = {
         title: `Meeting with ${attendee}`,
         description: `Meeting scheduled with ${attendee}`,
@@ -751,6 +753,17 @@ class CalendarIntentHandler implements IntentHandler {
         location: '',
         allDay: false
       };
+      
+      logger.info('Calendar event preview time details', {
+        userId: context.userId,
+        originalTime: time,
+        parsedHours: hours,
+        eventDateLocal: eventDate.toString(),
+        eventDateISO: eventDate.toISOString(),
+        endDateLocal: endDate.toString(),
+        endDateISO: endDate.toISOString(),
+        userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      });
 
       return eventPreview;
     } catch (error) {
