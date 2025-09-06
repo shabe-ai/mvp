@@ -767,14 +767,37 @@ class CalendarIntentHandler implements IntentHandler {
       
       // Create event preview object
       // The times are in the user's local timezone, so we need to create ISO strings that represent local time
-      // We'll create the ISO strings by manually constructing them to avoid timezone conversion
+      // We need to adjust for timezone offset to ensure the time displays correctly
       const year = eventDate.getFullYear();
       const month = String(eventDate.getMonth() + 1).padStart(2, '0');
       const day = String(eventDate.getDate()).padStart(2, '0');
-      const startHour = String(hours).padStart(2, '0');
-      const endHour = String(hours + 1).padStart(2, '0');
       
-      // Create ISO strings that represent the local time (not UTC)
+      // Calculate timezone offset for the user's timezone
+      // EST is UTC-5, EDT is UTC-4, etc.
+      let timezoneOffset = 0;
+      if (userTimezone === 'EST' || userTimezone === 'America/New_York') {
+        // Check if it's daylight saving time (rough approximation)
+        const isDST = eventDate.getMonth() >= 2 && eventDate.getMonth() <= 10; // March to November
+        timezoneOffset = isDST ? 4 : 5; // EDT is UTC-4, EST is UTC-5
+      } else if (userTimezone === 'PST' || userTimezone === 'America/Los_Angeles') {
+        const isDST = eventDate.getMonth() >= 2 && eventDate.getMonth() <= 10;
+        timezoneOffset = isDST ? 7 : 8; // PDT is UTC-7, PST is UTC-8
+      } else if (userTimezone === 'CST' || userTimezone === 'America/Chicago') {
+        const isDST = eventDate.getMonth() >= 2 && eventDate.getMonth() <= 10;
+        timezoneOffset = isDST ? 5 : 6; // CDT is UTC-5, CST is UTC-6
+      } else if (userTimezone === 'MST' || userTimezone === 'America/Denver') {
+        const isDST = eventDate.getMonth() >= 2 && eventDate.getMonth() <= 10;
+        timezoneOffset = isDST ? 6 : 7; // MDT is UTC-6, MST is UTC-7
+      }
+      
+      // Adjust hours for timezone offset
+      const adjustedStartHour = hours + timezoneOffset;
+      const adjustedEndHour = hours + 1 + timezoneOffset;
+      
+      const startHour = String(adjustedStartHour).padStart(2, '0');
+      const endHour = String(adjustedEndHour).padStart(2, '0');
+      
+      // Create ISO strings that represent the local time adjusted for timezone
       const startISO = `${year}-${month}-${day}T${startHour}:00:00.000Z`;
       const endISO = `${year}-${month}-${day}T${endHour}:00:00.000Z`;
       
@@ -793,6 +816,9 @@ class CalendarIntentHandler implements IntentHandler {
         originalTime: time,
         parsedHours: hours,
         userTimezone,
+        timezoneOffset,
+        adjustedStartHour,
+        adjustedEndHour,
         eventDateLocal: eventDate.toString(),
         eventDateISO: eventDate.toISOString(),
         endDateLocal: endDate.toString(),
