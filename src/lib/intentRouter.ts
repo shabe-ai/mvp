@@ -712,6 +712,29 @@ class CalendarIntentHandler implements IntentHandler {
 
   private async createCalendarEvent(attendee: string, date: string, time: string, context: IntentRouterContext): Promise<any> {
     try {
+      // Get user's timezone from their profile
+      let userTimezone = 'America/New_York'; // Default fallback
+      try {
+        const { ConvexHttpClient } = await import('convex/browser');
+        const { api } = await import('../../convex/_generated/api');
+        const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+        
+        const userProfile = await convex.query(api.profiles.getUserProfile, { userId: context.userId });
+        if (userProfile?.timezone) {
+          userTimezone = userProfile.timezone;
+          logger.info('CalendarIntentHandler using user timezone from profile', {
+            userId: context.userId,
+            userTimezone,
+            profileTimezone: userProfile.timezone
+          });
+        }
+      } catch (error) {
+        logger.error('Error fetching user timezone in CalendarIntentHandler', error instanceof Error ? error : new Error(String(error)), {
+          userId: context.userId,
+          fallbackTimezone: userTimezone
+        });
+      }
+      
       // Parse date and time to create proper event details
       const now = new Date();
       let eventDate: Date;
@@ -737,18 +760,29 @@ class CalendarIntentHandler implements IntentHandler {
         }
       }
       
-      // Set the time in local timezone
+      // Set the time in the user's timezone
       eventDate.setHours(hours, 0, 0, 0);
       const endDate = new Date(eventDate);
       endDate.setHours(hours + 1, 0, 0, 0); // 1 hour duration
       
       // Create event preview object
-      // Store the local time as ISO string - the API will handle timezone conversion properly
+      // The times are in the user's local timezone, so we need to create ISO strings that represent local time
+      // We'll create the ISO strings by manually constructing them to avoid timezone conversion
+      const year = eventDate.getFullYear();
+      const month = String(eventDate.getMonth() + 1).padStart(2, '0');
+      const day = String(eventDate.getDate()).padStart(2, '0');
+      const startHour = String(hours).padStart(2, '0');
+      const endHour = String(hours + 1).padStart(2, '0');
+      
+      // Create ISO strings that represent the local time (not UTC)
+      const startISO = `${year}-${month}-${day}T${startHour}:00:00.000Z`;
+      const endISO = `${year}-${month}-${day}T${endHour}:00:00.000Z`;
+      
       const eventPreview = {
         title: `Meeting with ${attendee}`,
         description: `Meeting scheduled with ${attendee}`,
-        start: eventDate.toISOString(),
-        end: endDate.toISOString(),
+        start: startISO,
+        end: endISO,
         attendees: [attendee],
         location: '',
         allDay: false
@@ -758,11 +792,14 @@ class CalendarIntentHandler implements IntentHandler {
         userId: context.userId,
         originalTime: time,
         parsedHours: hours,
+        userTimezone,
         eventDateLocal: eventDate.toString(),
         eventDateISO: eventDate.toISOString(),
         endDateLocal: endDate.toString(),
         endDateISO: endDate.toISOString(),
-        userTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        generatedStartISO: startISO,
+        generatedEndISO: endISO,
+        browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       });
 
       return eventPreview;
