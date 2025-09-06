@@ -806,15 +806,14 @@ class CalendarIntentHandler implements IntentHandler {
       const startDateStr = `${year}-${month}-${day}T${startHour}:00:00`;
       const endDateStr = `${year}-${month}-${day}T${endHour}:00:00`;
       
-      // Convert to UTC by creating dates in the user's timezone and converting to UTC
-      // Use Intl.DateTimeFormat to properly handle timezone conversion
-      const startDate = new Date(startDateStr + 'Z'); // Treat as UTC first
-      const endDate = new Date(endDateStr + 'Z'); // Treat as UTC first
+      // Create dates in the user's timezone and convert to UTC
+      const startDate = new Date(startDateStr);
+      const endDate = new Date(endDateStr);
       
-      // Adjust for timezone offset to get the correct UTC time
+      // Adjust for timezone offset to convert from user's timezone to UTC
       const timezoneOffset = getTimezoneOffset(userTimezone);
-      startDate.setUTCHours(startDate.getUTCHours() - timezoneOffset);
-      endDate.setUTCHours(endDate.getUTCHours() - timezoneOffset);
+      startDate.setUTCHours(startDate.getUTCHours() + timezoneOffset);
+      endDate.setUTCHours(endDate.getUTCHours() + timezoneOffset);
       
       // Get the UTC ISO strings for the API
       const startUTC = startDate.toISOString();
