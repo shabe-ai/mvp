@@ -776,18 +776,23 @@ class CalendarIntentHandler implements IntentHandler {
       // EST is UTC-5, EDT is UTC-4, etc.
       let timezoneOffset = 0;
       if (userTimezone === 'EST' || userTimezone === 'America/New_York') {
-        // Check if it's daylight saving time (rough approximation)
-        const isDST = eventDate.getMonth() >= 2 && eventDate.getMonth() <= 10; // March to November
-        timezoneOffset = isDST ? 4 : 5; // EDT is UTC-4, EST is UTC-5
+        // For EST, we need to add 5 hours to get UTC time
+        // When user says 9pm EST, we need 9pm + 5 = 2am UTC next day
+        timezoneOffset = 5; // EST is UTC-5, so add 5 hours
+      } else if (userTimezone === 'EDT' || userTimezone === 'America/New_York') {
+        timezoneOffset = 4; // EDT is UTC-4, so add 4 hours
       } else if (userTimezone === 'PST' || userTimezone === 'America/Los_Angeles') {
-        const isDST = eventDate.getMonth() >= 2 && eventDate.getMonth() <= 10;
-        timezoneOffset = isDST ? 7 : 8; // PDT is UTC-7, PST is UTC-8
+        timezoneOffset = 8; // PST is UTC-8, so add 8 hours
+      } else if (userTimezone === 'PDT' || userTimezone === 'America/Los_Angeles') {
+        timezoneOffset = 7; // PDT is UTC-7, so add 7 hours
       } else if (userTimezone === 'CST' || userTimezone === 'America/Chicago') {
-        const isDST = eventDate.getMonth() >= 2 && eventDate.getMonth() <= 10;
-        timezoneOffset = isDST ? 5 : 6; // CDT is UTC-5, CST is UTC-6
+        timezoneOffset = 6; // CST is UTC-6, so add 6 hours
+      } else if (userTimezone === 'CDT' || userTimezone === 'America/Chicago') {
+        timezoneOffset = 5; // CDT is UTC-5, so add 5 hours
       } else if (userTimezone === 'MST' || userTimezone === 'America/Denver') {
-        const isDST = eventDate.getMonth() >= 2 && eventDate.getMonth() <= 10;
-        timezoneOffset = isDST ? 6 : 7; // MDT is UTC-6, MST is UTC-7
+        timezoneOffset = 7; // MST is UTC-7, so add 7 hours
+      } else if (userTimezone === 'MDT' || userTimezone === 'America/Denver') {
+        timezoneOffset = 6; // MDT is UTC-6, so add 6 hours
       }
       
       // Adjust hours for timezone offset and handle day overflow
