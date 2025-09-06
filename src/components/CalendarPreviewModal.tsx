@@ -11,6 +11,7 @@ interface CalendarPreviewProps {
     location: string;
     allDay: boolean;
   };
+  userTimezone?: string;
   onConfirm: (eventPreview: any) => void;
   onModify: (field: string, value: any) => void;
   onCancel: () => void;
@@ -18,6 +19,7 @@ interface CalendarPreviewProps {
 
 export default function CalendarPreviewModal({
   eventPreview,
+  userTimezone = 'America/New_York',
   onConfirm,
   onModify,
   onCancel
@@ -56,7 +58,8 @@ export default function CalendarPreviewModal({
         weekday: 'long', 
         year: 'numeric', 
         month: 'long', 
-        day: 'numeric' 
+        day: 'numeric',
+        timeZone: userTimezone
       });
     } catch (error) {
       return 'Invalid date';
@@ -70,7 +73,8 @@ export default function CalendarPreviewModal({
       return date.toLocaleTimeString('en-US', { 
         hour: 'numeric', 
         minute: '2-digit',
-        hour12: true 
+        hour12: true,
+        timeZone: userTimezone
       });
     } catch (error) {
       return 'Invalid time';
@@ -148,7 +152,7 @@ export default function CalendarPreviewModal({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               ) : (
-                <p className="text-gray-900">{formatTime(eventPreview.end)}</p>
+                <p className="text-gray-900">{formatTime(eventPreview.start)}</p>
               )}
             </div>
           </div>

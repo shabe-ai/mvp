@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { Button, Input } from "@/components/shabe-ui";
 
 import { 
@@ -66,6 +68,11 @@ interface ChatProps {
 export default function ChatWithVoice({ onAction }: ChatProps = {}) {
   const { user, isLoaded } = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
+  
+  // Get user profile for timezone
+  const userProfile = useQuery(api.profiles.getUserProfile, 
+    user?.id ? { userId: user.id } : "skip"
+  );
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
@@ -882,6 +889,7 @@ export default function ChatWithVoice({ onAction }: ChatProps = {}) {
       {calendarPreview && (
         <CalendarPreviewModal
           eventPreview={calendarPreview.eventDetails}
+          userTimezone={userProfile?.timezone || 'America/New_York'}
           onConfirm={handleCreateCalendarEvent}
           onModify={handleModifyCalendarEvent}
           onCancel={() => setCalendarPreview(null)}

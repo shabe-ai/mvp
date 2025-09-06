@@ -2,6 +2,8 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -66,6 +68,11 @@ interface ChatProps {
 export default function Chat({ onAction }: ChatProps = {}) {
   const { user, isLoaded } = useUser();
   const [messages, setMessages] = useState<Message[]>([]);
+  
+  // Get user profile for timezone
+  const userProfile = useQuery(api.profiles.getUserProfile, 
+    user?.id ? { userId: user.id } : "skip"
+  );
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isInitializing, setIsInitializing] = useState(false);
@@ -1228,6 +1235,7 @@ export default function Chat({ onAction }: ChatProps = {}) {
       {calendarPreview && (
         <CalendarPreviewModal
           eventPreview={calendarPreview.eventDetails}
+          userTimezone={userProfile?.timezone || 'America/New_York'}
           onConfirm={handleCreateCalendarEvent}
           onModify={handleModifyCalendarEvent}
           onCancel={() => setCalendarPreview(null)}
