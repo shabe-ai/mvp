@@ -3,6 +3,10 @@ import { google } from 'googleapis';
 import { auth } from '@clerk/nextjs/server';
 import { logger } from '@/lib/logger';
 import { TokenStorage } from '@/lib/tokenStorage';
+import { ConvexHttpClient } from 'convex/browser';
+import { api } from '../../../../convex/_generated/api';
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
   let userId: string | null = null;
@@ -295,10 +299,30 @@ export async function POST(request: NextRequest) {
       attendeeCount: attendees.length
     });
 
-    // Determine the user's timezone
-    // For now, we'll use a more intelligent approach - detect from the date/time parsing
-    // If the times are in UTC but represent local time, we need to adjust
-    const userTimezone = 'America/New_York'; // Default fallback
+    // Get user's timezone from their profile
+    let userTimezone = 'America/New_York'; // Default fallback
+    
+    try {
+      const userProfile = await convex.query(api.profiles.getUserProfile, { userId });
+      if (userProfile?.timezone) {
+        userTimezone = userProfile.timezone;
+        logger.info('Using user timezone from profile', {
+          userId,
+          userTimezone,
+          profileTimezone: userProfile.timezone
+        });
+      } else {
+        logger.info('No timezone found in user profile, using default', {
+          userId,
+          defaultTimezone: userTimezone
+        });
+      }
+    } catch (error) {
+      logger.error('Error fetching user profile for timezone', error instanceof Error ? error : new Error(String(error)), {
+        userId,
+        fallbackTimezone: userTimezone
+      });
+    }
     
     // Create calendar event with proper timezone handling
     const event = {
