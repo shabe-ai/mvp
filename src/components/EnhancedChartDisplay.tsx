@@ -277,7 +277,7 @@ export default function EnhancedChartDisplay({
         });
         
         return (
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={300}>
             <BarChart data={data} margin={chartConfig.margin}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey={xAxisDataKey} />
@@ -294,7 +294,7 @@ export default function EnhancedChartDisplay({
       case 'line':
         const lineDataKeys = dataKeys.filter(key => typeof data[0][key] === 'number');
         return (
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={300}>
             <LineChart data={data} margin={chartConfig.margin}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey={xAxisDataKey} />
@@ -316,7 +316,7 @@ export default function EnhancedChartDisplay({
         });
         
         return (
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={300}>
             <AreaChart data={data} margin={chartConfig.margin}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey={xAxisDataKey} />
@@ -355,7 +355,7 @@ export default function EnhancedChartDisplay({
         });
         
         return (
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={300}>
             <PieChart margin={chartConfig.margin}>
             <Pie
               data={pieData}

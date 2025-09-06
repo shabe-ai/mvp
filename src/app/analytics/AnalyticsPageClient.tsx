@@ -717,9 +717,9 @@ export default function AnalyticsPageClient() {
         {/* Content Area */}
         <div className="w-full max-w-7xl mx-auto px-6 pb-8">
           {/* Widgets Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 sm:gap-6">
           {widgets.map((widget) => (
-            <div key={widget.id} className="bg-white rounded-card shadow-card p-6 space-y-4">
+            <div key={widget.id} className="bg-white rounded-card shadow-card p-4 sm:p-6 space-y-3 sm:space-y-4">
               {/* Widget Header */}
               <div className="flex items-center justify-between">
                 <h3 className="font-display text-lg font-semibold text-ink-900">
@@ -750,10 +750,10 @@ export default function AnalyticsPageClient() {
               </div>
 
               {/* Chart Display */}
-              <div className="h-64 relative bg-bg-soft rounded-ctl border border-line-200 overflow-hidden">
+              <div className="h-64 sm:h-72 md:h-80 lg:h-96 relative bg-bg-soft rounded-ctl border border-line-200 overflow-hidden">
                 {widget.isActive && widget.data.length > 0 ? (
                   <>
-                    <div className="h-full w-full p-4">
+                    <div className="h-full w-full p-2 sm:p-4">
                       <ChartDisplay
                         key={`${widget.id}-${widget.lastUpdated instanceof Date ? widget.lastUpdated.getTime() : new Date(widget.lastUpdated).getTime()}`}
                         chartSpec={{

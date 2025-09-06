@@ -366,7 +366,7 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden" data-chart-export>
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden h-full flex flex-col" data-chart-export>
       {/* Header - Only show for fullscreen charts */}
       {chartConfig?.height > 300 && (
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
@@ -470,8 +470,8 @@ export default function ChartDisplay({ chartSpec, narrative, onExport, onColorCh
           </div>
         )}
         
-        <div className={chartConfig?.height > 300 ? "mb-6" : "mb-0"}>
-          <ResponsiveContainer width="100%" height={chartConfig?.height < 200 ? 240 : (chartConfig?.height > 300 ? 500 : 260)}>
+        <div className={`flex-1 ${chartConfig?.height > 300 ? "mb-6" : "mb-0"}`}>
+          <ResponsiveContainer width="100%" height="100%" minHeight={200}>
             {renderChart()}
           </ResponsiveContainer>
         </div>
