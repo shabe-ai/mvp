@@ -257,9 +257,12 @@ export async function POST(request: NextRequest) {
     // Prepare attendees - handle both string array and object array formats
     const attendees = eventPreview.attendees
       .filter((attendee: any) => {
-        // If attendee is a string, treat it as an email
+        // If attendee is a string, check if it's a valid email
         if (typeof attendee === 'string') {
-          return attendee.trim().length > 0;
+          const trimmed = attendee.trim();
+          // Basic email validation
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          return trimmed.length > 0 && emailRegex.test(trimmed);
         }
         // If attendee is an object, check for email and resolved properties
         return attendee.email && attendee.resolved;
@@ -273,6 +276,13 @@ export async function POST(request: NextRequest) {
         return { email: attendee.email };
       });
 
+    logger.info('Processed attendees', {
+      userId,
+      originalAttendees: eventPreview.attendees,
+      validAttendees: attendees,
+      attendeeCount: attendees.length
+    });
+
     // Create calendar event
     const event = {
       summary: eventPreview.title,
@@ -285,7 +295,7 @@ export async function POST(request: NextRequest) {
         dateTime: endDateTime.toISOString(),
         timeZone: 'America/New_York',
       },
-      attendees: attendees,
+      attendees: attendees.length > 0 ? attendees : undefined, // Only include attendees if we have valid ones
       location: eventPreview.location || '',
       reminders: {
         useDefault: false,
@@ -316,15 +326,21 @@ export async function POST(request: NextRequest) {
       userId,
       eventId: response.data.id,
       eventTitle: eventPreview.title,
-      attendeesCount: attendees.length
+      attendeesCount: attendees.length,
+      originalAttendeesCount: eventPreview.attendees.length
     });
+
+    const attendeeMessage = attendees.length > 0 
+      ? ` with ${attendees.length} attendee${attendees.length === 1 ? '' : 's'}`
+      : ' (no valid email addresses found for attendees)';
 
     return NextResponse.json({
       success: true,
-      message: `Calendar event "${eventPreview.title}" created successfully!`,
+      message: `Calendar event "${eventPreview.title}" created successfully${attendeeMessage}!`,
       eventId: response.data.id,
       eventUrl: response.data.htmlLink,
-      attendees: attendees.length
+      attendees: attendees.length,
+      originalAttendees: eventPreview.attendees.length
     });
 
   } catch (error) {
