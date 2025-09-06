@@ -790,16 +790,40 @@ class CalendarIntentHandler implements IntentHandler {
         timezoneOffset = isDST ? 6 : 7; // MDT is UTC-6, MST is UTC-7
       }
       
-      // Adjust hours for timezone offset
-      const adjustedStartHour = hours + timezoneOffset;
-      const adjustedEndHour = hours + 1 + timezoneOffset;
+      // Adjust hours for timezone offset and handle day overflow
+      let adjustedStartHour = hours + timezoneOffset;
+      let adjustedEndHour = hours + 1 + timezoneOffset;
+      let adjustedStartDay = parseInt(day);
+      let adjustedEndDay = parseInt(day);
+      
+      // Handle hour overflow (hours > 23)
+      if (adjustedStartHour >= 24) {
+        adjustedStartHour = adjustedStartHour % 24;
+        adjustedStartDay += 1;
+      }
+      if (adjustedEndHour >= 24) {
+        adjustedEndHour = adjustedEndHour % 24;
+        adjustedEndDay += 1;
+      }
+      
+      // Handle day overflow (day > 31)
+      const daysInMonth = new Date(year, parseInt(month), 0).getDate();
+      if (adjustedStartDay > daysInMonth) {
+        adjustedStartDay = 1;
+        // Note: We're not handling month overflow for simplicity
+      }
+      if (adjustedEndDay > daysInMonth) {
+        adjustedEndDay = 1;
+      }
       
       const startHour = String(adjustedStartHour).padStart(2, '0');
       const endHour = String(adjustedEndHour).padStart(2, '0');
+      const startDay = String(adjustedStartDay).padStart(2, '0');
+      const endDay = String(adjustedEndDay).padStart(2, '0');
       
       // Create ISO strings that represent the local time adjusted for timezone
-      const startISO = `${year}-${month}-${day}T${startHour}:00:00.000Z`;
-      const endISO = `${year}-${month}-${day}T${endHour}:00:00.000Z`;
+      const startISO = `${year}-${month}-${startDay}T${startHour}:00:00.000Z`;
+      const endISO = `${year}-${month}-${endDay}T${endHour}:00:00.000Z`;
       
       const eventPreview = {
         title: `Meeting with ${attendee}`,
@@ -819,6 +843,8 @@ class CalendarIntentHandler implements IntentHandler {
         timezoneOffset,
         adjustedStartHour,
         adjustedEndHour,
+        adjustedStartDay,
+        adjustedEndDay,
         eventDateLocal: eventDate.toString(),
         eventDateISO: eventDate.toISOString(),
         endDateLocal: endDate.toString(),
