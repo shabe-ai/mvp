@@ -658,6 +658,34 @@ class EmailIntentHandler implements IntentHandler {
   }
 }
 
+// Helper function to get timezone offset in hours
+function getTimezoneOffset(timezone: string): number {
+  switch (timezone) {
+    case 'EST':
+    case 'America/New_York':
+      return 5; // EST is UTC-5
+    case 'EDT':
+      return 4; // EDT is UTC-4
+    case 'PST':
+    case 'America/Los_Angeles':
+      return 8; // PST is UTC-8
+    case 'PDT':
+      return 7; // PDT is UTC-7
+    case 'CST':
+    case 'America/Chicago':
+      return 6; // CST is UTC-6
+    case 'CDT':
+      return 5; // CDT is UTC-5
+    case 'MST':
+    case 'America/Denver':
+      return 7; // MST is UTC-7
+    case 'MDT':
+      return 6; // MDT is UTC-6
+    default:
+      return 0; // Default to UTC
+  }
+}
+
 // Calendar Intent Handler
 class CalendarIntentHandler implements IntentHandler {
   canHandle(intent: SimplifiedIntent): boolean {
@@ -736,16 +764,21 @@ class CalendarIntentHandler implements IntentHandler {
       }
       
       // Parse date and time to create proper event details
-      const now = new Date();
+      // Calculate "tomorrow" based on user's timezone, not server's timezone
       let eventDate: Date;
       
       // Handle "tomorrow" date
       if (date.toLowerCase().includes('tomorrow')) {
-        eventDate = new Date(now);
+        // Get current date in user's timezone
+        const now = new Date();
+        const userNow = new Date(now.toLocaleString("en-US", { timeZone: userTimezone }));
+        eventDate = new Date(userNow);
         eventDate.setDate(eventDate.getDate() + 1);
       } else {
         // For other dates, use today as fallback
-        eventDate = new Date(now);
+        const now = new Date();
+        const userNow = new Date(now.toLocaleString("en-US", { timeZone: userTimezone }));
+        eventDate = new Date(userNow);
       }
       
       // Parse time (assuming 9am format)
@@ -761,23 +794,27 @@ class CalendarIntentHandler implements IntentHandler {
       }
       
       // Create the event date and time in the user's timezone
-      // Use a more reliable approach with proper timezone handling
       const year = eventDate.getFullYear();
       const month = String(eventDate.getMonth() + 1).padStart(2, '0');
       const day = String(eventDate.getDate()).padStart(2, '0');
       
-      // Create ISO strings for the local time in the user's timezone
-      // Format: YYYY-MM-DDTHH:MM:SS (without Z, so it's treated as local time)
+      // Create date strings in the user's timezone
       const startHour = String(hours).padStart(2, '0');
       const endHour = String(hours + 1).padStart(2, '0');
       
-      const startISO = `${year}-${month}-${day}T${startHour}:00:00`;
-      const endISO = `${year}-${month}-${day}T${endHour}:00:00`;
+      // Create date strings that represent the time in the user's timezone
+      const startDateStr = `${year}-${month}-${day}T${startHour}:00:00`;
+      const endDateStr = `${year}-${month}-${day}T${endHour}:00:00`;
       
-      // Convert to UTC for the Google Calendar API
-      // Create Date objects from the local time strings and convert to UTC
-      const startDate = new Date(startISO);
-      const endDate = new Date(endISO);
+      // Convert to UTC by creating dates in the user's timezone and converting to UTC
+      // Use Intl.DateTimeFormat to properly handle timezone conversion
+      const startDate = new Date(startDateStr + 'Z'); // Treat as UTC first
+      const endDate = new Date(endDateStr + 'Z'); // Treat as UTC first
+      
+      // Adjust for timezone offset to get the correct UTC time
+      const timezoneOffset = getTimezoneOffset(userTimezone);
+      startDate.setUTCHours(startDate.getUTCHours() - timezoneOffset);
+      endDate.setUTCHours(endDate.getUTCHours() - timezoneOffset);
       
       // Get the UTC ISO strings for the API
       const startUTC = startDate.toISOString();
@@ -799,10 +836,11 @@ class CalendarIntentHandler implements IntentHandler {
         parsedHours: hours,
         userTimezone,
         eventDate: eventDate.toString(),
-        startISO,
-        endISO,
+        startDateStr,
+        endDateStr,
         startUTC,
         endUTC,
+        timezoneOffset,
         browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       });
 
