@@ -760,81 +760,34 @@ class CalendarIntentHandler implements IntentHandler {
         }
       }
       
-      // Set the time in the user's timezone
-      eventDate.setHours(hours, 0, 0, 0);
-      const endDate = new Date(eventDate);
-      endDate.setHours(hours + 1, 0, 0, 0); // 1 hour duration
-      
-      // Create event preview object
-      // The times are in the user's local timezone, so we need to create ISO strings that represent local time
-      // We need to adjust for timezone offset to ensure the time displays correctly
+      // Create the event date and time in the user's timezone
+      // Use a more reliable approach with proper timezone handling
       const year = eventDate.getFullYear();
       const month = String(eventDate.getMonth() + 1).padStart(2, '0');
       const day = String(eventDate.getDate()).padStart(2, '0');
       
-      // Calculate timezone offset for the user's timezone
-      // EST is UTC-5, EDT is UTC-4, etc.
-      let timezoneOffset = 0;
-      if (userTimezone === 'EST' || userTimezone === 'America/New_York') {
-        // For EST, we need to add 5 hours to get UTC time
-        // When user says 9pm EST, we need 9pm + 5 = 2am UTC next day
-        timezoneOffset = 5; // EST is UTC-5, so add 5 hours
-      } else if (userTimezone === 'EDT' || userTimezone === 'America/New_York') {
-        timezoneOffset = 4; // EDT is UTC-4, so add 4 hours
-      } else if (userTimezone === 'PST' || userTimezone === 'America/Los_Angeles') {
-        timezoneOffset = 8; // PST is UTC-8, so add 8 hours
-      } else if (userTimezone === 'PDT' || userTimezone === 'America/Los_Angeles') {
-        timezoneOffset = 7; // PDT is UTC-7, so add 7 hours
-      } else if (userTimezone === 'CST' || userTimezone === 'America/Chicago') {
-        timezoneOffset = 6; // CST is UTC-6, so add 6 hours
-      } else if (userTimezone === 'CDT' || userTimezone === 'America/Chicago') {
-        timezoneOffset = 5; // CDT is UTC-5, so add 5 hours
-      } else if (userTimezone === 'MST' || userTimezone === 'America/Denver') {
-        timezoneOffset = 7; // MST is UTC-7, so add 7 hours
-      } else if (userTimezone === 'MDT' || userTimezone === 'America/Denver') {
-        timezoneOffset = 6; // MDT is UTC-6, so add 6 hours
-      }
+      // Create ISO strings for the local time in the user's timezone
+      // Format: YYYY-MM-DDTHH:MM:SS (without Z, so it's treated as local time)
+      const startHour = String(hours).padStart(2, '0');
+      const endHour = String(hours + 1).padStart(2, '0');
       
-      // Adjust hours for timezone offset and handle day overflow
-      let adjustedStartHour = hours + timezoneOffset;
-      let adjustedEndHour = hours + 1 + timezoneOffset;
-      let adjustedStartDay = parseInt(day);
-      let adjustedEndDay = parseInt(day);
+      const startISO = `${year}-${month}-${day}T${startHour}:00:00`;
+      const endISO = `${year}-${month}-${day}T${endHour}:00:00`;
       
-      // Handle hour overflow (hours > 23)
-      if (adjustedStartHour >= 24) {
-        adjustedStartHour = adjustedStartHour % 24;
-        adjustedStartDay += 1;
-      }
-      if (adjustedEndHour >= 24) {
-        adjustedEndHour = adjustedEndHour % 24;
-        adjustedEndDay += 1;
-      }
+      // Convert to UTC for the Google Calendar API
+      // Create Date objects from the local time strings and convert to UTC
+      const startDate = new Date(startISO);
+      const endDate = new Date(endISO);
       
-      // Handle day overflow (day > 31)
-      const daysInMonth = new Date(year, parseInt(month), 0).getDate();
-      if (adjustedStartDay > daysInMonth) {
-        adjustedStartDay = 1;
-        // Note: We're not handling month overflow for simplicity
-      }
-      if (adjustedEndDay > daysInMonth) {
-        adjustedEndDay = 1;
-      }
-      
-      const startHour = String(adjustedStartHour).padStart(2, '0');
-      const endHour = String(adjustedEndHour).padStart(2, '0');
-      const startDay = String(adjustedStartDay).padStart(2, '0');
-      const endDay = String(adjustedEndDay).padStart(2, '0');
-      
-      // Create ISO strings that represent the local time adjusted for timezone
-      const startISO = `${year}-${month}-${startDay}T${startHour}:00:00.000Z`;
-      const endISO = `${year}-${month}-${endDay}T${endHour}:00:00.000Z`;
+      // Get the UTC ISO strings for the API
+      const startUTC = startDate.toISOString();
+      const endUTC = endDate.toISOString();
       
       const eventPreview = {
         title: `Meeting with ${attendee}`,
         description: `Meeting scheduled with ${attendee}`,
-        start: startISO,
-        end: endISO,
+        start: startUTC,
+        end: endUTC,
         attendees: [attendee],
         location: '',
         allDay: false
@@ -845,17 +798,11 @@ class CalendarIntentHandler implements IntentHandler {
         originalTime: time,
         parsedHours: hours,
         userTimezone,
-        timezoneOffset,
-        adjustedStartHour,
-        adjustedEndHour,
-        adjustedStartDay,
-        adjustedEndDay,
-        eventDateLocal: eventDate.toString(),
-        eventDateISO: eventDate.toISOString(),
-        endDateLocal: endDate.toString(),
-        endDateISO: endDate.toISOString(),
-        generatedStartISO: startISO,
-        generatedEndISO: endISO,
+        eventDate: eventDate.toString(),
+        startISO,
+        endISO,
+        startUTC,
+        endUTC,
         browserTimezone: Intl.DateTimeFormat().resolvedOptions().timeZone
       });
 
